@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:dio/dio.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../screens/login_screen.dart';
 import 'audit_view.dart';
 import 'staff_registration_form.dart';
 import 'team_list_view.dart';
@@ -46,6 +48,14 @@ class _DashboardViewState extends State<DashboardView> {
   Future<void> _refreshData({bool isAutoRefresh = false}) async {
     if (!mounted) return;
     if (!isAutoRefresh) setState(() => _isLoading = true);
+    
+    // 🔐 Verificar si hubo un error 401/403 en alguna petición previa
+    if (ApiService.needsLogout) {
+      ApiService.resetLogoutFlag();
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await _handleSessionExpired(authProvider);
+      return;
+    }
     
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -92,16 +102,91 @@ class _DashboardViewState extends State<DashboardView> {
           _countNutri = nutris;
           _countCoach = coaches;
           _countAdmin = admins;
-          _countInactive = inactives; 
+          _countInactive = inactives;
           _isLoading = false;
+          
+          // 🤖 Generar insight dinámico basado en los datos reales
+          final total = nutris + coaches + admins;
+          if (total == 0) {
+            _currentAIInsight = '👋 No hay personal registrado aún. ¡Empieza registrando nuevos miembros!';
+          } else if (inactives > total / 2) {
+            _currentAIInsight = '⚠️ Más de la mitad del equipo está suspendido. Considera reactivar miembros clave.';
+          } else if (nutris == 0 && coaches == 0) {
+            _currentAIInsight = '📢 Aún no tienes Nutricionistas ni Coaches. ¡Forma tu equipo especializado!';
+          } else if (nutris > coaches * 2) {
+            _currentAIInsight = '🏋️‍♀️ Hay mucho más nutricionistas que coaches. ¿Quieres equilibrar tu equipo deportivo?';
+          } else if (coaches > nutris * 2) {
+            _currentAIInsight = '🥗 Más coaches que nutricionistas. ¿Necesitas reforzar el área nutricional?';
+          } else {
+            _currentAIInsight = '✅ Equipo balanceado. Ahora enfoca tu atención en mejorar la retención de clientes.';
+          }
         });
-        _updateAIInsight();
       }
+    } on DioException catch (e) {
+      // Detectar error de autenticación (token expirado)
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        debugPrint('🔐 Token expirado detectado en Dashboard Staff');
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await _handleSessionExpired(authProvider);
+        return;
+      }
+      
+      debugPrint('❌ Error refrescando datos: $e');
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
-      debugPrint('❌ Error cargando KPIs: $e');
+      debugPrint('Error refrescando datos: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
+  
+  Future<void> _handleSessionExpired(AuthProvider authProvider) async {
+    if (!mounted) return;
+    
+    // Cancelar timer de refresco
+    _refreshTimer?.cancel();
+    
+    // Mostrar diálogo informativo
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.lock_clock, color: Colors.orange.shade700, size: 28),
+            const SizedBox(width: 12),
+            const Text('Sesión Expirada'),
+          ],
+        ),
+        content: const Text(
+          'Tu sesión de administrador ha expirado por seguridad. Por favor, inicia sesión nuevamente.',
+          style: TextStyle(fontSize: 15),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+    
+    // Ejecutar logout y redirigir al login
+    await authProvider.logout();
+    
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
 
   void _updateAIInsight() {
     List<String> insights = [

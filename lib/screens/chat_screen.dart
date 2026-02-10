@@ -6,6 +6,8 @@ import '../models/client.dart';
 import 'edit_profile_screen.dart';
 import 'mi_balance_screen.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -14,23 +16,37 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  int _selectedIndex = 1;
-  final TextEditingController _messageController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final TextEditingController _consultController = TextEditingController();
+  final TextEditingController _registerController = TextEditingController();
+  final ScrollController _consultScrollController = ScrollController();
+  final ScrollController _registerScrollController = ScrollController();
+  
+  final FocusNode _consultFocusNode = FocusNode();
+  final FocusNode _registerFocusNode = FocusNode();
+  
   final ApiService _apiService = ApiService();
-  bool _isTyping = false;
   final FlutterTts _flutterTts = FlutterTts();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  
+  bool _isTyping = false;
+  bool _isListening = false;
   String? _speakingMessageId;
+  bool _isKeyboardVisible = false;
 
-
-  String _chatMode = 'consulta'; // 'consulta' o 'registro'
-
-  final List<Map<String, dynamic>> _messages = [
+  final List<Map<String, dynamic>> _consultMessages = [
     {
       'role': 'assistant',
-      'content':
-          '¡Hola! Soy tu asistente CaloFit con IA adaptativa. 🤖\n\n💬 Modo Consulta: Pregúntame sobre nutrición, objetivos, o tu progreso.\n🎤 Modo Registro: Di qué comiste o qué ejercicio hiciste (ej: "Comí arroz con pollo").',
+      'content': '¡Hola! Soy tu asistente CaloFit. 🤖 Pregúntame lo que quieras sobre tu dieta, ejercicios o progreso.',
+      'type': 'text',
+    },
+  ];
+
+  final List<Map<String, dynamic>> _registerLogs = [
+    {
+      'role': 'assistant',
+      'content': 'Dime qué comiste o qué ejercicio hiciste hoy para registrarlo. 🎤',
       'type': 'text',
     },
   ];
@@ -38,130 +54,175 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _initTts();
+    _initSpeech();
+    
+    _consultFocusNode.addListener(_onFocusChange);
+    _registerFocusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    bool hasFocus = _consultFocusNode.hasFocus || _registerFocusNode.hasFocus;
+    if (hasFocus != _isKeyboardVisible) {
+      setState(() => _isKeyboardVisible = hasFocus);
+    }
   }
 
   Future<void> _initTts() async {
-    await _flutterTts.setLanguage("es-ES");
+    await _flutterTts.setLanguage("es-MX"); // Más natural para Latinoamérica
     await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setPitch(1.1); // Un tono ligeramente más alto para que sea más amigable
     await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
-    
-    _flutterTts.setCompletionHandler(() {
-      setState(() {
-        _speakingMessageId = null;
-      });
-    });
+    _flutterTts.setCompletionHandler(() => setState(() => _speakingMessageId = null));
+  }
+
+  Future<void> _initSpeech() async {
+    await _speech.initialize();
   }
 
   @override
   void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
+    _tabController.dispose();
+    _consultController.dispose();
+    _registerController.dispose();
+    _consultFocusNode.dispose();
+    _registerFocusNode.dispose();
     _flutterTts.stop();
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  Future<void> _speak(String content, String messageId) async {
+    if (_speakingMessageId == messageId) {
+      await _flutterTts.stop();
+      setState(() => _speakingMessageId = null);
+    } else {
+      setState(() => _speakingMessageId = messageId);
+      
+      // Limpiar Markdown para que no lea "asterisco", "guión", etc.
+      String plainText = content
+          .replaceAll(RegExp(r'\*+'), '') // Elimina asteriscos de negrita/itálica
+          .replaceAll(RegExp(r'#+'), '')  // Elimina hashes de títulos
+          .replaceAll(RegExp(r'^- ', multiLine: true), '') // Elimina guiones de listas
+          .replaceAll(RegExp(r'^\d+\. ', multiLine: true), '') // Elimina números de listas
+          .trim();
+
+      await _flutterTts.speak(plainText);
+    }
   }
 
-  Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
-    final userMessage = _messageController.text;
-    _messageController.clear();
+  Future<void> _listen(bool isConsult) async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) => setState(() {
+            if (isConsult) _consultController.text = val.recognizedWords;
+            else _registerController.text = val.recognizedWords;
+            
+            if (val.finalResult) {
+              _isListening = false;
+              _sendMessage(isConsult);
+            }
+          }),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  Future<void> _sendMessage(bool isConsult, {String? quickMessage}) async {
+    final controller = isConsult ? _consultController : _registerController;
+    final message = quickMessage ?? controller.text;
+    if (message.trim().isEmpty) return;
+    
+    if (quickMessage == null) controller.clear();
 
     setState(() {
-      _messages.add({'role': 'user', 'content': userMessage, 'type': 'text'});
+      if (isConsult) _consultMessages.add({'role': 'user', 'content': message, 'type': 'text'});
+      else _registerLogs.add({'role': 'user', 'content': message, 'type': 'text'});
       _isTyping = true;
     });
-    _scrollToBottom();
+    
+    _scrollToBottom(isConsult);
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
 
       if (token == null) {
-        throw Exception('No hay sesión activa');
+        setState(() {
+          _isTyping = false;
+          final list = isConsult ? _consultMessages : _registerLogs;
+          list.add({'role': 'assistant', 'content': 'Sesión expirada o inválida. Por favor, inicia sesión de nuevo.', 'type': 'error'});
+        });
+        return;
       }
 
-      String response;
+      if (isConsult) {
+        // Enviar historial (últimos 5 mensajes para contexto)
+        // Usamos .map para asegurar que solo enviamos role y content (lo que el back entiende)
+        final history = _consultMessages.length > 1 
+          ? _consultMessages.sublist(_consultMessages.length > 6 ? _consultMessages.length - 6 : 0, _consultMessages.length - 1)
+            .map((m) => {
+              'role': m['role'] == 'assistant' ? 'assistant' : 'user', 
+              'content': m['content']
+            }).toList()
+          : null;
 
-      // ✨ NUEVO: Lógica según el modo
-      if (_chatMode == 'registro') {
-        // 🎤 Modo Registro por Voz con NLP
-        print('🎤 Modo Registro: "$userMessage"');
-        final result = await _apiService.registrarPorVoz(userMessage, token);
-        
-        // El backend devuelve confirmación o error
-        response = result['mensaje'] ?? 'Registro procesado correctamente';
-        
-        // Si se detectó alimento/ejercicio, mostrar badge
-        if (result['tipo_detectado'] != null) {
-          setState(() {
-            _isTyping = false;
-            _messages.add({
-              'role': 'assistant',
-              'content': response,
-              'type': 'registro_exitoso',
-              'badge': result['tipo_detectado'], // 'alimento' o 'ejercicio'
-            });
+        // Instrucción de Experto para la IA
+        final promptConInstruccion = """
+$message 
+
+(IMPORTANTE: Actúa como un experto en nutrición y fitness. 
+- Tus recomendaciones deben tener sentido lógico (evita redundancias como 'palta con aguacate').
+- Sugiere alimentos variados: proteínas, carbohidratos complejos y grasas saludables.
+- Responde usando listas con viñetas de Markdown.
+- Usa negritas para resaltar los alimentos o ejercicios clave.
+- Sé breve pero motivador).
+""";
+
+        final result = await _apiService.consultarAsistente(promptConInstruccion, token, historial: history);
+        final response = result['respuesta_ia'] ?? 'No pude procesar la consulta.';
+        setState(() {
+          _isTyping = false;
+          _consultMessages.add({
+            'role': 'assistant', 
+            'content': response, 
+            'type': response.toLowerCase().contains('recomiendo') ? 'recommendation' : 'text'
           });
-          _scrollToBottom();
-          return;
-        }
+        });
       } else {
-        // 💬 Modo Consulta con Fuzzy Logic
-        print('💬 Modo Consulta: "$userMessage"');
-        final result = await _apiService.consultarAsistente(userMessage, token);
-        
-        // ✅ CORRECCIÓN: Usar la clave correcta 'respuesta_ia' que viene del backend
-        response = result['respuesta_ia'] ?? result['respuesta'] ?? result['mensaje'] ?? 'Lo siento, no pude procesar tu consulta.';
-        
-        // ✅ NUEVO: Detectar si hubo alerta de salud
-        if (result['alerta_salud'] == true) {
-          setState(() {
-            _messages.add({
-              'role': 'assistant',
-              'content': '⚠️ ¡ALERTA DE SALUD DETECTADA!',
-              'type': 'health_warning',
-            });
+        final result = await _apiService.registrarPorVoz(message, token);
+        final response = result['mensaje'] ?? 'Registro completado.';
+        setState(() {
+          _isTyping = false;
+          _registerLogs.add({
+            'role': 'assistant', 
+            'content': response, 
+            'type': 'registro_exitoso',
+            'badge': result['tipo_detectado']
           });
-        }
+        });
       }
-
-      setState(() {
-        _isTyping = false;
-        bool isRecommendation = response.toLowerCase().contains('recomiendo') ||
-            response.toLowerCase().contains('calorías') ||
-            response.toLowerCase().contains('dieta');
-
-        _messages.add({
-          'role': 'assistant',
-          'content': response,
-          'type': isRecommendation ? 'recommendation' : 'text'
-        });
-      });
-      _scrollToBottom();
+      _scrollToBottom(isConsult);
     } catch (e) {
-      print('❌ Error en chat: $e');
       setState(() {
         _isTyping = false;
-        _messages.add({
-          'role': 'assistant',
-          'content': 'Error de conexión. Intenta de nuevo.',
-          'type': 'error'
-        });
+        final list = isConsult ? _consultMessages : _registerLogs;
+        list.add({'role': 'assistant', 'content': 'Error de conexión.', 'type': 'error'});
       });
     }
+  }
+
+  void _scrollToBottom(bool isConsult) {
+    final scroll = isConsult ? _consultScrollController : _registerScrollController;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scroll.hasClients) scroll.animateTo(scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    });
   }
 
   @override
@@ -169,472 +230,277 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Chat Inteligente',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18)),
-            Text(
-              _chatMode == 'consulta' ? 'Modo: Consulta 💬' : 'Modo: Registro 🎤',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
+        title: const Text('Asistente CaloFit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF1E88E5),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF1E88E5),
+          tabs: const [
+            Tab(icon: Icon(Icons.auto_awesome_outlined), text: 'Asistente IA'),
+            Tab(icon: Icon(Icons.edit_note_rounded), text: 'Registro Diario'),
           ],
         ),
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          // ✨ NUEVO: Dropdown de modo
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: Colors.grey[700]),
-            onSelected: (mode) {
-              setState(() {
-                _chatMode = mode;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    mode == 'consulta'
-                        ? '💬 Modo Consulta activado'
-                        : '🎤 Modo Registro por Voz activado',
-                  ),
-                  duration: const Duration(seconds: 2),
-                  backgroundColor: mode == 'consulta' ? Colors.blue : Colors.green,
-                ),
-              );
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'consulta',
-                child: Row(
-                  children: [
-                    Icon(Icons.chat_bubble_outline,
-                        color: _chatMode == 'consulta' ? Colors.blue : Colors.grey),
-                    const SizedBox(width: 10),
-                    Text('Modo Consulta',
-                        style: TextStyle(
-                            fontWeight: _chatMode == 'consulta' ? FontWeight.bold : FontWeight.normal)),
-                  ],
-                ),
-              ),
-
-              PopupMenuItem(
-                value: 'registro',
-                child: Row(
-                  children: [
-                    Icon(Icons.mic,
-                        color: _chatMode == 'registro' ? Colors.green : Colors.grey),
-                    const SizedBox(width: 10),
-                    Text('Modo Registro',
-                        style: TextStyle(
-                            fontWeight: _chatMode == 'registro' ? FontWeight.bold : FontWeight.normal)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // ✨ NUEVO: Banner informativo del modo
-          if (_chatMode == 'registro')
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.green[50],
-              child: Row(
-                children: [
-                  const Icon(Icons.lightbulb_outline, color: Colors.green, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Di qué comiste o qué ejercicio hiciste (ej: "Comí 2 huevos")',
-                      style: TextStyle(fontSize: 12, color: Colors.green[800]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(20),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                
-                if (msg['type'] == 'recommendation') {
-                  return _buildExtendedRecommendation(msg['content']);
-                }
-                
-                if (msg['type'] == 'registro_exitoso') {
-                  return _buildRegistroExitoso(msg);
-                }
-                
-                return _buildChatBubble(msg);
-              },
-            ),
-          ),
-          if (_isTyping) _buildTypingIndicator(),
-          _buildInputArea(),
+          _buildChatView(true),
+          _buildChatView(false),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
+      bottomNavigationBar: MediaQuery.of(context).viewInsets.bottom > 0 ? null : _buildBottomNavigation(),
     );
   }
 
-  Widget _buildChatBubble(Map<String, dynamic> msg) {
+  Widget _buildChatView(bool isConsult) {
+    return Column(
+      children: [
+        if (isConsult && !_isKeyboardVisible) _buildQuickActions(),
+        Expanded(
+          child: _buildMessageList(isConsult),
+        ),
+        if (_isTyping) _buildTypingIndicator(),
+        _buildInputArea(isConsult),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _quickActionChip('🍽️ ¿Qué como hoy?', 'Recomiéndame algo saludable para comer hoy'),
+          _quickActionChip('🔥 Calorías hoy', '¿Cuántas calorías llevo consumidas hoy?'),
+          _quickActionChip('💪 Ejercicios', 'Sugiéreme una rutina rápida de ejercicios'),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickActionChip(String label, String msg) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(label),
+        onPressed: () => _sendMessage(true, quickMessage: msg),
+        backgroundColor: Colors.white,
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+    );
+  }
+
+  Widget _buildMessageList(bool isConsult) {
+    final messages = isConsult ? _consultMessages : _registerLogs;
+    return ListView.builder(
+      controller: isConsult ? _consultScrollController : _registerScrollController,
+      padding: const EdgeInsets.all(20),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final msg = messages[index];
+        if (msg['type'] == 'recommendation') return _buildRecommendationCard(msg['content'], index);
+        if (msg['type'] == 'registro_exitoso') return _buildRegistrationBadge(msg, index);
+        return _buildChatBubble(msg, index);
+      },
+    );
+  }
+
+  Widget _buildChatBubble(Map<String, dynamic> msg, int index) {
     bool isUser = msg['role'] == 'user';
-    bool isError = msg['type'] == 'error';
-    bool isWarning = msg['type'] == 'health_warning';
-    final messageId = msg.hashCode.toString();
-    final isSpeaking = _speakingMessageId == messageId;
-    
+    String messageId = "bubble_$index";
+    bool isSpeaking = _speakingMessageId == messageId;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-        child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isError 
-                    ? Colors.red[50]
-                    : (isWarning 
-                        ? Colors.orange[50] 
-                        : (isUser ? Colors.blue[600] : Colors.white)),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isUser ? 18 : 0),
-                  bottomRight: Radius.circular(isUser ? 0 : 18),
-                ),
-                border: isWarning ? Border.all(color: Colors.orange[300]!) : null,
-                boxShadow: [
+            if (!isUser) const CircleAvatar(radius: 14, backgroundColor: Color(0xFF1E88E5), child: Icon(Icons.auto_awesome, color: Colors.white, size: 14)),
+            if (!isUser) const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isUser ? const Color(0xFF1E88E5) : Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: isUser ? null : Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: isUser 
+                      ? Text(msg['content'], style: const TextStyle(color: Colors.white, fontSize: 15))
+                      : MarkdownBody(
+                          data: msg['content'],
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(color: Colors.black87, fontSize: 15, height: 1.5),
+                            listBullet: TextStyle(color: Colors.blue.shade700, fontSize: 15),
+                            listIndent: 20, // Sangría para que se note la lista
+                            blockSpacing: 10, // Espacio entre párrafos y listas
+                            strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
+                        ),
+                  ),
                   if (!isUser)
-                    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 4),
+                      child: InkWell(
+                        onTap: () => _speak(msg['content'], messageId),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(isSpeaking ? Icons.stop_circle : Icons.volume_up_rounded, size: 14, color: isSpeaking ? Colors.red : Colors.blue.shade300),
+                          const SizedBox(width: 4),
+                          Text(isSpeaking ? 'Detener' : 'Escuchar', style: TextStyle(fontSize: 10, color: isSpeaking ? Colors.red : Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                        ]),
+                      ),
+                    ),
                 ],
               ),
-              child: Text(
-                msg['content'],
-                style: TextStyle(
-                  color: isError 
-                      ? Colors.red[900] 
-                      : (isWarning ? Colors.orange[900] : (isUser ? Colors.white : Colors.black87)),
-                  fontSize: isWarning ? 14 : 15,
-                  fontWeight: isWarning ? FontWeight.bold : FontWeight.normal,
-                  height: 1.4,
-                ),
-              ),
             ),
-            // Botón de voz solo para mensajes del asistente
-            if (!isUser && !isError)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: TextButton.icon(
-                  onPressed: () => _toggleSpeech(messageId, msg['content']),
-                  icon: Icon(
-                    isSpeaking ? Icons.stop_circle : Icons.volume_up,
-                    size: 18,
-                    color: Colors.blue[700],
-                  ),
-                  label: Text(
-                    isSpeaking ? 'Detener' : 'Escuchar',
-                    style: TextStyle(fontSize: 12, color: Colors.blue[700]),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _toggleSpeech(String messageId, String text) async {
-    if (_speakingMessageId == messageId) {
-      // Detener si ya está hablando este mensaje
-      await _flutterTts.stop();
-      setState(() {
-        _speakingMessageId = null;
-      });
-    } else {
-      // Detener cualquier mensaje anterior y comenzar este
-      await _flutterTts.stop();
-      setState(() {
-        _speakingMessageId = messageId;
-      });
-      await _flutterTts.speak(text);
-    }
-  }
+  Widget _buildRegistrationBadge(Map<String, dynamic> msg, int index) {
+    final isAlimento = msg['badge'] == 'alimento';
+    String messageId = "reg_$index";
+    bool isSpeaking = _speakingMessageId == messageId;
 
-  // ✨ NUEVO: Widget para registro exitoso con badge
-  Widget _buildRegistroExitoso(Map<String, dynamic> msg) {
-    final badge = msg['badge'] ?? 'registro';
-    final isAlimento = badge == 'alimento';
-    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isAlimento ? Colors.orange : Colors.green, width: 2),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: (isAlimento ? Colors.orange : Colors.green).withOpacity(0.3))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Row(children: [
+            Icon(isAlimento ? Icons.restaurant : Icons.fitness_center, color: isAlimento ? Colors.orange : Colors.green),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(isAlimento ? 'ALIMENTO REGISTRADO' : 'EJERCICIO REGISTRADO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isAlimento ? Colors.orange : Colors.green)),
+              const SizedBox(height: 4),
+              Text(msg['content'], style: const TextStyle(fontSize: 14)),
+            ])),
+          ]),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => _speak(msg['content'], messageId),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(isSpeaking ? Icons.stop_circle : Icons.volume_up_rounded, size: 14, color: isSpeaking ? Colors.red : Colors.blue.shade300),
+              const SizedBox(width: 4),
+              Text(isSpeaking ? 'Detener' : 'Escuchar confirmación', style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationCard(String content, int index) {
+    String messageId = "rec_$index";
+    bool isSpeaking = _speakingMessageId == messageId;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(height: 80, width: double.infinity, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(top: Radius.circular(18)), gradient: LinearGradient(colors: [Colors.blue.shade300, Colors.blue.shade600])), child: const Center(child: Icon(Icons.auto_awesome, color: Colors.white, size: 30))),
+        Padding(
+          padding: const EdgeInsets.all(16), 
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, 
             children: [
-              Icon(
-                isAlimento ? Icons.restaurant : Icons.fitness_center,
-                color: isAlimento ? Colors.orange : Colors.green,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isAlimento ? Colors.orange[100] : Colors.green[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isAlimento ? 'ALIMENTO REGISTRADO' : 'EJERCICIO REGISTRADO',
-                  style: TextStyle(
-                    color: isAlimento ? Colors.orange[900] : Colors.green[900],
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+              MarkdownBody(
+                data: content,
+                styleSheet: MarkdownStyleSheet(
+                  p: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87, height: 1.4),
+                  listBullet: TextStyle(color: Colors.blue.shade700, fontSize: 14),
+                  listIndent: 20,
+                  blockSpacing: 8,
+                  strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            msg['content'],
-            style: const TextStyle(fontSize: 15, height: 1.4, color: Colors.black87),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExtendedRecommendation(String content) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 8))
-        ],
-      ),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=600',
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('RECOMENDACIÓN',
-                        style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                            letterSpacing: 1.2)),
-                    _badge('Saludable', Colors.green),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(content,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _badge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-          color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-      child: Text(text,
-          style:
-              TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          InkWell(onTap: () => _speak(content, messageId), child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(isSpeaking ? Icons.stop_circle : Icons.volume_up_rounded, size: 16, color: isSpeaking ? Colors.red : Colors.blue.shade600),
+            const SizedBox(width: 6),
+            Text(isSpeaking ? 'Detener' : 'Escuchar recomendación', style: TextStyle(fontSize: 12, color: isSpeaking ? Colors.red : Colors.blue.shade700, fontWeight: FontWeight.bold)),
+          ])),
+        ])),
+      ]),
     );
   }
 
   Widget _buildTypingIndicator() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 20, bottom: 10),
-      child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text('CaloFit está escribiendo...',
-              style: TextStyle(
-                  fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic))),
-    );
+    return Padding(padding: const EdgeInsets.only(left: 60, bottom: 10), child: Align(alignment: Alignment.centerLeft, child: Text('CaloFit analizando...', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontStyle: FontStyle.italic))));
   }
 
-  Widget _buildInputArea() {
+  Widget _buildInputArea(bool isConsult) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFEEEEEE)))),
-      child: SafeArea(
-        child: Row(
-          children: [
-            // ✨ Icono dinámico según modo
-            IconButton(
-              icon: Icon(
-                _chatMode == 'registro' ? Icons.mic : Icons.chat_bubble_outline,
-                color: _chatMode == 'registro' ? Colors.green : Colors.blue,
-                size: 28,
-              ),
-              onPressed: () {
-                // Cambiar modo rápido
-                setState(() {
-                  _chatMode = _chatMode == 'consulta' ? 'registro' : 'consulta';
-                });
-              },
-            ),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(30)),
-                child: TextField(
-                  controller: _messageController,
-                  decoration: InputDecoration(
-                    hintText: _chatMode == 'registro'
-                        ? 'Ej: Comí arroz con pollo...'
-                        : 'Escribe un mensaje...',
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  onSubmitted: (_) => _sendMessage(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _sendMessage,
-              child: CircleAvatar(
-                  backgroundColor: _chatMode == 'registro' ? Colors.green[600] : Colors.blue[600],
-                  child: const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20)),
-            ),
-          ],
-        ),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade200))),
+      child: SafeArea(top: false, child: Row(children: [
+        GestureDetector(onTap: () => _listen(isConsult), child: CircleAvatar(backgroundColor: _isListening ? Colors.red : Colors.grey[100], child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.white : Colors.black87, size: 20))),
+        const SizedBox(width: 12),
+        Expanded(child: Container(padding: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(25)), child: TextField(controller: isConsult ? _consultController : _registerController, focusNode: isConsult ? _consultFocusNode : _registerFocusNode, decoration: InputDecoration(hintText: isConsult ? 'Escribe tu consulta...' : 'Registra comida/ejercicio...', border: InputBorder.none)))),
+        const SizedBox(width: 8),
+        GestureDetector(onTap: () => _sendMessage(isConsult), child: CircleAvatar(backgroundColor: const Color(0xFF1E88E5), child: const Icon(Icons.send, color: Colors.white, size: 18))),
+      ])),
     );
   }
 
   Widget _buildBottomNavigation() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 1,
-      selectedItemColor: Colors.blue[700],
-      unselectedItemColor: Colors.grey,
-      onTap: (index) async {
+    return NavigationBar(
+      selectedIndex: 1,
+      onDestinationSelected: (index) async {
         if (index == 0) {
           Navigator.popUntil(context, (route) => route.isFirst);
         } else if (index == 2) {
-          // Navegar a Mi Balance
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MiBalanceScreen()),
-          );
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MiBalanceScreen()));
         } else if (index == 3) {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          if (authProvider.userId == null || authProvider.token == null) return;
-
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) =>
-                const Center(child: CircularProgressIndicator()),
-          );
-
-          try {
-            Client client = await _apiService.getClientProfile(
-                authProvider.userId!, authProvider.token!);
-
-            if (!mounted) return;
-            Navigator.pop(context);
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => EditProfileScreen(client: client)),
-            );
-          } catch (e) {
-            if (!mounted) return;
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error al abrir perfil: $e')),
-            );
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          if (auth.userId == null || auth.token == null) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay una sesión activa.')));
+            return;
           }
-        } else {
-          setState(() => _selectedIndex = index);
+          try {
+            final client = await _apiService.getClientProfile(auth.userId!, auth.token!);
+            if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => EditProfileScreen(client: client)));
+          } catch (e) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al obtener perfil: $e')));
+          }
         }
       },
-      items: const [
-        BottomNavigationBarItem(
+      destinations: const [
+        NavigationDestination(
           icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
+          selectedIcon: Icon(Icons.home),
           label: 'Inicio',
         ),
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: Icon(Icons.chat_bubble_outline),
-          activeIcon: Icon(Icons.chat_bubble),
+          selectedIcon: Icon(Icons.chat_bubble),
           label: 'Asistente',
         ),
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: Icon(Icons.assessment_outlined),
-          activeIcon: Icon(Icons.assessment),
+          selectedIcon: Icon(Icons.assessment),
           label: 'Balance',
         ),
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
+          selectedIcon: Icon(Icons.person),
           label: 'Perfil',
         ),
       ],

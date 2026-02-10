@@ -37,16 +37,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final List<String> _activityLevels = [
     'Sedentario',
-    'Ligero (1-2 días/sem)',
-    'Moderado (3-5 días/sem)',
-    'Intenso (6-7 días/sem)',
-    'Atleta'
+    'Ligero',
+    'Moderado',
+    'Activo',
+    'Muy activo'
   ];
 
   final List<String> _goals = [
-    'Bajar de peso',
+    'Perder peso (Agresivo)',
+    'Perder peso (Definición)',
     'Mantener peso',
-    'Subir de peso'
+    'Ganar masa (Limpio)',
+    'Ganar masa (Volumen)'
   ];
 
   final List<String> _genders = ['Masculino', 'Femenino', 'Otro'];

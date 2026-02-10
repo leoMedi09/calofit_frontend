@@ -147,17 +147,27 @@ class AuthProvider with ChangeNotifier {
       _userId = prefs.getInt('userId');
       _userIdFirebase = prefs.getString('userIdFirebase');
       
-      if (_token != null) {
+      if (_token != null && _userId != null) {
         try {
-          // Validar sesión (Solo para clientes, staff tiene otros flujos)
-          if (_userType != 'staff' && _userType != 'admin') {
-            await _apiService.getClientProfile(_userId ?? 0, _token!);
+          debugPrint('🔐 Validando sesión guardada para usuario ID: $_userId');
+          
+          // ✅ VALIDACIÓN UNIVERSAL: Intentar obtener datos del usuario para validar el token
+          if (_userType == 'staff' || _userType == 'admin') {
+            // Para staff: intentar obtener la lista de usuarios
+            await _apiService.getUsers(_token!);
+            debugPrint('✅ Token de Staff válido');
           } else {
-            debugPrint('👥 Sesión de Staff detectada, saltando validación de perfil de cliente.');
+            // Para clientes: intentar obtener su perfil
+            await _apiService.getClientProfile(_userId!, _token!);
+            debugPrint('✅ Token de Cliente válido');
           }
         } catch (e) {
-          debugPrint('⚠️ Error validando sesión: $e');
-          await this.logout();
+          debugPrint('❌ Error validando sesión: $e');
+          debugPrint('🚨 Token inválido o sin conexión. Cerrando sesión...');
+          
+          // 🚨 FORZAR LOGOUT si el token no es válido
+          await logout();
+          return; // Salir para evitar notifyListeners con datos inválidos
         }
       }
     }
@@ -165,8 +175,12 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _firebaseAuth.signOut();
-
+    try {
+      await _firebaseAuth.signOut();
+    } catch (e) {
+      debugPrint('⚠️ Error cerrando sesión de Firebase (probablemente sin conexión): $e');
+      // Continuar con el logout de todas formas
+    }
 
     _token = null;
     _userType = null;
@@ -176,9 +190,9 @@ class AuthProvider with ChangeNotifier {
     _userId = null;
     _userIdFirebase = null;
 
-
     await _removeSession();
-
+    
+    debugPrint('✅ Logout completado. Usuario debe ser redirigido al login.');
     notifyListeners();
   }
 

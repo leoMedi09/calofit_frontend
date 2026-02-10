@@ -7,6 +7,16 @@ import '../models/nutrition_plan.dart';
 import '../config/api_config.dart';
 
 class ApiService {
+  static bool _needsLogout = false;
+  
+  // Getter para verificar si hay que hacer logout
+  static bool get needsLogout => _needsLogout;
+  
+  // Método para resetear el flag después de procesar el logout
+  static void resetLogoutFlag() {
+    _needsLogout = false;
+  }
+  
   final Dio _dio = Dio(BaseOptions(
     baseUrl: ApiConfig.baseUrl,
     headers: {'Content-Type': 'application/json'},
@@ -23,7 +33,30 @@ class ApiService {
       return handler.next(options);
     },
     onError: (DioException e, handler) {
-      print('❌ Error en petición: ${e.message}');
+      final statusCode = e.response?.statusCode;
+      final path = e.requestOptions.path;
+      print('❌ Error en petición [${statusCode ?? 'SIN CÓDIGO'}]: ${e.message}');
+      
+      // 🚨 MANEJO DE TOKEN EXPIRADO / NO AUTORIZADO
+      // SOLO activar logout si:
+      // 1. El código es 401 o 403
+      // 2. La petición TENÍA un token (no es login/registro)
+      if (statusCode == 401 || statusCode == 403) {
+        final hasAuthHeader = e.requestOptions.headers.containsKey('Authorization');
+        final isAuthEndpoint = path.contains('/auth/login') || 
+                               path.contains('/auth/register') ||
+                               path.contains('/clientes/registrar') ||
+                               path.contains('/forgot-password');
+        
+        // Solo marcar logout si es una petición autenticada que falló
+        if (hasAuthHeader && !isAuthEndpoint) {
+          print('🔐 Token inválido o expirado en petición autenticada. Cerrando sesión...');
+          _needsLogout = true;
+        } else {
+          print('⚠️ Error 401/403 en endpoint público (credenciales incorrectas, no token expirado)');
+        }
+      }
+      
       return handler.next(e);
     },
   ));
@@ -422,12 +455,17 @@ class ApiService {
   }
 
   /// 💬 Consulta al asistente IA con control adaptativo (fuzzy logic)
-  /// El tono del asistente se adapta según adherencia y progreso
-  Future<Map<String, dynamic>> consultarAsistente(String mensaje, String token) async {
+  /// El tono del asistente se adapta según adherencia y progreso.
+  /// Se envía el historial para mantener el contexto de la conversación.
+  Future<Map<String, dynamic>> consultarAsistente(String mensaje, String token, {List<Map<String, dynamic>>? historial, Map<String, dynamic>? datosReales}) async {
     try {
-      print('💬 Consultando asistente: "$mensaje"');
+      print('💬 Consultando asistente con contexto real: "$mensaje"');
       final response = await _dio.post('/asistente/consultar',
-          data: {'mensaje': mensaje},
+          data: {
+            'mensaje': mensaje,
+            if (historial != null) 'historial': historial,
+            if (datosReales != null) 'datos_reales': datosReales, // Enviamos macros y kcal reales
+          },
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       print('✅ Respuesta del asistente recibida');
       return response.data;

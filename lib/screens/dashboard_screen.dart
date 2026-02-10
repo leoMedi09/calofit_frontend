@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../models/dashboard_data.dart';
@@ -8,6 +9,8 @@ import '../screens/login_screen.dart';
 import '../screens/edit_profile_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/mi_balance_screen.dart';
+import '../widgets/plan_status_badge.dart';
+import '../widgets/plan_alert_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -43,6 +46,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     
     if (!authProvider.isAuthenticated) return;
     
+    // 🔐 Verificar si hubo un error 401/403 en alguna petición previa
+    if (ApiService.needsLogout) {
+      ApiService.resetLogoutFlag();
+      await _handleSessionExpired(authProvider);
+      return;
+    }
+    
     try {
       // Llamar al endpoint de resumen diario con datos reales del día
       final data = await _apiService.getDailySummary(
@@ -60,11 +70,68 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       // Animar el progreso
       _progressController?.forward();
       
+    } on DioException catch (e) {
+      // Detectar error de autenticación (token expirado)
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        debugPrint('🔐 Token expirado detectado en Dashboard');
+        await _handleSessionExpired(authProvider);
+        return;
+      }
+      
+      debugPrint('❌ Error cargando dashboard: $e');
+      if (mounted) {
+        setState(() => _isLoadingSummary = false);
+      }
     } catch (e) {
       debugPrint('Error cargando dashboard: $e');
       if (mounted) {
         setState(() => _isLoadingSummary = false);
       }
+    }
+  }
+  
+  Future<void> _handleSessionExpired(AuthProvider authProvider) async {
+    if (!mounted) return;
+    
+    // Mostrar diálogo informativo
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.lock_clock, color: Colors.orange.shade700, size: 28),
+            const SizedBox(width: 12),
+            const Text('Sesión Expirada'),
+          ],
+        ),
+        content: const Text(
+          'Tu sesión ha expirado por seguridad. Por favor, inicia sesión nuevamente.',
+          style: TextStyle(fontSize: 15),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E88E5),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+    
+    // Ejecutar logout y redirigir al login
+    await authProvider.logout();
+    
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -104,6 +171,22 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       
                       // Plan nutricional (si existe)
                       if (_dailySummary!.planObjetivo != null) ...[
+                        // ✨ Card de alerta de estado del plan
+                        PlanAlertCard(
+                          estadoPlan: _dailySummary!.planObjetivo!.estadoPlan,
+                          esCondicionCritica: _dailySummary!.planObjetivo!.esCondicionCritica,
+                          mensajeCliente: _dailySummary!.planObjetivo!.mensajeCliente,
+                          onContactarNutricionista: () {
+                            // Navegar al chat con el asistente
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ChatScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
                         _buildPlanNutricionalCompact(),
                         const SizedBox(height: 20),
                       ],
@@ -445,32 +528,45 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     if (_dailySummary == null) return const SizedBox();
     final plan = _dailySummary!.planObjetivo;
     
+    // Obtener valores de macros del plan (si existe)
+    final proteinasMeta = plan?.proteinasObjetivoG.toInt() ?? 0;
+    final carbohidratosMeta = plan?.carbohidratosObjetivoG.toInt() ?? 0;
+    final grasasMeta = plan?.grasasObjetivoG.toInt() ?? 0;
+    
+    // Valores consumidos
+    final proteinasConsumido = _dailySummary!.proteinas.toInt();
+    final carbosConsumido = _dailySummary!.carbohidratos.toInt();
+    final grasasConsumido = _dailySummary!.grasas.toInt();
+    
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildRoleCard(
+              child: _buildMacroCard(
                 'Proteínas', 
-                '${_dailySummary!.proteinas.toInt()}g', 
+                proteinasConsumido,
+                proteinasMeta,
                 Icons.restaurant_menu_rounded, 
                 const Color(0xFFE57373)
               ),
             ),
             const SizedBox(width: 15),
             Expanded(
-              child: _buildRoleCard(
+              child: _buildMacroCard(
                 'Carbos', 
-                '${_dailySummary!.carbohidratos.toInt()}g', 
+                carbosConsumido,
+                carbohidratosMeta,
                 Icons.bakery_dining_rounded, 
                 const Color(0xFFFFB74D)
               ),
             ),
             const SizedBox(width: 15),
             Expanded(
-              child: _buildRoleCard(
+              child: _buildMacroCard(
                 'Grasas', 
-                '${_dailySummary!.grasas.toInt()}g', 
+                grasasConsumido,
+                grasasMeta,
                 Icons.opacity_rounded, 
                 const Color(0xFF64B5F6)
               ),
@@ -478,6 +574,102 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ],
         ),
       ],
+    );
+  }
+  
+  Widget _buildMacroCard(String label, int consumido, int meta, IconData icon, Color color) {
+    final porcentaje = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 12),
+          if (meta > 0) ...[
+            // Mostrar consumido/meta
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$consumido',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' / $meta',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: 'g',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Barra de progreso
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: porcentaje,
+                backgroundColor: color.withOpacity(0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 4,
+              ),
+            ),
+          ] else ...[
+            // Si no hay meta, mostrar solo consumido
+            Text(
+              '${consumido}g',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1A237E),
+              ),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -525,32 +717,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   Widget _buildPlanNutricionalCompact() {
     final plan = _dailySummary!.planObjetivo!;
     
-    // 🆕 Determinar el badge según el estado del plan
-    Color badgeColor;
-    Color badgeTextColor;
-    IconData badgeIcon;
-    String badgeText;
-    
-    if (plan.esFallback) {
-      // Plan calculado temporalmente por IA
-      badgeColor = Colors.blue[100]!;
-      badgeTextColor = Colors.blue[800]!;
-      badgeIcon = Icons.auto_awesome;
-      badgeText = 'Calculado por IA';
-    } else if (plan.validado) {
-      // Plan validado por nutricionista
-      badgeColor = Colors.green[100]!;
-      badgeTextColor = Colors.green[700]!;
-      badgeIcon = Icons.verified;
-      badgeText = 'Validado';
-    } else {
-      // Plan creado pero no validado
-      badgeColor = Colors.orange[100]!;
-      badgeTextColor = Colors.orange[700]!;
-      badgeIcon = Icons.pending;
-      badgeText = 'En revisión';
-    }
-    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -577,31 +743,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      badgeIcon,
-                      size: 14,
-                      color: badgeTextColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      badgeText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: badgeTextColor,
-                      ),
-                    ),
-                  ],
-                ),
+              // ✨ Usar el nuevo PlanStatusBadge
+              PlanStatusBadge(
+                estadoPlan: plan.estadoPlan,
+                esCondicionCritica: plan.esCondicionCritica,
               ),
             ],
           ),
@@ -647,6 +792,32 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     child: Text(
                       'Este es un cálculo temporal basado en tus datos. Consulta con tu nutricionista para obtener un plan personalizado.',
                       style: TextStyle(fontSize: 11, color: Colors.blue[900]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
+          // 📋 Mostrar alerta de seguridad si existe
+          if (plan.alertaSeguridad.isNotEmpty) ...[ 
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[300]!),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange[800], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      plan.alertaSeguridad,
+                      style: TextStyle(fontSize: 11, color: Colors.orange[900], height: 1.3),
                     ),
                   ),
                 ],

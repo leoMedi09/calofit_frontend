@@ -4,6 +4,7 @@ import '../models/client.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'chat_screen.dart';
+import 'mi_balance_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Client client;
@@ -304,17 +305,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           children: [
                             _buildModernDropdown(
                               label: 'Nivel de Actividad',
-                              value: _activityLevel,
+                              value: ['Sedentario', 'Ligero', 'Moderado', 'Activo', 'Muy activo'].contains(_activityLevel) ? _activityLevel : 'Sedentario',
                               icon: Icons.fitness_center,
-                              items: ['Sedentario', 'Ligero', 'Moderado', 'Intenso', 'Muy intenso'],
+                              items: [
+                                'Sedentario',
+                                'Ligero',
+                                'Moderado',
+                                'Activo',
+                                'Muy activo'
+                              ],
                               onChanged: (value) => setState(() => _activityLevel = value!),
                             ),
                             const SizedBox(height: 12),
                             _buildModernDropdown(
                               label: 'Objetivo',
-                              value: _goal,
+                              value: ['Perder peso (Agresivo)', 'Perder peso (Definición)', 'Mantener peso', 'Ganar masa (Limpio)', 'Ganar masa (Volumen)'].contains(_goal) ? _goal : 'Mantener peso',
                               icon: Icons.flag,
-                              items: ['Perder peso', 'Mantener peso', 'Ganar masa'],
+                              items: [
+                                'Perder peso (Agresivo)',
+                                'Perder peso (Definición)',
+                                'Mantener peso',
+                                'Ganar masa (Limpio)',
+                                'Ganar masa (Volumen)'
+                              ],
                               onChanged: (value) => setState(() => _goal = value!),
                             ),
                           ],
@@ -488,6 +501,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: _buildBottomNavigation(),
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    return NavigationBar(
+      selectedIndex: 3,
+      onDestinationSelected: (index) {
+        if (index == 0) {
+          Navigator.popUntil(context, (route) => route.isFirst);
+        } else if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatScreen()),
+          );
+        } else if (index == 2) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MiBalanceScreen()),
+          );
+        }
+      },
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: 'Inicio',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.chat_bubble_outline),
+          selectedIcon: Icon(Icons.chat_bubble),
+          label: 'Asistente',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.assessment_outlined),
+          selectedIcon: Icon(Icons.assessment),
+          label: 'Balance',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline),
+          selectedIcon: Icon(Icons.person),
+          label: 'Perfil',
+        ),
+      ],
     );
   }
 

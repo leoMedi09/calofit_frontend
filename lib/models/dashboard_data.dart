@@ -45,8 +45,19 @@ class PlanNutricional {
   final double grasasObjetivoG;
   final Map<String, int> distribucion;
   final bool validado;
-  final int? planId;  // 🆕 Ahora nullable (puede ser null si es fallback)
-  final bool esFallback;  // 🆕 Indica si fue calculado temporalmente por IA
+  final int? planId;
+  final bool esFallback;
+  
+  // ✨ NUEVOS CAMPOS DEL BACKEND
+  final String estadoPlan;           // "provisional_ia", "validado", "en_revision", "modificado"
+  final bool requiereValidacion;
+  final bool esCondicionCritica;
+  final String alertaSeguridad;
+  final bool generadoAutomaticamente;
+  final String? fechaGeneracion;
+  final bool validoHastaValidacion;
+  final String mensajeCliente;
+  final String descripcionEstado;
 
   PlanNutricional({
     required this.caloriasObjetivo,
@@ -55,16 +66,30 @@ class PlanNutricional {
     required this.grasasObjetivoG,
     required this.distribucion,
     required this.validado,
-    this.planId,  // 🆕 Nullable
-    this.esFallback = false,  // 🆕 Default false
+    this.planId,
+    this.esFallback = false,
+    // ✨ Valores por defecto para nuevos campos
+    this.estadoPlan = 'provisional_ia',
+    this.requiereValidacion = false,
+    this.esCondicionCritica = false,
+    this.alertaSeguridad = '',
+    this.generadoAutomaticamente = true,
+    this.fechaGeneracion,
+    this.validoHastaValidacion = true,
+    this.mensajeCliente = '',
+    this.descripcionEstado = '',
   });
 
   factory PlanNutricional.fromJson(Map<String, dynamic> json) {
     return PlanNutricional(
-      caloriasObjetivo: (json['calorias_objetivo'] as num?)?.toDouble() ?? 0.0,
-      proteinasObjetivoG: (json['proteinas_objetivo_g'] as num?)?.toDouble() ?? 0.0,
-      carbohidratosObjetivoG: (json['carbohidratos_objetivo_g'] as num?)?.toDouble() ?? 0.0,
-      grasasObjetivoG: (json['grasas_objetivo_g'] as num?)?.toDouble() ?? 0.0,
+      caloriasObjetivo: (json['calorias_objetivo'] as num?)?.toDouble() ?? 
+                        (json['calorias_diarias'] as num?)?.toDouble() ?? 0.0,
+      proteinasObjetivoG: (json['proteinas_objetivo_g'] as num?)?.toDouble() ?? 
+                          (json['macros']?['P'] as num?)?.toDouble() ?? 0.0,
+      carbohidratosObjetivoG: (json['carbohidratos_objetivo_g'] as num?)?.toDouble() ?? 
+                              (json['macros']?['C'] as num?)?.toDouble() ?? 0.0,
+      grasasObjetivoG: (json['grasas_objetivo_g'] as num?)?.toDouble() ?? 
+                       (json['macros']?['G'] as num?)?.toDouble() ?? 0.0,
       distribucion: {
         'proteina_pct': (json['distribucion']?['proteina_pct'] as num?)?.toInt() ?? 0,
         'carbohidratos_pct': (json['distribucion']?['carbohidratos_pct'] as num?)?.toInt() ?? 0,
@@ -73,6 +98,19 @@ class PlanNutricional {
       validado: json['validado'] as bool? ?? false,
       planId: json['plan_id'] as int?,
       esFallback: json['es_fallback'] as bool? ?? false,
+      
+      // ✨ PARSEAR NUEVOS CAMPOS
+      estadoPlan: json['estado_plan'] as String? ?? 'provisional_ia',
+      requiereValidacion: json['requiere_validacion'] as bool? ?? false,
+      esCondicionCritica: json['es_condicion_critica'] as bool? ?? false,
+      alertaSeguridad: json['alerta_seguridad'] as String? ?? '',
+      generadoAutomaticamente: json['generado_automaticamente'] as bool? ?? true,
+      fechaGeneracion: json['fecha_generacion'] as String?,
+      validoHastaValidacion: json['valido_hasta_validacion'] as bool? ?? true,
+      mensajeCliente: json['mensaje_cliente'] as String? ?? 
+                      '🤖 Este plan fue generado automáticamente por la IA. Tu nutricionista lo revisará pronto.',
+      descripcionEstado: json['descripcion_estado'] as String? ?? 
+                         'Plan generado automáticamente - Pendiente de validación',
     );
   }
 }

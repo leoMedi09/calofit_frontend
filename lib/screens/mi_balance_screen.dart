@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
+import '../screens/chat_screen.dart';
+import '../screens/edit_profile_screen.dart';
+import '../models/client.dart';
 
 class MiBalanceScreen extends StatefulWidget {
   const MiBalanceScreen({Key? key}) : super(key: key);
@@ -130,7 +133,75 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with SingleTickerProv
           : errorMessage != null
               ? _buildErrorView()
               : _buildBalanceView(),
+      bottomNavigationBar: _buildBottomNavigation(),
     );
+  }
+
+  Widget _buildBottomNavigation() {
+    return NavigationBar(
+      selectedIndex: 2,
+      onDestinationSelected: (index) {
+        if (index == 0) {
+          Navigator.popUntil(context, (route) => route.isFirst);
+        } else if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatScreen()),
+          );
+        } else if (index == 3) {
+          _navigateToProfile();
+        }
+      },
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: 'Inicio',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.chat_bubble_outline),
+          selectedIcon: Icon(Icons.chat_bubble),
+          label: 'Asistente',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.assessment_outlined),
+          selectedIcon: Icon(Icons.assessment),
+          label: 'Balance',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline),
+          selectedIcon: Icon(Icons.person),
+          label: 'Perfil',
+        ),
+      ],
+    );
+  }
+
+  Future<void> _navigateToProfile() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.userId == null || authProvider.token == null) return;
+
+    try {
+      final client = await _apiService.getClientProfile(
+        authProvider.userId!,
+        authProvider.token!,
+      );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EditProfileScreen(client: client),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al abrir perfil: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildErrorView() {

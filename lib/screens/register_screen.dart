@@ -28,7 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _medicalConditionsController = TextEditingController();
 
   // Estados
-  String _selectedActivityLevel = 'Sedentario';
+  String _selectedActivityLevel = 'Sedentario (Sin entrenar)';
   String _selectedGoal = 'Mantener peso';
   String _selectedGender = 'Masculino';
   bool _isLoading = false;
@@ -36,11 +36,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isConfirmPasswordVisible = false;
 
   final List<String> _activityLevels = [
-    'Sedentario',
-    'Ligero',
-    'Moderado',
-    'Activo',
-    'Muy activo'
+    'Sedentario (Sin entrenar)',
+    'Ligero (2 a 3 veces por semana)',
+    'Moderado (3 a 5 veces por semana)',
+    'Activo (5 a 6 veces por semana)',
+    'Muy activo (Atleta o trabajo pesado)'
   ];
 
   final List<String> _goals = [
@@ -336,8 +336,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               DropdownButtonFormField<String>(
                 value: _selectedActivityLevel,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Nivel de Actividad Física', border: OutlineInputBorder()),
-                items: _activityLevels.map((lvl) => DropdownMenuItem(value: lvl, child: Text(lvl))).toList(),
+                items: _activityLevels.map((lvl) => DropdownMenuItem(
+                  value: lvl, 
+                  child: Text(lvl, overflow: TextOverflow.ellipsis, maxLines: 1)
+                )).toList(),
+                selectedItemBuilder: (BuildContext context) {
+                  return _activityLevels.map<Widget>((String lvl) {
+                    return Text(lvl, overflow: TextOverflow.ellipsis, maxLines: 1);
+                  }).toList();
+                },
                 onChanged: (val) => setState(() => _selectedActivityLevel = val!),
               ),
               const SizedBox(height: 15),

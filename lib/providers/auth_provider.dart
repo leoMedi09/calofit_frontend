@@ -47,13 +47,13 @@ class AuthProvider with ChangeNotifier {
         } on FirebaseAuthException catch (e) {
           debugPrint('⚠️ Error de Firebase: ${e.code}');
           
-          // FALLBACK: Si Firebase falla pero puede ser un problema temporal,
-          // intentamos con el backend directamente
-          if (e.code == 'user-not-found' || e.code == 'network-request-failed') {
-            debugPrint('🔄 Intentando fallback: login directo con backend...');
-            // Continuamos sin Firebase UID, el backend validará
+          // FALLBACK ROBUSTO: Si Firebase falla (usuario no encontrado, red, o incluso contraseña incorrecta en Firebase),
+          // permitimos que el Backend sea el juez final. Esto resuelve desincronizaciones.
+          if (e.code == 'user-not-found' || e.code == 'network-request-failed' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+            debugPrint('🔄 Intentando fallback: validando credenciales directamente con el servidor principal...');
+            // Continuamos sin Firebase UID mapeado en esta sesión, el backend nos dará el suyo si es válido
           } else {
-            // Para otros errores (wrong-password, etc.), sí lanzamos el error
+            // Para errores de seguridad críticos o cuenta bloqueada, sí lanzamos el error
             rethrow;
           }
         }
@@ -86,7 +86,9 @@ class AuthProvider with ChangeNotifier {
       _userName = response.userName;
       _userEmail = response.userEmail;
       _userId = response.userId;
-      _userIdFirebase = firebaseUid;
+      _userIdFirebase = (response.firebaseUid != null && response.firebaseUid!.isNotEmpty) 
+          ? response.firebaseUid 
+          : firebaseUid;
 
       // 4️⃣ PERSISTENCIA (En segundo plano pero esperado)
       await _saveSession(rememberMe);

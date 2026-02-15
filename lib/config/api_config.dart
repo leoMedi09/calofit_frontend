@@ -9,9 +9,9 @@ class ApiConfig {
       // Para Flutter Web
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
-      // Para dispositivo físico Android en WiFi (IP actual detectada: 192.168.15.31)
+      // Para dispositivo físico Android en WiFi / Ethernet (IP actualizada: 192.168.15.60)
       // Si usas el EMULADOR de Android Studio, usa: 'http://10.0.2.2:8000'
-      return 'http://192.168.15.31:8000'; 
+      return 'http://192.168.15.60:8000'; 
     } else if (Platform.isIOS) {
       // Para iOS Simulator
       return 'http://localhost:8000';
@@ -31,8 +31,8 @@ class ApiConfig {
   // 📱 Para dispositivos físicos Android, usa la IP de tu máquina
   // Ejemplo: static const String physicalDeviceUrl = 'http://192.168.1.100:8000';
   
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 10);
+  static const Duration connectTimeout = Duration(seconds: 15);
+  static const Duration receiveTimeout = Duration(seconds: 60);
   
   // 🔍 Función de ayuda para debugging
   static void printCurrentConfig() {

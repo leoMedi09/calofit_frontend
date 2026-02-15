@@ -305,14 +305,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           children: [
                             _buildModernDropdown(
                               label: 'Nivel de Actividad',
-                              value: ['Sedentario', 'Ligero', 'Moderado', 'Activo', 'Muy activo'].contains(_activityLevel) ? _activityLevel : 'Sedentario',
+                              value: [
+                                'Sedentario (Sin entrenar)',
+                                'Ligero (2 a 3 veces por semana)',
+                                'Moderado (3 a 5 veces por semana)',
+                                'Activo (5 a 6 veces por semana)',
+                                'Muy activo (Atleta o trabajo pesado)'
+                              ].contains(_activityLevel) ? _activityLevel : 'Sedentario (Sin entrenar)',
                               icon: Icons.fitness_center,
                               items: [
-                                'Sedentario',
-                                'Ligero',
-                                'Moderado',
-                                'Activo',
-                                'Muy activo'
+                                'Sedentario (Sin entrenar)',
+                                'Ligero (2 a 3 veces por semana)',
+                                'Moderado (3 a 5 veces por semana)',
+                                'Activo (5 a 6 veces por semana)',
+                                'Muy activo (Atleta o trabajo pesado)'
                               ],
                               onChanged: (value) => setState(() => _activityLevel = value!),
                             ),
@@ -650,8 +656,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
       items: items.map((item) {
-        return DropdownMenuItem(value: item, child: Text(item));
+        return DropdownMenuItem(
+          value: item, 
+          child: Text(
+            item, 
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: const TextStyle(fontSize: 14),
+          ),
+        );
       }).toList(),
+      selectedItemBuilder: (BuildContext context) {
+        return items.map<Widget>((String item) {
+          return Text(
+            item,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: const TextStyle(fontSize: 14),
+          );
+        }).toList();
+      },
+      isExpanded: true,
       onChanged: onChanged,
     );
   }

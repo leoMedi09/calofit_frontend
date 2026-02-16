@@ -12,6 +12,8 @@ import '../screens/mi_balance_screen.dart';
 import '../widgets/plan_status_badge.dart';
 import '../widgets/plan_alert_card.dart';
 
+import '../providers/balance_provider.dart';
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -21,8 +23,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
-  DailySummary? _dailySummary;
-  bool _isLoadingSummary = true;
   AnimationController? _progressController;
 
   @override
@@ -32,7 +32,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _loadDashboardData();
+    
+    // Carga inicial de datos a través del Provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDashboardData();
+    });
   }
 
   @override
@@ -43,10 +47,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   
   Future<void> _loadDashboardData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
     
     if (!authProvider.isAuthenticated) return;
     
-    // 🔐 Verificar si hubo un error 401/403 en alguna petición previa
     if (ApiService.needsLogout) {
       ApiService.resetLogoutFlag();
       await _handleSessionExpired(authProvider);
@@ -54,39 +58,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
     
     try {
-      // Llamar al endpoint de resumen diario con datos reales del día
-      final data = await _apiService.getDailySummary(
+      await balanceProvider.loadDailySummary(
         authProvider.userId!,
         authProvider.token!,
       );
       
       if (!mounted) return;
       
-      setState(() {
-        _dailySummary = DailySummary.fromJson(data);
-        _isLoadingSummary = false;
-      });
-      
-      // Animar el progreso
-      _progressController?.forward();
-      
-    } on DioException catch (e) {
-      // Detectar error de autenticación (token expirado)
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        debugPrint('🔐 Token expirado detectado en Dashboard');
-        await _handleSessionExpired(authProvider);
-        return;
+      // Animar el progreso si se cargaron datos
+      if (balanceProvider.dailySummary != null) {
+        _progressController?.reset();
+        _progressController?.forward();
       }
       
-      debugPrint('❌ Error cargando dashboard: $e');
-      if (mounted) {
-        setState(() => _isLoadingSummary = false);
-      }
     } catch (e) {
-      debugPrint('Error cargando dashboard: $e');
-      if (mounted) {
-        setState(() => _isLoadingSummary = false);
-      }
+      debugPrint('Error cargando dashboard via provider: $e');
     }
   }
   
@@ -138,6 +124,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final balanceProvider = context.watch<BalanceProvider>();
+    final dailySummary = balanceProvider.dailySummary;
     
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -154,28 +142,28 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    if (_isLoadingSummary)
+                    if (balanceProvider.isLoading)
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(50.0),
                           child: CircularProgressIndicator(),
                         ),
                       )
-                    else if (_dailySummary != null) ...[ // Hero Section: Progreso del día
-                      _buildProgressHero(),
+                    else if (dailySummary != null) ...[ // Hero Section: Progreso del día
+                      _buildProgressHero(dailySummary),
                       const SizedBox(height: 20),
                       
                       // Macronutrientes en cards horizontales
-                      _buildMacroCards(),
+                      _buildMacroCards(dailySummary),
                       const SizedBox(height: 20),
                       
                       // Plan nutricional (si existe)
-                      if (_dailySummary!.planObjetivo != null) ...[
+                      if (dailySummary.planObjetivo != null) ...[
                         // ✨ Card de alerta de estado del plan
                         PlanAlertCard(
-                          estadoPlan: _dailySummary!.planObjetivo!.estadoPlan,
-                          esCondicionCritica: _dailySummary!.planObjetivo!.esCondicionCritica,
-                          mensajeCliente: _dailySummary!.planObjetivo!.mensajeCliente,
+                          estadoPlan: dailySummary.planObjetivo!.estadoPlan,
+                          esCondicionCritica: dailySummary.planObjetivo!.esCondicionCritica,
+                          mensajeCliente: dailySummary.planObjetivo!.mensajeCliente,
                           onContactarNutricionista: () {
                             // Navegar al chat con el asistente
                             Navigator.push(
@@ -187,18 +175,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           },
                         ),
                         const SizedBox(height: 16),
-                        _buildPlanNutricionalCompact(),
+                        _buildPlanNutricionalCompact(dailySummary),
                         const SizedBox(height: 20),
                       ],
                       
                       // Insight de IA
-                      if (_dailySummary!.aiInsight.isNotEmpty) ...[
-                        _buildAIInsightModern(),
+                      if (dailySummary.aiInsight.isNotEmpty) ...[
+                        _buildAIInsightModern(dailySummary),
                         const SizedBox(height: 20),
                       ],
                       
                       // Stats rápidas
-                      _buildQuickStats(),
+                      _buildQuickStats(dailySummary),
                     ] else
                       Center(
                         child: Padding(
@@ -359,12 +347,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ==================== PROGRESS HERO ====================
-  Widget _buildProgressHero() {
-    if (_dailySummary == null) return const SizedBox();
-    
-    final plan = _dailySummary!.planObjetivo;
+  Widget _buildProgressHero(DailySummary dailySummary) {
+    final plan = dailySummary.planObjetivo;
     final meta = plan?.caloriasObjetivo ?? 2000;
-    final consumido = _dailySummary!.calorias;
+    final consumido = dailySummary.calorias;
     final restante = (meta - consumido).clamp(0, meta);
     final progreso = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
 
@@ -430,11 +416,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       SizedBox(
                         width: 180,
                         height: 180,
-                        child: CircularProgressIndicator(
-                          value: progreso,
-                          strokeWidth: 15,
-                          color: Colors.white,
-                          strokeCap: StrokeCap.round,
+                        child: AnimatedBuilder(
+                          animation: _progressController!,
+                          builder: (context, child) {
+                            return CircularProgressIndicator(
+                              value: progreso * _progressController!.value,
+                              strokeWidth: 15,
+                              color: Colors.white,
+                              strokeCap: StrokeCap.round,
+                            );
+                          },
                         ),
                       ),
                       Column(
@@ -524,9 +515,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ==================== MACRO CARDS ====================
-  Widget _buildMacroCards() {
-    if (_dailySummary == null) return const SizedBox();
-    final plan = _dailySummary!.planObjetivo;
+  Widget _buildMacroCards(DailySummary dailySummary) {
+    final plan = dailySummary.planObjetivo;
     
     // Obtener valores de macros del plan (si existe)
     final proteinasMeta = plan?.proteinasObjetivoG.toInt() ?? 0;
@@ -534,9 +524,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final grasasMeta = plan?.grasasObjetivoG.toInt() ?? 0;
     
     // Valores consumidos
-    final proteinasConsumido = _dailySummary!.proteinas.toInt();
-    final carbosConsumido = _dailySummary!.carbohidratos.toInt();
-    final grasasConsumido = _dailySummary!.grasas.toInt();
+    final proteinasConsumido = dailySummary.proteinas.toInt();
+    final carbosConsumido = dailySummary.carbohidratos.toInt();
+    final grasasConsumido = dailySummary.grasas.toInt();
     
     return Column(
       children: [
@@ -665,7 +655,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             style: TextStyle(
               fontSize: 10,
               color: Colors.grey.shade500,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -714,8 +704,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ==================== PLAN NUTRICIONAL COMPACTO ====================
-  Widget _buildPlanNutricionalCompact() {
-    final plan = _dailySummary!.planObjetivo!;
+  Widget _buildPlanNutricionalCompact(DailySummary dailySummary) {
+    final plan = dailySummary.planObjetivo!;
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -831,7 +821,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   
   
   // ==================== AI INSIGHT MODERNO ====================
-  Widget _buildAIInsightModern() {
+  Widget _buildAIInsightModern(DailySummary dailySummary) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -879,7 +869,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '"${_dailySummary!.aiInsight}"',
+                  '"${dailySummary.aiInsight}"',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -895,7 +885,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ==================== QUICK STATS ====================
-  Widget _buildQuickStats() {
+  Widget _buildQuickStats(DailySummary dailySummary) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -920,9 +910,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ),
           ),
           const SizedBox(height: 16),
-          _buildStatRow('Gasto Metabólico Basal', '${_dailySummary!.gastoEstimado.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
+          _buildStatRow('Gasto Metabólico Basal', '${dailySummary.gastoEstimado.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
           const Divider(height: 24),
-          _buildStatRow('IMC Actual', _dailySummary!.imcActual.toStringAsFixed(1), Icons.monitor_weight, Colors.blue),
+          _buildStatRow('IMC Actual', dailySummary.imcActual.toStringAsFixed(1), Icons.monitor_weight, Colors.blue),
         ],
       ),
     );

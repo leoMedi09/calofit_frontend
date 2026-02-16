@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../models/auth.dart';
 import '../models/user.dart';
@@ -459,18 +461,32 @@ class ApiService {
   /// Se envía el historial para mantener el contexto de la conversación.
   Future<Map<String, dynamic>> consultarAsistente(String mensaje, String token, {List<Map<String, dynamic>>? historial, Map<String, dynamic>? datosReales}) async {
     try {
-      print('💬 Consultando asistente con contexto real: "$mensaje"');
+      final payload = {
+        'mensaje': mensaje,
+        if (historial != null) 'historial': historial,
+        if (datosReales != null) 'datos_reales': datosReales,
+      };
+
+      // 🔍 LOG DE PREGUNTA (v1.1)
+      debugPrint('--- 🤖 IA REQUEST START ---');
+      debugPrint('Payload: ${jsonEncode(payload)}');
+      debugPrint('--- 🤖 IA REQUEST END ---');
+
       final response = await _dio.post('/asistente/consultar',
-          data: {
-            'mensaje': mensaje,
-            if (historial != null) 'historial': historial,
-            if (datosReales != null) 'datos_reales': datosReales, // Enviamos macros y kcal reales
-          },
+          data: payload,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      print('✅ Respuesta del asistente recibida');
+
+      // 🔍 LOG DE RESPUESTA (v1.1)
+      debugPrint('--- 📬 IA RESPONSE START ---');
+      debugPrint(jsonEncode(response.data));
+      debugPrint('--- 📬 IA RESPONSE END ---');
+
       return response.data;
-    } catch (e) {
-      print('❌ Error consultando asistente: $e');
+    } on DioException catch (e) {
+      debugPrint('❌ Error consultando asistente: ${e.message}');
+      if (e.response != null) {
+        debugPrint('Respuesta error: ${jsonEncode(e.response?.data)}');
+      }
       throw Exception('Error consultando asistente: $e');
     }
   }

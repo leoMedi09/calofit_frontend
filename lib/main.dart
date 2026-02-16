@@ -12,6 +12,8 @@ import 'screens/register_screen.dart';
 import 'screens/verify_code_screen.dart';
 
 
+import 'providers/balance_provider.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -34,7 +36,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider.value(value: authProvider)],
+      providers: [
+        ChangeNotifierProvider.value(value: authProvider),
+        ChangeNotifierProvider(create: (_) => BalanceProvider()),
+      ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'CaloFit',

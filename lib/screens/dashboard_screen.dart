@@ -156,6 +156,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       // Macronutrientes en cards horizontales
                       _buildMacroCards(dailySummary),
                       const SizedBox(height: 20),
+
+                      // ✨ NUEVO: Panel de Micros & Salud (Si hay datos de micros)
+                      if ((dailySummary.azucares ?? 0) > 0 || 
+                          (dailySummary.fibra ?? 0) > 0 || 
+                          (dailySummary.sodio ?? 0) > 0 ||
+                          (dailySummary.grasasSaturadas ?? 0) > 0) ...[
+                        _buildMicrosPanel(dailySummary),
+                        const SizedBox(height: 20),
+                      ],
                       
                       // Plan nutricional (si existe)
                       if (dailySummary.planObjetivo != null) ...[
@@ -349,9 +358,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   // ==================== PROGRESS HERO ====================
   Widget _buildProgressHero(DailySummary dailySummary) {
     final plan = dailySummary.planObjetivo;
-    final meta = plan?.caloriasObjetivo ?? 2000;
+    final meta = plan?.caloriasObjetivo ?? 2000.0;
     final consumido = dailySummary.calorias;
-    final restante = (meta - consumido).clamp(0, meta);
+    final quemadas = dailySummary.caloriasQuemadas;
+    
+    // El balance neto: Meta + lo que quemé - lo que comí
+    final restante = (meta + quemadas - consumido).clamp(0.0, 5000.0);
     final progreso = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
 
     return Container(
@@ -384,7 +396,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'ENERGÍA DIARIA',
+                    'ENERGÍA DIARIA - ${DateTime.now().day}/${DateTime.now().month}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 12,
@@ -461,6 +473,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 children: [
                   _buildHeroIndicator('Meta', meta.toStringAsFixed(0)),
                   _buildHeroIndicator('Hoy', consumido.toStringAsFixed(0)),
+                  _buildHeroIndicator('Quemadas', quemadas.toStringAsFixed(0)),
                   _buildHeroIndicator('Restan', restante.toStringAsFixed(0)),
                 ],
               ),
@@ -571,91 +584,175 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final porcentaje = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
     
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: color.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(color: color.withOpacity(0.1), width: 1),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 12),
-          if (meta > 0) ...[
-            // Mostrar consumido/meta
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$consumido',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1A237E),
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' / $meta',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade400,
-                    ),
-                  ),
-                  const TextSpan(
-                    text: 'g',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Barra de progreso
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: porcentaje,
-                backgroundColor: color.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-                minHeight: 4,
-              ),
-            ),
-          ] else ...[
-            // Si no hay meta, mostrar solo consumido
-            Text(
-              '${consumido}g',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1A237E),
-              ),
-            ),
-          ],
-          const SizedBox(height: 6),
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey.shade500,
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$consumido / $meta g',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: porcentaje,
+              minHeight: 4,
+              backgroundColor: color.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  // ==================== MICROS PANEL ====================
+  Widget _buildMicrosPanel(DailySummary summary) {
+    final items = <Widget>[];
+
+    // 1. Azúcares
+    if ((summary.azucares ?? 0) > 0) {
+      final val = summary.azucares!;
+      items.add(_buildMicroGridItem(
+        'Azúcar', '${val.toStringAsFixed(1)}g', Icons.icecream_rounded, Colors.purple,
+        val > 50 ? 'Alto' : val > 25 ? 'Moderado' : 'Bueno',
+        val > 50 ? Colors.red : val > 25 ? Colors.orange : Colors.green
+      ));
+    }
+
+    // 2. Fibra
+    if ((summary.fibra ?? 0) > 0) {
+      final val = summary.fibra!;
+      items.add(_buildMicroGridItem(
+        'Fibra', '${val.toStringAsFixed(1)}g', Icons.eco_rounded, Colors.green,
+        val > 25 ? 'Excelente' : val > 15 ? 'Normal' : 'Bajo',
+        val > 25 ? Colors.green : val > 15 ? Colors.blue : Colors.orange
+      ));
+    }
+
+    // 3. Sodio
+    if ((summary.sodio ?? 0) > 0) {
+      final val = summary.sodio!;
+      items.add(_buildMicroGridItem(
+        'Sodio', '${val.toStringAsFixed(0)}mg', Icons.grain_rounded, Colors.blueGrey,
+        val > 2300 ? 'Excesivo' : val > 1500 ? 'Normal' : 'Bueno',
+        val > 2300 ? Colors.red : val > 1500 ? Colors.orange : Colors.green
+      ));
+    }
+
+    // 4. Grasas Saturadas
+    if ((summary.grasasSaturadas ?? 0) > 0) {
+      final val = summary.grasasSaturadas!;
+      items.add(_buildMicroGridItem(
+        'Grasa Sat.', '${val.toStringAsFixed(1)}g', Icons.warning_amber_rounded, Colors.orange,
+        val > 20 ? 'Cuidado' : 'Bien',
+        val > 20 ? Colors.red : Colors.green
+      ));
+    }
+
+    // 5. Calcio / Hierro si existen (solo si detectamos valor significativo)
+    if ((summary.calcio ?? 0) > 100) {
+      items.add(_buildMicroGridItem('Calcio', '${summary.calcio!.toStringAsFixed(0)}mg', Icons.bolt_rounded, Colors.blue, 'Info', Colors.blue));
+    }
+    if ((summary.hierro ?? 0) > 1) {
+      items.add(_buildMicroGridItem('Hierro', '${summary.hierro!.toStringAsFixed(1)}mg', Icons.fitness_center_rounded, Colors.red, 'Info', Colors.red));
+    }
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '🍭 Salud y Micronutrientes',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF37474F)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 2.1,
+          children: items,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMicroGridItem(String label, String value, IconData icon, Color color, String status, Color statusColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.black87)),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 4),
+                    Text(status, style: TextStyle(fontSize: 9, color: statusColor, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -903,15 +1000,17 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '📈 Tus Estadísticas',
+            '📊 Balance Metabólico',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
-          _buildStatRow('Gasto Metabólico Basal', '${dailySummary.gastoEstimado.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
-          const Divider(height: 24),
+          _buildStatRow('Gasto Metabólico Basal (BMR)', '${dailySummary.gastoMetabolicoBasal.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
+          const Divider(height: 16),
+          _buildStatRow('Actividad Física hoy', '${dailySummary.caloriasQuemadas.toStringAsFixed(0)} kcal', Icons.directions_run_rounded, Colors.green),
+          const Divider(height: 16),
           _buildStatRow('IMC Actual', dailySummary.imcActual.toStringAsFixed(1), Icons.monitor_weight, Colors.blue),
         ],
       ),

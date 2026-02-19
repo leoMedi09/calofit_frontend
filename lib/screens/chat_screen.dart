@@ -7,14 +7,8 @@ import 'edit_profile_screen.dart';
 import 'mi_balance_screen.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import '../models/assistant_response.dart';
 import '../widgets/chat_bubble.dart';
-import '../widgets/calorie_progress_card.dart';
-import '../widgets/recipe_card.dart';
-import '../widgets/workout_card.dart';
 import '../providers/balance_provider.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -25,14 +19,9 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final TextEditingController _consultController = TextEditingController();
-  final TextEditingController _registerController = TextEditingController();
-  final ScrollController _consultScrollController = ScrollController();
-  final ScrollController _registerScrollController = ScrollController();
-  
-  final FocusNode _consultFocusNode = FocusNode();
-  final FocusNode _registerFocusNode = FocusNode();
+  final TextEditingController _inputController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
   
   final ApiService _apiService = ApiService();
   final FlutterTts _flutterTts = FlutterTts();
@@ -44,31 +33,17 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   bool _isMuted = false; 
   String? _speakingMessageId; 
   Client? _clientProfile; 
-  String? _latestFuzzyHint; // 🚀 Control Adaptativo (v11.4)
+  String? _latestFuzzyHint;
 
-  final List<Map<String, dynamic>> _consultMessages = [
+  // 🔄 ONE-STREAM: Una sola lista de mensajes
+  final List<Map<String, dynamic>> _messages = [
     {
       'role': 'assistant',
       'response': AssistantResponse(
         usuario: '',
         dataCientifica: ScientificData(progresoDiario: {}),
         respuestaEstructurada: StructuredResponse(
-          textoConversacional: '¡Hola! Soy tu asistente CaloFit. 🤖 Pregúntame lo que quieras sobre tu dieta, ejercicios o progreso.',
-          secciones: []
-        )
-      ),
-      'type': 'assistant_v3',
-    },
-  ];
-
-  final List<Map<String, dynamic>> _registerLogs = [
-    {
-      'role': 'assistant',
-      'response': AssistantResponse(
-        usuario: '',
-        dataCientifica: ScientificData(progresoDiario: {}),
-        respuestaEstructurada: StructuredResponse(
-          textoConversacional: 'Dime qué comiste o qué ejercicio hiciste hoy para registrarlo. 🎤',
+          textoConversacional: '¡Hola! Soy CaloFit. 🤖\nPuedes preguntarme sobre nutrición o simplemente decirme "Comí arroz con pollo" para registrarlo.',
           secciones: []
         )
       ),
@@ -79,12 +54,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _initTts();
-    _initSpeech();
-    
-    _consultFocusNode.addListener(_onFocusChange);
-    _registerFocusNode.addListener(_onFocusChange);
+    _focusNode.addListener(_onFocusChange);
     _loadClientProfile();
   }
 
@@ -96,36 +67,27 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         if (mounted) setState(() => _clientProfile = profile);
       }
     } catch (e) {
-      debugPrint('Error cargando perfil en asistente: $e');
+      debugPrint('Error cargando perfil: $e');
     }
   }
 
   void _onFocusChange() {
-    bool hasFocus = _consultFocusNode.hasFocus || _registerFocusNode.hasFocus;
-    if (hasFocus != _isKeyboardVisible) {
-      setState(() => _isKeyboardVisible = hasFocus);
-    }
+    setState(() => _isKeyboardVisible = _focusNode.hasFocus);
   }
 
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("es-MX");
-    await _flutterTts.setSpeechRate(0.6); // Velocidad aumentada a 0.6 para lectura rápida
-    await _flutterTts.setPitch(1.0); 
-    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setSpeechRate(0.55);
+    await _flutterTts.setPitch(1.0);
     _flutterTts.setCompletionHandler(() => setState(() => _speakingMessageId = null));
   }
 
-  Future<void> _initSpeech() async {
-    await _speech.initialize();
-  }
+  // Se inicia bajo demanda para no molestar con permisos al abrir
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _consultController.dispose();
-    _registerController.dispose();
-    _consultFocusNode.dispose();
-    _registerFocusNode.dispose();
+    _inputController.dispose();
+    _focusNode.dispose();
     _flutterTts.stop();
     super.dispose();
   }
@@ -136,34 +98,40 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       setState(() => _speakingMessageId = null);
     } else {
       setState(() => _speakingMessageId = messageId);
-      
-      // Limpiar Markdown para que no lea "asterisco", "guión", etc.
       String plainText = content
-          .replaceAll(RegExp(r'\*+'), '') // Elimina asteriscos de negrita/itálica
-          .replaceAll(RegExp(r'#+'), '')  // Elimina hashes de títulos
-          .replaceAll(RegExp(r'^- ', multiLine: true), '') // Elimina guiones de listas
-          .replaceAll(RegExp(r'^\d+\. ', multiLine: true), '') // Elimina números de listas
+          .replaceAll(RegExp(r'\*+'), '')
+          .replaceAll(RegExp(r'#+'), '')
           .trim();
-
       await _flutterTts.speak(plainText);
     }
   }
 
-  Future<void> _listen(bool isConsult) async {
+  Future<void> _listen() async {
     if (!_isListening) {
-      bool available = await _speech.initialize();
+      bool available = await _speech.initialize(
+        onStatus: (status) => print('Micro status: $status'),
+        onError: (errorNotification) => print('Micro error: $errorNotification'),
+      );
+      
       if (available) {
         setState(() => _isListening = true);
         _speech.listen(
-          onResult: (val) => setState(() {
-            if (isConsult) _consultController.text = val.recognizedWords;
-            else _registerController.text = val.recognizedWords;
-            
-            if (val.finalResult) {
-              _isListening = false;
-              _sendMessage(isConsult);
-            }
-          }),
+          localeId: "es_MX", // Forzar español latino
+          onResult: (val) {
+            setState(() {
+              _inputController.text = val.recognizedWords;
+              if (val.finalResult) {
+                _isListening = false;
+                Future.delayed(const Duration(milliseconds: 500), () {
+                   _handleUnifiedSubmit();
+                });
+              }
+            });
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permiso de micrófono denegado. Actívalo en ajustes.')),
         );
       }
     } else {
@@ -172,348 +140,236 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     }
   }
 
-  Future<void> _sendMessage(bool isConsult, {String? quickMessage}) async {
-    final controller = isConsult ? _consultController : _registerController;
-    final message = quickMessage ?? controller.text;
-    if (message.trim().isEmpty) return;
-    
-    if (quickMessage == null) controller.clear();
+  // 🧠 SMART ROUTING SYSTEM
+  Future<void> _handleUnifiedSubmit({String? quickMessage}) async {
+    final text = quickMessage ?? _inputController.text.trim();
+    if (text.isEmpty) return;
+
+    if (quickMessage == null) _inputController.clear();
 
     setState(() {
-      if (isConsult) _consultMessages.add({'role': 'user', 'content': message, 'type': 'text'});
-      else _registerLogs.add({'role': 'user', 'content': message, 'type': 'text'});
+      _messages.add({'role': 'user', 'content': text, 'type': 'text'});
       _isTyping = true;
     });
+    _scrollToBottom();
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final balance = Provider.of<BalanceProvider>(context, listen: false);
+    final token = auth.token;
+
+    if (token == null) return;
+
+    // Detectar Intención Simple (Heurística del lado del cliente para rapidez)
+    final lowerText = text.toLowerCase();
     
-    _scrollToBottom(isConsult);
+    // Palabras detonantes de REGISTRO
+    final logKeywords = [
+      "comí", "comi", "almorzé", "almorcé", "cené", "desayuné", "tomé", "bebí", "ingerí",
+      "registra", "anota", "apunta", "hice", "entrené", "corrí", "troté", "agregame", "clavé", "zampé",
+      "me clavé", "me zampé", "me comí", "sali", "salí", "fui", "correr", "caminar", "andar", "gym", "gimnasio", "pesas"
+    ];
+    
+    bool isLogIntent = logKeywords.any((k) => lowerText.startsWith(k) || lowerText.contains(" $k "));
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
-      final token = authProvider.token;
-
-      if (token == null) {
-        setState(() {
-          _isTyping = false;
-          final list = isConsult ? _consultMessages : _registerLogs;
-          list.add({'role': 'assistant', 'content': 'Sesión expirada o inválida. Por favor, inicia sesión de nuevo.', 'type': 'error'});
-        });
-        return;
-      }
-
-      if (isConsult) {
-        // 📜 Mapeo de Historial Robusto (v12.6)
-        // Extraemos solo role y content. Si es una respuesta IA estructurada, sacamos el texto conversacional.
-        final history = _consultMessages.length > 1 
-          ? _consultMessages.sublist(_consultMessages.length > 6 ? _consultMessages.length - 6 : 0, _consultMessages.length - 1)
-            .map((m) {
-              String content = "";
-              if (m['role'] == 'user') {
-                content = m['content'] ?? "";
-              } else if (m['response'] is AssistantResponse) {
-                content = (m['response'] as AssistantResponse).respuestaEstructurada.textoConversacional;
-              } else {
-                content = m['content'] ?? "";
-              }
-              
-              return {
-                'role': m['role'] == 'assistant' ? 'assistant' : 'user', 
-                'content': content
-              };
-            }).toList()
-          : null;
-
-        // Construcción del perfil detallado para la justificación
-        final perfilStr = _clientProfile != null 
-          ? "CLIENTE: ${_clientProfile!.firstName}, Edad: ${_clientProfile!.age} años, Peso: ${_clientProfile!.weight}kg, Altura: ${_clientProfile!.height}cm, Actividad: ${_clientProfile!.activityLevel}, Objetivo: ${_clientProfile!.goal}, Condiciones: ${_clientProfile!.medicalConditions.join(', ')}."
-          : "CLIENTE: Desconocido.";
-
-        // Instrucción Maestra de Personalización
-        final promptConInstruccion = """
-$perfilStr
-
-MENSAJE DEL USUARIO: $message 
-
-(Responde de forma cordial y profesional como un coach experto. Si sugieres un plato o rutina, usa las etiquetas Plato: o Rutina: para que pueda procesarlas correctamente.)
-""";
-
-        final result = await _apiService.consultarAsistente(promptConInstruccion, token, historial: history);
+      if (isLogIntent) {
+        // 👉 RUTA REGISTRO (/log-inteligente)
+        final result = await _apiService.registrarPorVoz(text, token);
         
-        final assistantResponse = AssistantResponse.fromJson(result);
-        
-        // 🔄 SINCRONIZACIÓN GLOBAL (v12.2)
-        // Actualizamos el Dashboard con los datos nutricionales que vienen de la IA
-        balanceProvider.updateFromAssistant(assistantResponse.dataCientifica.progresoDiario);
-
-        setState(() {
-          _isTyping = false;
-          _latestFuzzyHint = result['control_adaptativo']?['mensaje_fuzzy'];
-          _consultMessages.add({
-            'role': 'assistant', 
-            'response': assistantResponse,
-            'type': 'assistant_v3',
-          });
-          
-          if (!_isMuted) {
-            _speak(assistantResponse.respuestaEstructurada.textoConversacional, "auto_${_consultMessages.length}");
-          }
-        });
-      } else {
-        final result = await _apiService.registrarPorVoz(message, token);
-        final response = result['mensaje'] ?? 'Registro completado.';
-        
-        // Si el registro por voz devolvió datos nutricionales, actualizamos también
         if (result['balance_actualizado'] != null) {
-          balanceProvider.updateFromAssistant(result['balance_actualizado']);
+          balance.updateFromAssistant(result['balance_actualizado']);
+          // Actualización silenciosa de listas para la pantalla de Balance
+          balance.fetchFullBalance(token).catchError((e) => print("Silent refresh failed: $e"));
         }
 
         setState(() {
           _isTyping = false;
-          _registerLogs.add({
-            'role': 'assistant', 
-            'content': response, 
-            'type': 'registro_exitoso',
-            'badge': result['tipo_detectado']
+          // Agregamos una tarjeta especial de registro
+          _messages.add({
+            'role': 'assistant',
+            'content': result['mensaje'] ?? 'Registrado.',
+            'type': 'registro_exitoso', // Esto renderizará la Card Visual
+            'badge': result['tipo_detectado'],
+            'data': result['datos'] // Pasar macros para mostrar en la card
           });
+          
+          if (!_isMuted) _speak(result['mensaje'], "reg_${_messages.length}");
+        });
+
+      } else {
+        // 👉 RUTA CONSULTA (/consultar)
+        // Construir historial reducido
+        final history = _messages.length > 2 
+          ? _messages.sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
+            .where((m) => m['type'] != 'registro_exitoso') // Filtrar logs puros del historial de chat
+            .map((m) {
+               String content = "";
+               if (m['role'] == 'user') content = m['content'];
+               else if (m['response'] is AssistantResponse) content = (m['response'] as AssistantResponse).respuestaEstructurada.textoConversacional;
+               else content = m['content'] ?? "";
+               return {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': content};
+            }).toList() 
+          : null;
+
+        final result = await _apiService.consultarAsistente(text, token, historial: history);
+        final responseObj = AssistantResponse.fromJson(result);
+        
+        // Actualizar datos si la consulta trajo progreso (ej: "¿cuánto me falta?")
+        balance.updateFromAssistant(responseObj.dataCientifica.progresoDiario);
+
+        setState(() {
+          _isTyping = false;
+          _latestFuzzyHint = result['control_adaptativo']?['mensaje_fuzzy'];
+          _messages.add({
+            'role': 'assistant',
+            'response': responseObj,
+            'type': 'assistant_v3'
+          });
+
+          // v21.1: Speech inteligente corregido
+          String ttsText = responseObj.respuestaEstructurada.textoConversacional;
+          if (responseObj.respuestaEstructurada.secciones.isNotEmpty) {
+            final names = responseObj.respuestaEstructurada.secciones
+                .map((s) => s.nombre.replaceAll('**', '').trim())
+                .join(", ");
+            ttsText = "${ttsText.split('.').first}. Te sugiero: $names";
+          }
+          
+          if (!_isMuted) _speak(ttsText, "answ_${_messages.length}");
         });
       }
-      _scrollToBottom(isConsult);
     } catch (e) {
       setState(() {
         _isTyping = false;
-        final list = isConsult ? _consultMessages : _registerLogs;
-        list.add({'role': 'assistant', 'content': 'Error de conexión.', 'type': 'error'});
+        _messages.add({'role': 'assistant', 'content': 'Ups, tuve un problema de conexión. 📶', 'type': 'error'});
       });
     }
+    _scrollToBottom();
   }
 
-  void _scrollToBottom(bool isConsult) {
-    final scroll = isConsult ? _consultScrollController : _registerScrollController;
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scroll.hasClients) scroll.animateTo(scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Asistente CaloFit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18)),
-            if (_latestFuzzyHint != null) 
-              Text(_latestFuzzyHint!, style: TextStyle(color: Colors.blue.shade700, fontSize: 11, fontWeight: FontWeight.w500)),
-          ],
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
-        actions: [
-          IconButton(
-            icon: Icon(_isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: _isMuted ? Colors.red : Colors.blue),
-            onPressed: () {
-              setState(() => _isMuted = !_isMuted);
-              if (_isMuted) _flutterTts.stop();
-            },
-            tooltip: _isMuted ? 'Activar sonido' : 'Silenciar asistente',
-          ),
-          const SizedBox(width: 8),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: const Color(0xFF1E88E5),
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFF1E88E5),
-          tabs: const [
-            Tab(icon: Icon(Icons.auto_awesome_outlined), text: 'Asistente IA'),
-            Tab(icon: Icon(Icons.edit_note_rounded), text: 'Registro Diario'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      backgroundColor: const Color(0xFFF0F2F5), // Color de fondo más moderno (Gris azulado suave)
+      appBar: _buildUnifiedAppBar(),
+      body: Column(
         children: [
-          _buildChatView(true),
-          _buildChatView(false),
+          
+          Expanded(child: _buildMessageList()),
+          
+          if (_isTyping) _buildTypingIndicator(),
+          if (!_isTyping && _messages.length < 3) _buildQuickActions(),
+          _buildInputArea(),
         ],
       ),
-      bottomNavigationBar: MediaQuery.of(context).viewInsets.bottom > 0 ? null : _buildBottomNavigation(),
+      bottomNavigationBar: _buildBottomStatusAndNav(),
     );
   }
 
-  Widget _buildChatView(bool isConsult) {
+  PreferredSizeWidget _buildUnifiedAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      titleSpacing: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.blue.shade50,
+            child: const Icon(Icons.smart_toy_rounded, color: Colors.blue),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Asistente CaloFit', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  _latestFuzzyHint ?? 'En línea', 
+                  style: TextStyle(color: Colors.green.shade600, fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (_speakingMessageId != null)
+          IconButton(
+            icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
+            tooltip: 'Detener voz',
+            onPressed: () async {
+              await _flutterTts.stop();
+              setState(() => _speakingMessageId = null);
+            },
+          )
+        else
+          IconButton(
+            icon: Icon(_isMuted ? Icons.volume_off : Icons.volume_up, color: Colors.grey.shade600),
+            tooltip: _isMuted ? 'Activar voz' : 'Silenciar voz',
+            onPressed: () => setState(() => _isMuted = !_isMuted),
+          ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(color: Colors.grey.shade200, height: 1),
+      ),
+    );
+  }
+
+  Widget _buildBottomStatusAndNav() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (isConsult && !_isKeyboardVisible) _buildQuickActions(),
-        Expanded(
-          child: _buildMessageList(isConsult),
+        // 🔥 STICKY STATUS BAR (Ahora abajo, sobre el nav)
+        Consumer<BalanceProvider>(
+          builder: (context, provider, _) {
+            final summary = provider.dailySummary;
+            if (summary == null) return const SizedBox.shrink();
+            
+            final meta = summary.planObjetivo?.caloriasObjetivo ?? 2000;
+            final restante = (meta - summary.calorias).clamp(0, meta);
+            
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              color: const Color(0xFFE3F2FD),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.local_fire_department_rounded, size: 14, color: Colors.orange.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Restan ${restante.toStringAsFixed(0)} kcal hoy",
+                    style: TextStyle(color: Colors.blue.shade900, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-        if (_isTyping) _buildTypingIndicator(),
-        _buildInputArea(isConsult),
+        _buildBottomNavigation(),
       ],
     );
   }
 
-  Widget _buildQuickActions() {
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _quickActionChip('🍽️ ¿Qué como hoy?', 'Recomiéndame algo saludable para comer hoy'),
-          _quickActionChip('🔥 Calorías hoy', '¿Cuántas calorías llevo consumidas hoy?'),
-          _quickActionChip('💪 Ejercicios', 'Sugiéreme una rutina rápida de ejercicios'),
-        ],
-      ),
-    );
-  }
-
-  Widget _quickActionChip(String label, String msg) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ActionChip(
-        label: Text(label),
-        onPressed: () => _sendMessage(true, quickMessage: msg),
-        backgroundColor: Colors.white,
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-    );
-  }
-
-  Widget _buildMessageList(bool isConsult) {
-    final messages = isConsult ? _consultMessages : _registerLogs;
-    return ListView.builder(
-      controller: isConsult ? _consultScrollController : _registerScrollController,
-      padding: const EdgeInsets.all(20),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final msg = messages[index];
-        
-        // 🚀 Renderizador de Nueva Arquitectura (v12.2)
-        if (msg['role'] == 'assistant' && msg['response'] is AssistantResponse) {
-          return AssistantMessageBubble(response: msg['response'] as AssistantResponse);
-        }
-
-        // Renderizado para Mensajes de Usuario o Respuestas Simples
-        if (msg['role'] == 'user') {
-          return _buildUserBubble(msg['content'] ?? '');
-        }
-        
-        // Fallback para mensajes iniciales o tipos específicos (ej: errores, registro voz)
-        if (msg['type'] == 'registro_exitoso') return _buildRegistrationBadge(msg, index);
-        
-        return _buildChatBubble(msg, index);
-      },
-    );
-  }
-
-  Widget _buildUserBubble(String text) {
-     return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E88E5),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(color: Colors.blue.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
-          ],
-        ),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
-      ),
-    );
-  }
-
-  Widget _buildChatBubble(Map<String, dynamic> msg, int index) {
-    bool isSpeaking = _speakingMessageId == "bubble_$index";
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 4),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey.shade200)),
-            child: Text(msg['content'] ?? '', style: const TextStyle(fontSize: 14)),
-          ),
-          InkWell(
-            onTap: () => _speak(msg['content'] ?? '', "bubble_$index"),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(isSpeaking ? Icons.stop_circle : Icons.volume_up_rounded, size: 12, color: isSpeaking ? Colors.red : Colors.blue),
-              const SizedBox(width: 4),
-              Text(isSpeaking ? 'Detener' : 'Escuchar', style: TextStyle(fontSize: 10, color: Colors.blue.shade700)),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRegistrationBadge(Map<String, dynamic> msg, int index) {
-    final isAlimento = msg['badge'] == 'alimento';
-    String messageId = "reg_$index";
-    bool isSpeaking = _speakingMessageId == messageId;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: (isAlimento ? Colors.orange : Colors.green).withOpacity(0.3))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(isAlimento ? Icons.restaurant : Icons.fitness_center, color: isAlimento ? Colors.orange : Colors.green),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(isAlimento ? 'ALIMENTO REGISTRADO' : 'EJERCICIO REGISTRADO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isAlimento ? Colors.orange : Colors.green)),
-              const SizedBox(height: 4),
-              Text(msg['content'], style: const TextStyle(fontSize: 14)),
-            ])),
-          ]),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () => _speak(msg['content'], messageId),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(isSpeaking ? Icons.stop_circle : Icons.volume_up_rounded, size: 14, color: isSpeaking ? Colors.red : Colors.blue.shade300),
-              const SizedBox(width: 4),
-              Text(isSpeaking ? 'Detener' : 'Escuchar confirmación', style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildTypingIndicator() {
-    return Padding(padding: const EdgeInsets.only(left: 60, bottom: 10), child: Align(alignment: Alignment.centerLeft, child: Text('CaloFit analizando...', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontStyle: FontStyle.italic))));
-  }
-
-  Widget _buildInputArea(bool isConsult) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade200))),
-      child: SafeArea(top: false, child: Row(children: [
-        GestureDetector(onTap: () => _listen(isConsult), child: CircleAvatar(backgroundColor: _isListening ? Colors.red : Colors.grey[100], child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.white : Colors.black87, size: 20))),
-        const SizedBox(width: 12),
-        Expanded(child: Container(padding: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(25)), child: TextField(controller: isConsult ? _consultController : _registerController, focusNode: isConsult ? _consultFocusNode : _registerFocusNode, decoration: InputDecoration(hintText: isConsult ? 'Escribe tu consulta...' : 'Registra comida/ejercicio...', border: InputBorder.none)))),
-        const SizedBox(width: 8),
-        GestureDetector(onTap: () => _sendMessage(isConsult), child: CircleAvatar(backgroundColor: const Color(0xFF1E88E5), child: const Icon(Icons.send, color: Colors.white, size: 18))),
-      ])),
-    );
-  }
-
-
   Widget _buildBottomNavigation() {
     return NavigationBar(
       selectedIndex: 1,
+      height: 60,
       onDestinationSelected: (index) async {
         if (index == 0) {
           Navigator.popUntil(context, (route) => route.isFirst);
@@ -534,27 +390,309 @@ MENSAJE DEL USUARIO: $message
         }
       },
       destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Inicio',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.chat_bubble_outline),
-          selectedIcon: Icon(Icons.chat_bubble),
-          label: 'Asistente',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.assessment_outlined),
-          selectedIcon: Icon(Icons.assessment),
-          label: 'Balance',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'Perfil',
-        ),
+        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
+        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'), // Corrección aquí: label corregido de 'Asistente' a 'Chat' si se prefiere o dejarlo 'Asistente'
+        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );
+  }
+
+  Widget _buildMessageList() {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final msg = _messages[index];
+        
+        if (msg['type'] == 'registro_exitoso') {
+          return _buildRichLogCard(msg);
+        } else if (msg['role'] == 'assistant' && msg['response'] is AssistantResponse) {
+          return AssistantMessageBubble(
+            response: msg['response'],
+            onAction: (text) => _handleUnifiedSubmit(quickMessage: text),
+          );
+        } else if (msg['role'] == 'user') {
+          return _buildUserBubble(msg['content']);
+        }
+        
+        // Bubbles de texto simple (errores, etc)
+        return _buildSimpleSystemBubble(msg['content'], isError: msg['type'] == 'error');
+      },
+    );
+  }
+
+  Widget _buildRichLogCard(Map<String, dynamic> msg) {
+    // Tarjeta visual impactante para confirmación de registro
+    final isFood = msg['badge'] == 'comida' || msg['badge'] == 'alimento'; // Ajustar según backend return
+    final data = msg['data'] ?? {};
+    final kcal = data['calorias'] ?? 0;
+    
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        width: 260,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+          border: Border.all(color: isFood ? Colors.orange.shade100 : Colors.green.shade100, width: 2),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isFood ? Colors.orange.shade50 : Colors.green.shade50,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: Icon(isFood ? Icons.restaurant_menu_rounded : Icons.directions_run_rounded, 
+                      color: isFood ? Colors.orange : Colors.green, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(isFood ? "Comida Registrada" : "Ejercicio Registrado", 
+                      style: TextStyle(fontWeight: FontWeight.bold, color: isFood ? Colors.orange.shade800 : Colors.green.shade800)),
+                  ),
+                  if (data['calidad'] != null && isFood)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getQualityColor(data['calidad']),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        data['calidad'].toString().toUpperCase(),
+                        style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(msg['content'], style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 12),
+                  if (kcal > 0)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildMiniStat(Icons.flash_on_rounded, "$kcal kcal", Colors.orange, isMain: true),
+                        const SizedBox(height: 12),
+                        
+                        // 🔥 MACROS PRINCIPALES
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (isFood && (data['proteinas_g'] ?? 0) > 0) 
+                              _buildMiniStat(Icons.fitness_center_rounded, "${data['proteinas_g']}g Prot", Colors.red.shade400),
+                            if (isFood && (data['carbohidratos_g'] ?? 0) > 0)
+                              _buildMiniStat(Icons.grain_rounded, "${data['carbohidratos_g']}g Carb", Colors.orange.shade400),
+                            if (isFood && (data['grasas_g'] ?? 0) > 0)
+                              _buildMiniStat(Icons.water_drop_rounded, "${data['grasas_g']}g Gras", Colors.blue.shade400),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // 🍭 MICROS (Azúcar, Fibra, Sodio) - Diseño más sutil
+                        if (isFood) 
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                               if ((data['azucar_g'] ?? 0) > 0) 
+                                 _buildMiniStat(Icons.icecream_rounded, "${data['azucar_g']}g Azú", Colors.purple.shade300, isMicro: true),
+                               if ((data['fibra_g'] ?? 0) > 0)
+                                 _buildMiniStat(Icons.eco_rounded, "${data['fibra_g']}g Fib", Colors.green.shade600, isMicro: true),
+                               if ((data['sodio_mg'] ?? 0) > 0)
+                                 _buildMiniStat(Icons.opacity_rounded, "${data['sodio_mg']}mg Sod", Colors.blueGrey.shade400, isMicro: true),
+                            ],
+                          ),
+                      ],
+                    )
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildMiniStat(IconData icon, String text, Color color, {bool isMain = false, bool isMicro = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: isMain ? 16 : 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text, 
+          style: TextStyle(
+            fontSize: isMain ? 14 : (isMicro ? 11 : 12), 
+            fontWeight: isMain ? FontWeight.bold : FontWeight.w600, 
+            color: isMicro ? Colors.grey.shade600 : Colors.grey.shade800
+          )
+        )
+      ],
+    );
+  }
+
+  Widget _buildUserBubble(String text) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, left: 50),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2563EB), // Azul brillante moderno
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+            topRight: Radius.circular(4),
+          ),
+          boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.2), blurRadius: 6, offset: const Offset(2, 4))],
+        ),
+        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
+      ),
+    );
+  }
+
+  Widget _buildSimpleSystemBubble(String? text, {bool isError = false}) {
+     return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 50),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isError ? Colors.red.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isError ? Colors.red.shade100 : Colors.grey.shade200),
+        ),
+        child: Text(text ?? '...', style: TextStyle(color: isError ? Colors.red.shade800 : Colors.black87)),
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, bottom: 20),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2)),
+            const SizedBox(width: 10),
+            Text('Procesando...', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _quickChip("🥕 Poca caloría", "Dame opciones de cenas bajas en calorías"),
+          _quickChip("💪 Rutina Express", "Rutina de 15 min en casa"),
+          _quickChip("🍎 Comí una manzana", "Registra que me comí una manzana"),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickChip(String label, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        backgroundColor: Colors.white,
+        side: BorderSide(color: Colors.grey.shade300),
+        shape: StadiumBorder(),
+        onPressed: () => _handleUnifiedSubmit(quickMessage: message),
+      ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), // Extra bottom padding for iOS home indicator
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onLongPress: _listen, // Mantener presionado para hablar? No, tap to toggle better UX
+            onTap: _listen,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _isListening ? Colors.red.shade100 : Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(_isListening ? Icons.mic : Icons.mic_none_rounded, 
+                color: _isListening ? Colors.red : Colors.grey.shade700),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: TextField(
+                controller: _inputController,
+                focusNode: _focusNode,
+                decoration: const InputDecoration(
+                  hintText: 'Escribe o di "Comí..."',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: (_) => _handleUnifiedSubmit(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: () => _handleUnifiedSubmit(),
+            child: CircleAvatar(
+              backgroundColor: const Color(0xFF2563EB),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getQualityColor(dynamic quality) {
+    if (quality == null) return Colors.grey;
+    final q = quality.toString().toLowerCase();
+    if (q.contains('alta')) return Colors.green;
+    if (q.contains('media')) return Colors.orange;
+    if (q.contains('baja')) return Colors.red;
+    return Colors.grey;
   }
 }

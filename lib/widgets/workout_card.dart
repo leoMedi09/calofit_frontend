@@ -3,20 +3,21 @@ import '../models/assistant_response.dart';
 
 class WorkoutCard extends StatelessWidget {
   final Section section;
+  final VoidCallback? onAdd;
 
-  const WorkoutCard({Key? key, required this.section}) : super(key: key);
+  const WorkoutCard({Key? key, required this.section, this.onAdd}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: Colors.blue.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade900.withOpacity(0.05),
+            color: Colors.blue.shade900.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -26,15 +27,27 @@ class WorkoutCard extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blue.shade100,
+            color: Colors.blue.shade50,
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.fitness_center, color: Colors.blue, size: 20),
         ),
+        trailing: onAdd != null 
+          ? TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.bolt, size: 16, color: Colors.teal),
+              label: const Text("AÑADIR", style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 11)),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.teal.shade50,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            )
+          : null,
         title: Text(
-          section.nombre.toUpperCase(),
+          section.nombre.replaceAll('**', '').trim().toUpperCase(),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-          maxLines: 2,
+          maxLines: 4,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Row(
@@ -62,12 +75,30 @@ class WorkoutCard extends StatelessWidget {
           ...section.preparacion.asMap().entries.map((e) => 
             _stepRow(e.key + 1, e.value, Colors.blue)
           ),
+          if (onAdd != null) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text("REGISTRAR ESTA RUTINA"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
           if (section.nota.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.blue.shade50.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(

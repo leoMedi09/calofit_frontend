@@ -43,6 +43,10 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>CaloFit necesita el micrófono para que puedas dictar tus comidas y ejercicios.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>CaloFit utiliza reconocimiento de voz para transcribir tus comandos nutricionales.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 </dict>

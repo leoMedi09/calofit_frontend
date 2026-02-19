@@ -10,23 +10,68 @@ class BalanceProvider with ChangeNotifier {
   DailySummary? get dailySummary => _dailySummary;
   bool get isLoading => _isLoading;
 
+  Map<String, dynamic>? _fullBalanceData;
+  Map<String, dynamic>? get fullBalanceData => _fullBalanceData;
+
+  // Helper interno de casteo seguro
+  double _toDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? 0.0;
+    return 0.0;
+  }
+
   void updateFromAssistant(Map<String, dynamic> dataCientifica) {
     if (dataCientifica.isEmpty) return;
 
-    // El backend envía el progreso en data_cientifica
-    // Mapeamos a DailySummary
+    // Actualizar DailySummary
     _dailySummary = DailySummary(
-      calorias: (dataCientifica['consumido'] ?? dataCientifica['calorias'] ?? _dailySummary?.calorias ?? 0).toDouble(),
-      proteinas: (dataCientifica['proteinas'] ?? _dailySummary?.proteinas ?? 0).toDouble(),
-      carbohidratos: (dataCientifica['carbohidratos'] ?? _dailySummary?.carbohidratos ?? 0).toDouble(),
-      grasas: (dataCientifica['grasas'] ?? _dailySummary?.grasas ?? 0).toDouble(),
-      gastoEstimado: _dailySummary?.gastoEstimado ?? 0,
-      imcActual: _dailySummary?.imcActual ?? 0,
+      calorias: _toDouble(dataCientifica['consumido'] ?? dataCientifica['calorias'] ?? _dailySummary?.calorias),
+      proteinas: _toDouble(dataCientifica['proteinas'] ?? _dailySummary?.proteinas),
+      carbohidratos: _toDouble(dataCientifica['carbohidratos'] ?? _dailySummary?.carbohidratos),
+      grasas: _toDouble(dataCientifica['grasas'] ?? _dailySummary?.grasas),
+      gastoMetabolicoBasal: _dailySummary?.gastoMetabolicoBasal ?? 0.0,
+      caloriasQuemadas: _toDouble(dataCientifica['quemado'] ?? _dailySummary?.caloriasQuemadas),
+      imcActual: _dailySummary?.imcActual ?? 0.0,
       aiInsight: _dailySummary?.aiInsight ?? "",
-      planObjetivo: _dailySummary?.planObjetivo, // Mantener el plan si ya existe
+      planObjetivo: _dailySummary?.planObjetivo,
     );
     
+    // Si tenemos fullData, intentamos actualizar también el resumen dentro de él para consistencia inmediata
+    if (_fullBalanceData != null && _fullBalanceData!.containsKey('resumen')) {
+       var resumen = _fullBalanceData!['resumen'];
+       resumen['calorias_consumidas'] = _dailySummary!.calorias;
+       resumen['calorias_quemadas'] = _dailySummary!.caloriasQuemadas;
+       _fullBalanceData!['resumen'] = resumen;
+    }
+    
     notifyListeners();
+  }
+
+  Future<void> fetchFullBalance(String token) async {
+    try {
+      final data = await _apiService.getMiBalance(token);
+      _fullBalanceData = data;
+      
+      if (data['resumen'] != null) {
+        final res = data['resumen'];
+        _dailySummary = DailySummary(
+          calorias: _toDouble(res['calorias_consumidas']),
+          proteinas: 0.0, 
+          carbohidratos: 0.0,
+          grasas: 0.0,
+          gastoMetabolicoBasal: _dailySummary?.gastoMetabolicoBasal ?? 0.0,
+          caloriasQuemadas: _toDouble(res['calorias_quemadas']),
+          imcActual: _dailySummary?.imcActual ?? 0.0,
+          aiInsight: "",
+          planObjetivo: _dailySummary?.planObjetivo
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Error loading full balance: $e');
+      rethrow;
+    }
   }
 
   Future<void> loadDailySummary(int clientId, String token) async {

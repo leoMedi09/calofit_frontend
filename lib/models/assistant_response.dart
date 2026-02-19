@@ -84,13 +84,32 @@ class Section {
   });
 
   factory Section.fromJson(Map<String, dynamic> json) {
+    // Para ejercicios, mapear ejercicios→ingredientes e instrucciones/tecnica→preparacion
+    // Esto asegura que los widgets puedan leer los datos correctamente
+    List<String> items = [];
+    List<String> pasos = [];
+    
+    // Determinar si es ejercicio o comida
+    String tipo = json['tipo'] ?? 'general';
+    
+    if (tipo == 'ejercicio') {
+      // Para EJERCICIOS: ejercicios → ingredientes (CIRCUITO)
+      items = List<String>.from(json['ejercicios'] ?? []);
+      // Para INSTRUCCIONES: instrucciones o tecnica → preparacion
+      pasos = List<String>.from(json['instrucciones'] ?? json['tecnica'] ?? []);
+    } else {
+      // Para COMIDA: ingredientes e ingredientes, preparacion → preparacion
+      items = List<String>.from(json['ingredientes'] ?? []);
+      pasos = List<String>.from(json['preparacion'] ?? []);
+    }
+    
     return Section(
-      tipo: json['tipo'] ?? 'general',
+      tipo: tipo,
       nombre: json['nombre'] ?? json['plato'] ?? '',
-      macros: json['macros'] ?? json['gasto_calorico_estimado'] ?? '',
-      ingredientes: List<String>.from(json['ingredientes'] ?? json['ejercicios'] ?? []),
-      preparacion: List<String>.from(json['preparacion'] ?? json['tecnica'] ?? json['instrucciones'] ?? []),
-      nota: json['nota'] ?? '',
+      macros: (json['macros'] ?? json['gasto_calorico_estimado'] ?? '').toString(),
+      ingredientes: items,
+      preparacion: pasos,
+      nota: (json['nota'] ?? '').toString(),
     );
   }
 

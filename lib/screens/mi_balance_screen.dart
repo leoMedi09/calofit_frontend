@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../screens/chat_screen.dart';
 import '../screens/edit_profile_screen.dart';
 import '../models/client.dart';
+import '../providers/balance_provider.dart';
 
 class MiBalanceScreen extends StatefulWidget {
   const MiBalanceScreen({Key? key}) : super(key: key);
@@ -17,15 +18,21 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with SingleTickerProv
   final ApiService _apiService = ApiService();
   late TabController _tabController;
   
-  Map<String, dynamic>? balanceData;
-  bool isLoading = true;
+  // Local loading state only for initial fetch or explicit refresh
+  bool isLocalLoading = false;
   String? errorMessage;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadBalance();
+    // Cargar datos si no existen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<BalanceProvider>(context, listen: false);
+      if (provider.fullBalanceData == null) {
+        _loadBalance();
+      }
+    });
   }
 
   @override
@@ -36,7 +43,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with SingleTickerProv
 
   Future<void> _loadBalance() async {
     setState(() {
-      isLoading = true;
+      isLocalLoading = true;
       errorMessage = null;
     });
 
@@ -44,39 +51,30 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with SingleTickerProv
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
 
-      if (token == null) {
-        throw Exception('No hay sesión activa');
-      }
+      if (token == null) throw Exception('No hay sesión activa');
 
-      final data = await _apiService.getMiBalance(token);
-      setState(() {
-        balanceData = data;
-        isLoading = false;
-      });
+      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token);
+
+      if (mounted) setState(() => isLocalLoading = false);
     } catch (e) {
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = e.toString();
+          isLocalLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _eliminarRegistro(int id, String tipo) async {
-    // Mostrar confirmación
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar'),
         content: Text('¿Eliminar este ${tipo == 'alimento' ? 'alimento' : 'ejercicio'}?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -89,51 +87,85 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with SingleTickerProv
 
       await _apiService.eliminarRegistro(id, tipo, token!);
       
-      // Mostrar mensaje de éxito
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${tipo == 'alimento' ? 'Alimento' : 'Ejercicio'} eliminado'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${tipo == 'alimento' ? 'Alimento' : 'Ejercicio'} eliminado'),
+          backgroundColor: Colors.green,
+        ));
       }
 
-      // Recargar balance
-      _loadBalance();
+      // Recargar a través del provider
+      // No mostramos loading spinner para que sea fluido
+      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: const Text('Mi Balance Diario'),
-        backgroundColor: Colors.teal,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadBalance,
+    return Consumer<BalanceProvider>(
+      builder: (context, provider, child) {
+        final balanceData = provider.fullBalanceData;
+        final isLoading = isLocalLoading && balanceData == null; // Solo mostrar loading si no hay datos previos
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF5F5F5),
+          appBar: AppBar(
+            title: const Text('Mi Balance Diario'),
+            backgroundColor: Colors.teal,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadBalance,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
-              ? _buildErrorView()
-              : _buildBalanceView(),
-      bottomNavigationBar: _buildBottomNavigation(),
+          body: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : errorMessage != null
+                  ? _buildErrorView()
+                  : balanceData == null 
+                      ? const Center(child: Text("No hay datos disponibles"))
+                      : _buildBalanceView(balanceData),
+          bottomNavigationBar: _buildBottomNavigation(),
+        );
+      },
+    );
+  }
+
+  // Helper para pasar data al método original
+  Widget _buildBalanceView(Map<String, dynamic> data) {
+    final resumen = data['resumen'] ?? {};
+    final alimentos = data['alimentos_registrados'] ?? [];
+    final ejercicios = data['ejercicios_registrados'] ?? [];
+
+    return Column(
+      children: [
+        _buildCaloriasSummaryCard(resumen),
+        TabBar(
+          controller: _tabController,
+          labelColor: Colors.teal,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.teal,
+          tabs: [
+            Tab(icon: const Icon(Icons.restaurant), text: 'Alimentos (${alimentos.length})'),
+            Tab(icon: const Icon(Icons.fitness_center), text: 'Ejercicios (${ejercicios.length})'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAlimentosList(alimentos),
+              _buildEjerciciosList(ejercicios),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -219,48 +251,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with SingleTickerProv
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBalanceView() {
-    final resumen = balanceData?['resumen'] ?? {};
-    final alimentos = balanceData?['alimentos_registrados'] ?? [];
-    final ejercicios = balanceData?['ejercicios_registrados'] ?? [];
-
-    return Column(
-      children: [
-        // Resumen de calorías
-        _buildCaloriasSummaryCard(resumen),
-        
-        // Tabs para Alimentos y Ejercicios
-        TabBar(
-          controller: _tabController,
-          labelColor: Colors.teal,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.teal,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.restaurant),
-              text: 'Alimentos (${alimentos.length})',
-            ),
-            Tab(
-              icon: const Icon(Icons.fitness_center),
-              text: 'Ejercicios (${ejercicios.length})',
-            ),
-          ],
-        ),
-        
-        // Contenido de tabs
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildAlimentosList(alimentos),
-              _buildEjerciciosList(ejercicios),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

@@ -149,31 +149,36 @@ class AuthProvider with ChangeNotifier {
       _userId = prefs.getInt('userId');
       _userIdFirebase = prefs.getString('userIdFirebase');
       
+      // ✅ NOTIFICAR AL INICIO: Permitir que la App cargue la UI al instante
+      notifyListeners();
+
+      // ✅ VALIDACIÓN ASÍNCRONA (Background): Validar en segundo plano para no bloquear el arranque
       if (_token != null && _userId != null) {
-        try {
-          debugPrint('🔐 Validando sesión guardada para usuario ID: $_userId');
-          
-          // ✅ VALIDACIÓN UNIVERSAL: Intentar obtener datos del usuario para validar el token
-          if (_userType == 'staff' || _userType == 'admin') {
-            // Para staff: intentar obtener la lista de usuarios
-            await _apiService.getUsers(_token!);
-            debugPrint('✅ Token de Staff válido');
-          } else {
-            // Para clientes: intentar obtener su perfil
-            await _apiService.getClientProfile(_userId!, _token!);
-            debugPrint('✅ Token de Cliente válido');
-          }
-        } catch (e) {
-          debugPrint('❌ Error validando sesión: $e');
-          debugPrint('🚨 Token inválido o sin conexión. Cerrando sesión...');
-          
-          // 🚨 FORZAR LOGOUT si el token no es válido
-          await logout();
-          return; // Salir para evitar notifyListeners con datos inválidos
-        }
+        _validateSessionInBackground();
+      }
+    } else {
+      notifyListeners();
+    }
+  }
+
+  // Nueva función para validación silenciosa
+  Future<void> _validateSessionInBackground() async {
+    try {
+      debugPrint('🔐 Validando sesión en segundo plano...');
+      if (_userType == 'staff' || _userType == 'admin') {
+        await _apiService.getUsers(_token!);
+      } else {
+        await _apiService.getClientProfile(_userId!, _token!);
+      }
+      debugPrint('✅ Sesión validada exitosamente.');
+    } catch (e) {
+      debugPrint('❌ Sesión inválida o expirada detectada en background: $e');
+      // Solo si el error es 401/403 (Autenticación), cerramos sesión. 
+      // Si es error de red (Timeout), mantenemos al usuario (modo offline/resiliente).
+      if (e.toString().contains('401') || e.toString().contains('403')) {
+        await logout();
       }
     }
-    notifyListeners();
   }
 
   Future<void> logout() async {

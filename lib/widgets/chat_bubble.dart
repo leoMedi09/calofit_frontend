@@ -137,8 +137,9 @@ class AssistantMessageBubble extends StatelessWidget {
 
   String _cleanResponseText(String text, List<Section> sections) {
     try {
-      // 1. Eliminar TODAS las etiquetas CALOFIT (apertura Y cierre)
-      String cleaned = text.replaceAll(RegExp(r'\[/?CALOFIT_[A-Z_]+(?:[:\s].*?)?\]'), '');
+      // 1. Eliminar etiquetas CALOFIT blindadas (apertura Y cierre)
+      // v64: Regex más específico para no matar (X kcal) o (Macros: ...)
+      String cleaned = text.replaceAll(RegExp(r'\[/?CALOFIT_(?:HEADER|LIST|ACTION|FOOTER|STATS|INTENT)(?:[:\s].*?)?\]'), '');
 
       // 2. Transformar Tablas Markdown en Listas Legibles (Verticales)
       if (RegExp(r'\|[\s-:]+\|').hasMatch(cleaned)) {

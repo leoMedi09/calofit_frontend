@@ -268,9 +268,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           if (_isTyping) _buildTypingIndicator(),
           if (!_isTyping && _messages.length < 3) _buildQuickActions(),
           _buildInputArea(),
+          _buildStickyStatusBar(),
         ],
       ),
-      bottomNavigationBar: _buildBottomStatusAndNav(),
+      bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
@@ -330,46 +331,38 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildBottomStatusAndNav() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 🔥 STICKY STATUS BAR (Ahora abajo, sobre el nav)
-        Consumer<BalanceProvider>(
-          builder: (context, provider, _) {
-            final summary = provider.dailySummary;
-            if (summary == null) return const SizedBox.shrink();
-            
-            final meta = summary.planObjetivo?.caloriasObjetivo ?? 2000;
-            final restante = (meta - summary.calorias).clamp(0, meta);
-            
-            return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              color: const Color(0xFFE3F2FD),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.local_fire_department_rounded, size: 14, color: Colors.orange.shade700),
-                  const SizedBox(width: 6),
-                  Text(
-                    "Restan ${restante.toStringAsFixed(0)} kcal hoy",
-                    style: TextStyle(color: Colors.blue.shade900, fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
-                ],
+  Widget _buildStickyStatusBar() {
+    return Consumer<BalanceProvider>(
+      builder: (context, provider, _) {
+        final summary = provider.dailySummary;
+        if (summary == null) return const SizedBox.shrink();
+        
+        final meta = summary.planObjetivo?.caloriasObjetivo ?? 2000;
+        final restante = (meta - summary.calorias).clamp(0, meta);
+        
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          color: const Color(0xFFE3F2FD),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.local_fire_department_rounded, size: 14, color: Colors.orange.shade700),
+              const SizedBox(width: 6),
+              Text(
+                "Restan ${restante.toStringAsFixed(0)} kcal hoy",
+                style: TextStyle(color: Colors.blue.shade900, fontSize: 11, fontWeight: FontWeight.w600),
               ),
-            );
-          },
-        ),
-        _buildBottomNavigation(),
-      ],
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildBottomNavigation() {
     return NavigationBar(
       selectedIndex: 1,
-      height: 60,
       onDestinationSelected: (index) async {
         if (index == 0) {
           Navigator.popUntil(context, (route) => route.isFirst);
@@ -632,7 +625,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), // Extra bottom padding for iOS home indicator
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12), // Reducido el padding inferior para conectar con el status bar
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],

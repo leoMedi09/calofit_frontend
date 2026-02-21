@@ -12,11 +12,31 @@ class RecipeCard extends StatelessWidget {
   Map<String, String> _parseMacros(String macros) {
     final result = <String, String>{};
     if (macros.isEmpty) return result;
-    for (final pair in macros.split('|')) {
+    
+    // v66: Estrategia de Split Ultra-Robusta
+    // 1. Normalizar separadores: Reemplazar '|' y ';' por comas
+    String text = macros.replaceAll('|', ',').replaceAll(';', ',');
+    
+    // 2. Proteger decimales (ej: 30,5 -> 30.5) temporalmente para no partir por la coma
+    // Buscamos coma entre dos números
+    text = text.replaceAllMapped(RegExp(r'(\d),(\d)'), (m) => '${m[1]}.${m[2]}');
+    
+    // 3. Ahora sí, partir por comas con confianza
+    for (final pair in text.split(',')) {
       final parts = pair.trim().split(':');
-      if (parts.length == 2) {
-        final key = parts[0].trim();
-        final val = parts[1].trim().replaceAll(RegExp(r'\(.*?\)'), '').trim();
+      if (parts.length >= 2) {
+        String key = parts[0].trim();
+        // Mapeo flexible de llaves (P, C, G, Cal)
+        if (key.toLowerCase().startsWith('p')) key = 'P';
+        else if (key.toLowerCase().contains('cal')) key = 'Cal'; // Cal antes que C
+        else if (key.toLowerCase().startsWith('c')) key = 'C';
+        else if (key.toLowerCase().startsWith('g')) key = 'G';
+        else continue;
+        
+        // El valor es el resto, volviendo a poner la coma si se prefiere (o dejar el punto)
+        String val = parts.sublist(1).join(':').trim();
+        // Limpiar comentarios entre paréntesis
+        val = val.replaceAll(RegExp(r'\(.*?\)'), '').trim();
         result[key] = val;
       }
     }

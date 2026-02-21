@@ -24,14 +24,14 @@ class BalanceProvider with ChangeNotifier {
   void updateFromAssistant(Map<String, dynamic> dataCientifica) {
     if (dataCientifica.isEmpty) return;
 
-    // Actualizar DailySummary
+    // Actualizar DailySummary (Preservar macros si no vienen en la actualización parcial)
     _dailySummary = DailySummary(
       calorias: _toDouble(dataCientifica['consumido'] ?? dataCientifica['calorias'] ?? _dailySummary?.calorias),
       proteinas: _toDouble(dataCientifica['proteinas'] ?? _dailySummary?.proteinas),
       carbohidratos: _toDouble(dataCientifica['carbohidratos'] ?? _dailySummary?.carbohidratos),
       grasas: _toDouble(dataCientifica['grasas'] ?? _dailySummary?.grasas),
       gastoMetabolicoBasal: _dailySummary?.gastoMetabolicoBasal ?? 0.0,
-      caloriasQuemadas: _toDouble(dataCientifica['quemado'] ?? _dailySummary?.caloriasQuemadas),
+      caloriasQuemadas: _toDouble(dataCientifica['quemado'] ?? _dailySummary?.caloriasQuemadas ?? 0.0),
       imcActual: _dailySummary?.imcActual ?? 0.0,
       aiInsight: _dailySummary?.aiInsight ?? "",
       planObjetivo: _dailySummary?.planObjetivo,
@@ -55,15 +55,16 @@ class BalanceProvider with ChangeNotifier {
       
       if (data['resumen'] != null) {
         final res = data['resumen'];
+        // ✅ FIX (v60): Mapear macros reales desde el servidor, NO resetear a 0.0
         _dailySummary = DailySummary(
           calorias: _toDouble(res['calorias_consumidas']),
-          proteinas: 0.0, 
-          carbohidratos: 0.0,
-          grasas: 0.0,
+          proteinas: _toDouble(res['proteinas_g']), 
+          carbohidratos: _toDouble(res['carbohidratos_g']),
+          grasas: _toDouble(res['grasas_g']),
           gastoMetabolicoBasal: _dailySummary?.gastoMetabolicoBasal ?? 0.0,
           caloriasQuemadas: _toDouble(res['calorias_quemadas']),
           imcActual: _dailySummary?.imcActual ?? 0.0,
-          aiInsight: "",
+          aiInsight: _dailySummary?.aiInsight ?? "",
           planObjetivo: _dailySummary?.planObjetivo
         );
       }

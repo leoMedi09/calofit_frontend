@@ -425,7 +425,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        width: 260,
+        constraints: const BoxConstraints(maxWidth: 280), // v69.1: Más ancho permitido para pantallas densas
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -451,21 +451,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(isFood ? "Comida Registrada" : "Ejercicio Registrado", 
-                      style: TextStyle(fontWeight: FontWeight.bold, color: isFood ? Colors.orange.shade800 : Colors.green.shade800)),
-                  ),
-                  if (data['calidad'] != null && isFood)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getQualityColor(data['calidad']),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        data['calidad'].toString().toUpperCase(),
-                        style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                    child: Text(
+                      isFood ? "Comida Registrada" : "Ejercicio Registrado", 
+                      style: TextStyle(fontWeight: FontWeight.bold, color: isFood ? Colors.orange.shade800 : Colors.green.shade800),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -474,6 +464,21 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (data['calidad'] != null && isFood)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getQualityColor(data['calidad']),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          data['calidad'].toString().toUpperCase(),
+                          style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
                   Text(msg['content'], style: const TextStyle(fontSize: 14)),
                   const SizedBox(height: 12),
                   if (kcal > 0)

@@ -13,8 +13,13 @@ class AssistantMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Escudo de Salud (v11.1)
     final bool hasAlert = response.alertaSalud == true;
+    
+    // v70.8: Temática basada en Intención
+    final String intent = response.intencion ?? 'INFO';
+    final Map<String, dynamic> theme = _getIntentTheme(intent, hasAlert);
+    final Color primaryColor = theme['color'];
+    final IconData icon = theme['icon'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -23,9 +28,9 @@ class AssistantMessageBubble extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: hasAlert ? Colors.red : const Color(0xFF1E88E5),
+            backgroundColor: primaryColor,
             child: Icon(
-              hasAlert ? Icons.warning_amber_rounded : Icons.auto_awesome,
+              icon,
               color: Colors.white,
               size: 16,
             ),
@@ -35,7 +40,7 @@ class AssistantMessageBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Mostrar Progreso Calórico (Si aplica y hay datos de consumo)
+                // 1. Mostrar Progreso Calórico (Si aplica)
                 if (response.dataCientifica.progresoDiario.isNotEmpty && 
                     (response.dataCientifica.progresoDiario['consumido'] ?? 0) > 0)
                   CalorieProgressMiniCard(data: response.dataCientifica.progresoDiario),
@@ -44,19 +49,20 @@ class AssistantMessageBubble extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: hasAlert ? Colors.red.shade50 : Colors.white,
+                    color: theme['bgColor'],
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(4), // Little sharper point for bubble feel
+                      topLeft: Radius.circular(4),
                       topRight: Radius.circular(20),
                       bottomLeft: Radius.circular(20),
                       bottomRight: Radius.circular(20),
                     ),
                     border: Border.all(
-                      color: hasAlert ? Colors.red.shade200 : Colors.grey.shade200,
+                      color: theme['borderColor'],
+                      width: intent == 'DANGER' ? 2 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: primaryColor.withOpacity(0.08),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -70,13 +76,13 @@ class AssistantMessageBubble extends StatelessWidget {
                     selectable: true, // Permitir copiar texto
                     styleSheet: MarkdownStyleSheet(
                       p: TextStyle(
-                        color: hasAlert ? Colors.red.shade900 : Colors.black87,
+                        color: theme['textColor'],
                         fontSize: 15,
                         height: 1.5,
                       ),
                       strong: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: hasAlert ? Colors.red : const Color(0xFF2563EB),
+                        color: primaryColor,
                       ),
                       // Estilo mejorado para tablas
                       tableHead: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
@@ -96,7 +102,7 @@ class AssistantMessageBubble extends StatelessWidget {
                   ),
                 ),
 
-                // 3. Renderizar Secciones Especiales (Recetas o Ejercicios)
+                // 3. Renderizar Secciones Especiales (Directas y apiladas como pidió el usuario)
                 ...response.respuestaEstructurada.secciones.map((sec) {
                   if (sec.tipo == 'comida') {
                     return RecipeCard(
@@ -173,6 +179,11 @@ class AssistantMessageBubble extends StatelessWidget {
       
       List<String> finalLines = [];
       for (String line in lines) {
+        if (line.trim().isEmpty) {
+          finalLines.add(line);
+          continue;
+        }
+
         String lineLower = line.toLowerCase();
         String lineClean = lineLower.replaceAll('**', '').replaceAll('*', '').replaceAll('-', '').trim();
         
@@ -184,15 +195,65 @@ class AssistantMessageBubble extends StatelessWidget {
           return false;
         });
         
-        if (!isRepeatedName && line.trim().isNotEmpty) {
+        if (!isRepeatedName) {
           finalLines.add(line);
         }
       }
       
-      return finalLines.join('\n').trim();
+      // Limpiar múltiples saltos de línea consecutivos
+      String result = finalLines.join('\n').trim();
+      return result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
     } catch (e) {
       debugPrint("Error cleaning AI response: $e");
-      return text; // Fallback al texto original
+      return text;
+    }
+  }
+
+  Map<String, dynamic> _getIntentTheme(String intent, bool hasAlert) {
+    if (hasAlert || intent == 'DANGER') {
+      return {
+        'color': Colors.red.shade700,
+        'bgColor': Colors.red.shade50,
+        'borderColor': Colors.red.shade200,
+        'textColor': Colors.red.shade900,
+        'icon': Icons.warning_amber_rounded,
+      };
+    }
+
+    switch (intent) {
+      case 'RECIPE':
+        return {
+          'color': Colors.orange.shade700,
+          'bgColor': Colors.white, // Antes: orange.shade50 (Causaba diseño "feo")
+          'borderColor': Colors.orange.shade100,
+          'textColor': Colors.black87,
+          'icon': Icons.restaurant_menu_rounded,
+        };
+      case 'POWER':
+        return {
+          'color': Colors.blue.shade700,
+          'bgColor': Colors.white,
+          'borderColor': Colors.blue.shade100,
+          'textColor': Colors.black87,
+          'icon': Icons.bolt_rounded,
+        };
+      case 'SUCCESS':
+        return {
+          'color': Colors.green.shade700,
+          'bgColor': Colors.green.shade50.withOpacity(0.5),
+          'borderColor': Colors.green.shade100,
+          'textColor': Colors.green.shade900,
+          'icon': Icons.check_circle_rounded,
+        };
+      case 'INFO':
+      default:
+        return {
+          'color': const Color(0xFF14B8A6),
+          'bgColor': Colors.white,
+          'borderColor': Colors.grey.shade200,
+          'textColor': Colors.black87,
+          'icon': Icons.lightbulb_rounded,
+        };
     }
   }
 }

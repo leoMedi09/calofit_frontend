@@ -2,6 +2,7 @@ class AssistantResponse {
   final String usuario;
   final ScientificData dataCientifica;
   final StructuredResponse respuestaEstructurada;
+  final String? intencion; // v70.8: INFO, RECIPE, POWER, SUCCESS, DANGER
   final bool? alertaSalud;
   final String? advertencia;
 
@@ -9,6 +10,7 @@ class AssistantResponse {
     required this.usuario,
     required this.dataCientifica,
     required this.respuestaEstructurada,
+    this.intencion,
     this.alertaSalud,
     this.advertencia,
   });
@@ -18,6 +20,7 @@ class AssistantResponse {
       usuario: json['usuario'] ?? '',
       dataCientifica: ScientificData.fromJson(json['data_cientifica'] ?? {}),
       respuestaEstructurada: StructuredResponse.fromJson(json['respuesta_estructurada'] ?? {}),
+      intencion: json['intencion'],
       alertaSalud: json['alerta_salud'] as bool?,
       advertencia: json['advertencia_nutricional'],
     );
@@ -26,6 +29,7 @@ class AssistantResponse {
   Map<String, dynamic> toMap() {
     return {
       'usuario': usuario,
+      'intencion': intencion,
       'data_cientifica': dataCientifica.progresoDiario,
       'respuesta_estructurada': {
         'texto_conversacional': respuestaEstructurada.textoConversacional,

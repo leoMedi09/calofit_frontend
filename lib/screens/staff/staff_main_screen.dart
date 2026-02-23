@@ -6,6 +6,8 @@ import 'views/team_management_view.dart';
 import 'views/audit_view.dart';
 import 'views/assistant_copilot_view.dart';
 import 'views/staff_profile_view.dart';
+import 'views/patient_list_view.dart';
+import 'views/staff_menu_view.dart';
 
 class StaffMainScreen extends StatefulWidget {
   const StaffMainScreen({super.key});
@@ -19,78 +21,117 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> views = [
-      DashboardView(onNavigate: (index) => setState(() => _selectedIndex = index)),
-      const TeamManagementView(),
-      const AuditView(),
-      const AssistantCopilotView(),
-      const StaffProfileView(),
-    ];
     final authProvider = Provider.of<AuthProvider>(context);
-    final String userRole = authProvider.userType?.toUpperCase() ?? 'STAFF';
+    final String userRole = (authProvider.userRole ?? 'STAFF').toUpperCase();
     final Color primaryBlue = const Color(0xFF1E88E5);
 
+    // Definición de todas las posibles vistas
+    final Map<String, Map<String, dynamic>> allSections = {
+      'dashboard': {
+        'view': DashboardView(onNavigate: (index) => setState(() => _selectedIndex = index)),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.dashboard_outlined), 
+          activeIcon: Icon(Icons.dashboard_rounded),
+          label: 'Dashboard'
+        ),
+      },
+      'patients': {
+        'view': const PatientListView(),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.assignment_ind_outlined), 
+          activeIcon: Icon(Icons.assignment_ind_rounded),
+          label: 'Pacientes'
+        ),
+      },
+      'assistant': {
+        'view': const AssistantCopilotView(),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.psychology_outlined), 
+          activeIcon: Icon(Icons.psychology_rounded),
+          label: 'Asistente'
+        ),
+      },
+      'menu': {
+        'view': const StaffMenuView(),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.grid_view_outlined), 
+          activeIcon: Icon(Icons.grid_view_rounded),
+          label: 'Menú'
+        ),
+      },
+      'team': {
+        'view': const TeamManagementView(),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.people_alt_outlined), 
+          activeIcon: Icon(Icons.people_alt_rounded),
+          label: 'Equipo'
+        ),
+      },
+      'audit': {
+        'view': const AuditView(),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.history_toggle_off_outlined), 
+          activeIcon: Icon(Icons.history_toggle_off_rounded),
+          label: 'Auditoría'
+        ),
+      },
+      'profile': {
+        'view': const StaffProfileView(),
+        'item': const BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline_rounded), 
+          activeIcon: Icon(Icons.person_rounded),
+          label: 'Perfil'
+        ),
+      },
+    };
+
+    // Filtrar secciones por rol
+    List<String> activeSectionKeys;
+    if (userRole.contains('ADMIN')) {
+      // Simplificado para Admin: Dashboard, Pacientes, Asistente, Menú (Nueva)
+      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'menu'];
+    } else if (userRole.contains('NUTRI') || userRole.contains('COACH')) {
+      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'menu']; 
+    } else {
+      activeSectionKeys = ['dashboard', 'assistant', 'menu'];
+    }
+
+    final List<Widget> filteredViews = activeSectionKeys.map((k) => allSections[k]!['view'] as Widget).toList();
+    final List<BottomNavigationBarItem> filteredItems = activeSectionKeys.map((k) => allSections[k]!['item'] as BottomNavigationBarItem).toList();
+
+    // Asegurar que el índice no se desborde si el rol cambia
+    if (_selectedIndex >= filteredViews.length) {
+      _selectedIndex = 0;
+    }
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       appBar: null,
-      body: views[_selectedIndex],
-      floatingActionButton: _selectedIndex != 3 
+      body: filteredViews[_selectedIndex],
+      floatingActionButton: activeSectionKeys[_selectedIndex] != 'assistant' 
           ? FloatingActionButton(
-              onPressed: () => setState(() => _selectedIndex = 3),
+              onPressed: () {
+                int assistantIndex = activeSectionKeys.indexOf('assistant');
+                if (assistantIndex != -1) {
+                  setState(() => _selectedIndex = assistantIndex);
+                }
+              },
               backgroundColor: primaryBlue,
               elevation: 4,
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
+              child: const Icon(Icons.auto_awesome, color: Colors.white),
             ) 
           : null,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          selectedItemColor: primaryBlue,
-          unselectedItemColor: Colors.grey.shade400,
-          backgroundColor: Colors.white,
-          type: BottomNavigationBarType.fixed,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontSize: 12),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded), 
-              activeIcon: Icon(Icons.dashboard_rounded),
-              label: 'Dashboard'
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.people_alt_rounded), 
-              activeIcon: Icon(Icons.people_alt_rounded),
-              label: 'Equipo'
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_toggle_off_rounded), 
-              activeIcon: Icon(Icons.history_toggle_off_rounded),
-              label: 'Auditoría'
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.psychology_rounded), 
-              activeIcon: Icon(Icons.psychology_rounded),
-              label: 'Asistente'
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded), 
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Perfil'
-            ),
-          ],
-        ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        backgroundColor: Colors.white,
+        destinations: filteredItems.map((item) {
+          return NavigationDestination(
+            icon: item.icon,
+            selectedIcon: item.activeIcon,
+            label: item.label ?? '',
+          );
+        }).toList(),
       ),
     );
   }

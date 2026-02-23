@@ -91,111 +91,114 @@ class _TeamManagementViewState extends State<TeamManagementView> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _refreshStats,
-      color: primaryBlue,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            backgroundColor: primaryBlue,
-            elevation: 0,
-            pinned: true,
-            toolbarHeight: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [primaryBlue, Color(0xFF0D47A1)],
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: RefreshIndicator(
+        onRefresh: _refreshStats,
+        color: primaryBlue,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 200,
+              backgroundColor: primaryBlue,
+              elevation: 0,
+              pinned: true,
+              toolbarHeight: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                background: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [primaryBlue, Color(0xFF0D47A1)],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(40),
+                      bottomRight: Radius.circular(40),
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: Color(0x331E88E5), blurRadius: 20, offset: Offset(0, 10)),
+                    ],
                   ),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(40),
-                    bottomRight: Radius.circular(40),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 42, 20, 40),
+                    child: _buildHeader(),
                   ),
-                  boxShadow: [
-                    BoxShadow(color: Color(0x331E88E5), blurRadius: 20, offset: Offset(0, 10)),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 42, 20, 40),
-                  child: _buildHeader(),
                 ),
               ),
             ),
-          ),
-          
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildSectionTitle('Estadísticas de Personal', Icons.analytics_outlined),
-                const SizedBox(height: 15),
-                _isLoading 
-                  ? const Center(child: LinearProgressIndicator())
-                  : Row(
-                      children: [
-                        Expanded(child: _buildRoleCard(
-                          'Nutris', 
-                          _members.where((m) => m.roleName.toLowerCase().contains('nutri')).length.toString(), 
-                          Icons.restaurant_menu, 
-                          const Color(0xFFFF5252)
-                        )),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildRoleCard(
-                          'Coaches', 
-                          _members.where((m) => m.roleName.toLowerCase().contains('coach') || m.roleName.toLowerCase().contains('train')).length.toString(), 
-                          Icons.fitness_center, 
-                          const Color(0xFFFFA000)
-                        )),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildRoleCard(
-                          'Admins', 
-                          _members.where((m) => m.roleName.toLowerCase().contains('admin')).length.toString(), 
-                          Icons.admin_panel_settings, 
-                          primaryBlue
-                        )),
-                      ],
-                    ),
-                const SizedBox(height: 35),
-                _buildSectionTitle('Acciones de Miembros', Icons.settings_accessibility_rounded),
-                const SizedBox(height: 15),
-                _buildActionCard(
-                  context,
-                  'Registrar Nuevo Personal',
-                  'Añade y configura accesos iniciales.',
-                  Icons.person_add_alt_1_rounded,
-                  primaryBlue,
-                  () => _openRegistrationForm(context),
-                ),
-                const SizedBox(height: 12),
-                _buildActionCard(
-                  context,
-                  'Ver Mi Equipo',
-                  'Gestión de perfiles y estados de miembros.',
-                  Icons.group_work_rounded,
-                  secondaryBlue,
-                  () => _navigateToTeamList(context),
-                ),
-                const SizedBox(height: 12),
-                _buildActionCard(
-                  context,
-                  'Gestión de Credenciales',
-                  'Cambio de contraseñas y reseteo de accesos.',
-                  Icons.password_rounded,
-                  const Color(0xFF455A64),
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Acción disponible seleccionando al miembro en "Ver Mi Equipo"'))
-                    );
-                  },
-                ),
-              ]),
+            
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildSectionTitle('Estadísticas de Personal', Icons.analytics_outlined),
+                  const SizedBox(height: 15),
+                  _isLoading 
+                    ? const Center(child: LinearProgressIndicator())
+                    : Row(
+                        children: [
+                          Expanded(child: _buildRoleCard(
+                            'Nutris', 
+                            _members.where((m) => m.roleName.toLowerCase().contains('nutri')).length.toString(), 
+                            Icons.restaurant_menu, 
+                            const Color(0xFFFF5252)
+                          )),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildRoleCard(
+                            'Coaches', 
+                            _members.where((m) => m.roleName.toLowerCase().contains('coach') || m.roleName.toLowerCase().contains('train')).length.toString(), 
+                            Icons.fitness_center, 
+                            const Color(0xFFFFA000)
+                          )),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildRoleCard(
+                            'Admins', 
+                            _members.where((m) => m.roleName.toLowerCase().contains('admin')).length.toString(), 
+                            Icons.admin_panel_settings, 
+                            primaryBlue
+                          )),
+                        ],
+                      ),
+                  const SizedBox(height: 35),
+                  _buildSectionTitle('Acciones de Miembros', Icons.settings_accessibility_rounded),
+                  const SizedBox(height: 15),
+                  _buildActionCard(
+                    context,
+                    'Registrar Nuevo Personal',
+                    'Añade y configura accesos iniciales.',
+                    Icons.person_add_alt_1_rounded,
+                    primaryBlue,
+                    () => _openRegistrationForm(context),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildActionCard(
+                    context,
+                    'Ver Mi Equipo',
+                    'Gestión de perfiles y estados de miembros.',
+                    Icons.group_work_rounded,
+                    secondaryBlue,
+                    () => _navigateToTeamList(context),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildActionCard(
+                    context,
+                    'Gestión de Credenciales',
+                    'Cambio de contraseñas y reseteo de accesos.',
+                    Icons.password_rounded,
+                    const Color(0xFF455A64),
+                    () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Acción disponible seleccionando al miembro en "Ver Mi Equipo"'))
+                      );
+                    },
+                  ),
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -360,8 +360,33 @@ class _TeamListViewState extends State<TeamListView> {
                               children: [
                                 Icon(roleIcon, size: 12, color: roleColor),
                                 const SizedBox(width: 4),
+                                Text(
+                                  member.roleName.toUpperCase(),
+                                  style: TextStyle(
+                                    color: roleColor, 
+                                    fontSize: 10, 
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (member.pacientesCount != null && member.pacientesCount! > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: roleColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.people_outline, size: 12, color: roleColor),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    member.roleName.toUpperCase(),
+                                    '${member.pacientesCount} PACIENTES',
                                     style: TextStyle(
                                       color: roleColor, 
                                       fontSize: 10, 
@@ -369,9 +394,10 @@ class _TeamListViewState extends State<TeamListView> {
                                       letterSpacing: 0.5,
                                     ),
                                   ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                           if (!member.isActive) ...[
                             const SizedBox(width: 8),
                             Container(

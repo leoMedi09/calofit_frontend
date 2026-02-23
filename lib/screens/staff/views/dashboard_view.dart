@@ -159,7 +159,7 @@ class _DashboardViewState extends State<DashboardView> {
           ],
         ),
         content: const Text(
-          'Tu sesión de administrador ha expirado por seguridad. Por favor, inicia sesión nuevamente.',
+          'Tu sesión de staff ha expirado por seguridad. Por favor, inicia sesión nuevamente.',
           style: TextStyle(fontSize: 15),
         ),
         actions: [
@@ -219,49 +219,79 @@ class _DashboardViewState extends State<DashboardView> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _refreshData,
-      color: primaryBlue,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        slivers: [
-            SliverAppBar(
-              expandedHeight: 200,
-              backgroundColor: primaryBlue,
-              elevation: 0,
-              stretch: false,
-              floating: false,
-              pinned: true,
-              toolbarHeight: 0,
-              flexibleSpace: FlexibleSpaceBar(
-                stretchModes: const [],
-                background: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [primaryBlue, Color(0xFF0D47A1)], // Deep Blue gradient
+    final authProvider = Provider.of<AuthProvider>(context);
+    return Scaffold(
+      backgroundColor: Colors.grey[50], // Match Scaffold background
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          color: primaryBlue,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 140,
+                floating: false,
+                pinned: true,
+                elevation: 0,
+                centerTitle: false,
+                backgroundColor: const Color(0xFF1565C0),
+                title: authProvider.userName != null 
+                  ? Text(
+                      'Hola, ${authProvider.userName}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+                flexibleSpace: FlexibleSpaceBar(
+                  collapseMode: CollapseMode.parallax,
+                  background: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        stops: [0.3, 0.9],
+                        colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                      ),
                     ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(40),
-                      bottomRight: Radius.circular(40),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: -30,
+                          right: -30,
+                          child: Container(
+                            width: 150,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 50, 20, 10),
+                          child: _buildWelcomeHeader(context),
+                        ),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(color: Color(0x331E88E5), blurRadius: 20, offset: Offset(0, 10)),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 42, 20, 40),
-                    child: _buildWelcomeHeader(context),
                   ),
                 ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: () => _handleLogout(context, authProvider),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
-            ),
-            
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 25.0),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
+              
+              SliverPadding(
+                padding: const EdgeInsets.all(20.0),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
                   // Lógica de Rol
                   if (!_isAdmin(context)) ...[
                     // SESIÓN 2: ALERTAS DE SALUD (Solo para Nutris/Coaches)
@@ -284,18 +314,19 @@ class _DashboardViewState extends State<DashboardView> {
 
                   const SizedBox(height: 35),
 
-                  // SESIÓN 3: SEGURIDAD Y AUDITORÍA ACCESO RÁPIDO
-                  _buildSectionTitle('Seguridad del Sistema', Icons.security_rounded),
-                  const SizedBox(height: 15),
-                  _buildActionItem(
-                    'Logs de Auditoría',
-                    'Ver las últimas acciones administrativas.',
-                    Icons.history_edu_rounded,
-                    const Color(0xFF7E57C2),
-                    () => _navigateToAuditList(context),
-                  ),
-
-                  const SizedBox(height: 35),
+                  // SESIÓN 3: SEGURIDAD Y AUDITORÍA ACCESO RÁPIDO (Solo Admin)
+                  if (_isAdmin(context)) ...[
+                    _buildSectionTitle('Seguridad del Sistema', Icons.security_rounded),
+                    const SizedBox(height: 15),
+                    _buildActionItem(
+                      'Logs de Auditoría',
+                      'Ver las últimas acciones administrativas.',
+                      Icons.history_edu_rounded,
+                      const Color(0xFF7E57C2),
+                      () => _navigateToAuditList(context),
+                    ),
+                    const SizedBox(height: 35),
+                  ],
 
                   // SESIÓN 4: INTELIGENCIA ARTIFICIAL
                   _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),
@@ -308,7 +339,9 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ],
         ),
-      );
+      ),
+    ),
+   );
   }
 
   bool _isAdmin(BuildContext context) {
@@ -338,46 +371,99 @@ class _DashboardViewState extends State<DashboardView> {
   Widget _buildWelcomeHeader(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+    return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white24, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            child: Text(
+              authProvider.userName?.substring(0, 1).toUpperCase() ?? 'U',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1E88E5),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.shield_rounded, color: Colors.white, size: 14),
-              const SizedBox(width: 6),
               Text(
-                _isAdmin(context) ? 'ADMINISTRADOR GENERAL' : 'PERSONAL STAFF',
-                style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                '¡BIENVENIDO!',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                authProvider.userName ?? 'Usuario',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Hola, ${authProvider.userName?.split(' ')[0] ?? 'Admin'}',
-          style: const TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.w500, letterSpacing: -0.2),
-        ),
-        Text(
-          'Panel de Control',
-          style: TextStyle(
-            fontSize: 28, 
-            fontWeight: FontWeight.w900, 
-            color: Colors.white,
-            letterSpacing: -1.0,
-            shadows: [
-              Shadow(color: Colors.black.withOpacity(0.1), offset: const Offset(0, 4), blurRadius: 8)
-            ]
-          ),
-        ),
       ],
+    );
+  }
+
+  void _handleLogout(BuildContext context, AuthProvider authProvider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Cerrar Sesión'),
+          content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await authProvider.logout();
+                if (mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+              child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 

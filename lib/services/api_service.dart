@@ -569,4 +569,115 @@ class ApiService {
       throw Exception('Error: $errorMessage');
     }
   }
+
+  // ============ PANEL NUTRICIONISTA (Phase 2) ============
+
+  /// 🏥 Obtiene la lista de clientes asignados al nutricionista/admin
+  Future<List<Map<String, dynamic>>> getNutricionistaClientes(String token) async {
+    try {
+      print('🔍 Obteniendo pacientes asignados...');
+      final response = await _dio.get('/nutricionista/clientes',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      String errorMessage = e.message ?? 'Error desconocido';
+      if (e.response?.data is Map) {
+        errorMessage = e.response?.data['detail'] ?? errorMessage;
+      } else if (e.response?.data is String) {
+        errorMessage = e.response?.statusMessage ?? 'Error del servidor (500)';
+      }
+      throw Exception('Error obteniendo pacientes: $errorMessage');
+    }
+  }
+
+  /// 📈 Obtiene el progreso histórico (peso/imc) de un paciente específico
+  Future<Map<String, dynamic>> getNutricionistaClienteProgreso(int clienteId, String token) async {
+    try {
+      final response = await _dio.get('/nutricionista/cliente/$clienteId/progreso',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      String errorMessage = e.message ?? 'Error desconocido';
+      if (e.response?.data is Map) {
+        errorMessage = e.response?.data['detail'] ?? errorMessage;
+      } else if (e.response?.data is String) {
+        errorMessage = e.response?.statusMessage ?? 'Internal Server Error';
+      }
+      throw Exception('Error obteniendo progreso: $errorMessage');
+    }
+  }
+
+  /// ✅ Valida el plan nutricional de un paciente
+  Future<void> validarPlanPaciente(int clienteId, String token) async {
+    try {
+      await _dio.post('/nutricionista/validar-plan/$clienteId',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+    } on DioException catch (e) {
+      String errorMessage = e.message ?? 'Error desconocido';
+      if (e.response?.data is Map) {
+        errorMessage = e.response?.data['detail'] ?? errorMessage;
+      } else if (e.response?.data is String) {
+        errorMessage = e.response?.statusMessage ?? 'Internal Server Error';
+      }
+      throw Exception('Error validando plan: $errorMessage');
+    }
+  }
+
+  /// 🔗 Asigna especialistas (nutri/coach) a un cliente (Admin only)
+  Future<void> assignEspecialista(int clienteId, {int? nutriId, int? trainerId, required String token}) async {
+    try {
+      await _dio.put(
+        '/admin/clientes/$clienteId/asignar',
+        queryParameters: {
+          if (nutriId != null) 'nutri_id': nutriId,
+          if (trainerId != null) 'trainer_id': trainerId,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al asignar especialistas: ${e.response?.data['detail'] ?? e.message}');
+    }
+  }
+
+  /// 👥 Obtiene la lista de todo el staff (Admin only)
+  Future<List<Map<String, dynamic>>> getStaffList(String token) async {
+    try {
+      final response = await _dio.get('/admin/staff',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception('Error al obtener staff: ${e.response?.data['detail'] ?? e.message}');
+    }
+  }
+
+  /// 🍱 Obtiene el plan nutricional detallado de un paciente
+  Future<Map<String, dynamic>> getPatientPlan(int clienteId, String token) async {
+    try {
+      final response = await _dio.get('/nutricionista/cliente/$clienteId/plan',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception('Error al obtener plan: ${e.response?.data['detail'] ?? e.message}');
+    }
+  }
+
+  /// 📝 Actualiza el plan nutricional de un paciente
+  Future<void> updatePatientPlan(int clienteId, Map<String, dynamic> planData, String token) async {
+    try {
+      await _dio.put('/nutricionista/cliente/$clienteId/plan',
+          data: planData,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+    } on DioException catch (e) {
+      throw Exception('Error al actualizar plan: ${e.response?.data['detail'] ?? e.message}');
+    }
+  }
+}
+
+// Exception simple para manejo de errores
+class HTTPException implements Exception {
+  final int code;
+  final String message;
+  HTTPException(this.code, this.message);
+  @override
+  String toString() => 'HTTP $code: $message';
 }

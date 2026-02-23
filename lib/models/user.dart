@@ -6,6 +6,7 @@ class User {
   final String email;
   final String roleName;
   final bool isActive;
+  final int? pacientesCount;
 
   User({
     required this.id, 
@@ -15,6 +16,7 @@ class User {
     required this.email,
     required this.roleName,
     this.isActive = true,
+    this.pacientesCount,
   });
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
@@ -28,6 +30,7 @@ class User {
       email: json['email'] ?? '',
       roleName: json['role_name'] ?? 'staff',
       isActive: json['is_active'] ?? true,
+      pacientesCount: json['pacientes_count'],
     );
   }
 
@@ -40,6 +43,7 @@ class User {
       'email': email,
       'role_name': roleName,
       'is_active': isActive,
+      'pacientes_count': pacientesCount,
     };
   }
 }

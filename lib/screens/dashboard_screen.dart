@@ -35,10 +35,72 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     
     // Carga inicial de datos a través del Provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // ✅ Mostrar Toast de bienvenida si acaba de iniciar sesión
+      if (authProvider.showWelcomeMessage) {
+        final String name = authProvider.userName ?? 'Usuario';
+        _showToast(context, '¡Bienvenido, $name!', Colors.green[700]!);
+        authProvider.consumeWelcomeMessage();
+      }
+      
       _loadDashboardData();
     });
   }
 
+  void _showToast(BuildContext context, String message, Color color) {
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 100), // Flotando sobre el contenido inferior
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(30), // Forma de píldora
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min, // Ajuste al contenido
+                children: [
+                  const Icon(Icons.stars_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontWeight: FontWeight.w800, 
+                        fontSize: 14,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 4), () {
+      overlayEntry.remove();
+    });
+  }
+  
   @override
   void dispose() {
     _progressController?.dispose();

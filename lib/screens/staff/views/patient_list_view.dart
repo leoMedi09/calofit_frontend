@@ -286,56 +286,120 @@ class _PatientListViewState extends State<PatientListView> {
       if (context.mounted) Navigator.pop(context);
 
       if (context.mounted) {
-        showDialog(
+        showModalBottomSheet(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Asignar Nutricionista'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: nutris.length,
-                itemBuilder: (context, index) {
-                  final nutri = nutris[index];
-                  return ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-                    title: Text('${nutri['first_name']} ${nutri['last_name_paternal']}'),
-                    subtitle: Text('${nutri['email'] ?? ''}\n${nutri['pacientes_count'] ?? 0} pacientes asignados'),
-                    isThreeLine: true,
-                    onTap: () async {
-                      try {
-                        await _apiService.assignEspecialista(
-                          patient['id'], 
-                          nutriId: nutri['id'], 
-                          token: authProvider.token!
-                        );
-                        if (context.mounted) {
-                          Navigator.pop(context); // Cerrar lista
-                          Navigator.pop(context); // Cerrar preview
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Nutricionista asignado correctamente'),
-                              backgroundColor: Colors.green,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                          );
-                        }
-                      }
-                    },
-                  );
-                },
-              ),
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-            ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Asignar Nutricionista',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF263238)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Selecciona un especialista para ${patient['full_name']}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: nutris.length,
+                    itemBuilder: (context, index) {
+                      final nutri = nutris[index];
+                      final bool isCurrentlyAssigned = nutri['id'] == patient['nutri_id'];
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: isCurrentlyAssigned ? const Color(0xFFE8F5E9) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isCurrentlyAssigned ? const Color(0xFF4CAF50) : Colors.grey[200]!,
+                            width: isCurrentlyAssigned ? 2 : 1,
+                          ),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          leading: CircleAvatar(
+                            backgroundColor: isCurrentlyAssigned ? const Color(0xFF4CAF50) : const Color(0xFF1E88E5).withOpacity(0.1),
+                            child: Icon(
+                              isCurrentlyAssigned ? Icons.check_rounded : Icons.person_outline_rounded,
+                              color: isCurrentlyAssigned ? Colors.white : const Color(0xFF1E88E5),
+                            ),
+                          ),
+                          title: Text(
+                            '${nutri['first_name']} ${nutri['last_name_paternal']}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text('${nutri['pacientes_count'] ?? 0} pacientes asignados'),
+                          trailing: isCurrentlyAssigned 
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4CAF50),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'ACTUAL',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              )
+                            : const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                          onTap: isCurrentlyAssigned ? null : () async {
+                            try {
+                              await _apiService.assignEspecialista(
+                                patient['id'], 
+                                nutriId: nutri['id'], 
+                                token: authProvider.token!
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(context); // Cerrar lista
+                                Navigator.pop(context); // Cerrar preview
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Nutricionista asignado correctamente'),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                // Opcional: Recargar lista
+                                _loadPatients();
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }
@@ -480,11 +544,13 @@ class _PatientQuickPreview extends StatelessWidget {
                   color: Colors.white,
                 ),
                 label: Text(
-                  patient['nutri_id'] != null ? 'Cambiar Especialista' : 'Asignar Nutricionista', 
+                  patient['nutri_id'] != null ? 'Cambiar Nutricionista' : 'Asignar Nutricionista', 
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32), // Green
+                  backgroundColor: patient['nutri_id'] != null 
+                      ? const Color(0xFF5C6BC0) // Indigo para "Cambiar"
+                      : const Color(0xFF2E7D32), // Verde para "Asignar"
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

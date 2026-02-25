@@ -76,21 +76,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
       final auth = Provider.of<AuthProvider>(context, listen: false);
 
-        if (auth.isAuthenticated) {
+      if (auth.isAuthenticated) {
           final String finalType = auth.userType?.toLowerCase() ?? '';
           debugPrint('🚀 Login exitoso. Rol detectado: $finalType');
           
-          // ✅ Decisión basada estrictamente en el tipo devuelto por el servidor
-          String route;
-          if (finalType == 'staff' || finalType == 'admin') {
-            route = '/staff-main';
-          } else {
-            route = '/dashboard';
-          }
+          String route = (finalType == 'staff' || finalType == 'admin') 
+              ? '/staff-main' 
+              : '/dashboard';
           
           debugPrint('🎯 Navegando a ruta: $route');
           Navigator.pushNamedAndRemoveUntil(context, route, (route) => false);
-        } else {
+      } else {
         setState(() => _errorMessage = 'No se pudo validar la sesión.');
       }
 

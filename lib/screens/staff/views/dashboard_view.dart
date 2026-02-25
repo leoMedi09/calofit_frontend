@@ -28,6 +28,15 @@ class _DashboardViewState extends State<DashboardView> {
   int _countCoach = 0;
   int _countAdmin = 0;
   int _countInactive = 0;
+  
+  // 🏥 Nutri KPIs
+  int _countPacientes = 0;
+  int _countValidaciones = 0;
+  int _countAlertasCriticas = 0;
+  double _adherenciaMedia = 0.0;
+  List<double> _tendenciaAdherencia = [];
+  List<Map<String, dynamic>> _recentAlerts = [];
+  
   String _currentAIInsight = 'Generando informe estratégico...';
   Timer? _refreshTimer;
 
@@ -59,68 +68,91 @@ class _DashboardViewState extends State<DashboardView> {
     
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final team = await _apiService.getUsers(authProvider.token ?? '');
-      
-      int nutris = 0;
-      int coaches = 0;
-      int admins = 0;
-      int inactives = 0;
-      bool selfFound = false;
-      final currentUserId = authProvider.userId;
+      final token = authProvider.token ?? '';
       final currentUserRole = authProvider.userRole?.toLowerCase() ?? '';
+      final isAdmin = currentUserRole.contains('admin') || currentUserRole.contains('administrador');
 
-      for (var member in team) {
-        if (member.id == currentUserId) selfFound = true;
+      if (isAdmin) {
+        // 🏢 Lógica original para Administradores (Gestión de Staff)
+        final team = await _apiService.getUsers(token);
         
-        String role = member.roleName.toLowerCase();
-        if (role.contains('admin') || role.contains('administrador')) {
-          admins++;
-        } else if (role.contains('nutri')) {
-          nutris++;
-        } else if (role.contains('coach') || role.contains('trainer')) {
-          coaches++;
-        }
+        int nutris = 0;
+        int coaches = 0;
+        int admins = 0;
+        int inactives = 0;
+        bool selfFound = false;
+        final currentUserId = authProvider.userId;
 
-        if (!member.isActive) {
-          inactives++;
-        }
-      }
-
-      // Si el usuario actual no estaba en la lista de la API (pero es personal activo), sumarlo
-      if (!selfFound) {
-        if (currentUserRole.contains('admin') || currentUserRole.contains('administrador')) {
-          admins++;
-        } else if (currentUserRole.contains('nutri')) {
-          nutris++;
-        } else if (currentUserRole.contains('coach') || currentUserRole.contains('trainer')) {
-          coaches++;
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _countNutri = nutris;
-          _countCoach = coaches;
-          _countAdmin = admins;
-          _countInactive = inactives;
-          _isLoading = false;
+        for (var member in team) {
+          if (member.id == currentUserId) selfFound = true;
           
-          // 🤖 Generar insight dinámico basado en los datos reales
-          final total = nutris + coaches + admins;
-          if (total == 0) {
-            _currentAIInsight = '👋 No hay personal registrado aún. ¡Empieza registrando nuevos miembros!';
-          } else if (inactives > total / 2) {
-            _currentAIInsight = '⚠️ Más de la mitad del equipo está suspendido. Considera reactivar miembros clave.';
-          } else if (nutris == 0 && coaches == 0) {
-            _currentAIInsight = '📢 Aún no tienes Nutricionistas ni Coaches. ¡Forma tu equipo especializado!';
-          } else if (nutris > coaches * 2) {
-            _currentAIInsight = '🏋️‍♀️ Hay mucho más nutricionistas que coaches. ¿Quieres equilibrar tu equipo deportivo?';
-          } else if (coaches > nutris * 2) {
-            _currentAIInsight = '🥗 Más coaches que nutricionistas. ¿Necesitas reforzar el área nutricional?';
-          } else {
-            _currentAIInsight = '✅ Equipo balanceado. Ahora enfoca tu atención en mejorar la retención de clientes.';
+          String role = member.roleName.toLowerCase();
+          if (role.contains('admin') || role.contains('administrador')) {
+            admins++;
+          } else if (role.contains('nutri')) {
+            nutris++;
+          } else if (role.contains('coach') || role.contains('trainer')) {
+            coaches++;
           }
-        });
+
+          if (!member.isActive) {
+            inactives++;
+          }
+        }
+
+        if (!selfFound) {
+          admins++;
+        }
+
+        if (mounted) {
+          setState(() {
+            _countNutri = nutris;
+            _countCoach = coaches;
+            _countAdmin = admins;
+            _countInactive = inactives;
+            _isLoading = false;
+            
+            final total = nutris + coaches + admins;
+            if (total == 0) {
+              _currentAIInsight = '👋 No hay personal registrado aún.';
+            } else if (inactives > total / 2) {
+              _currentAIInsight = '⚠️ Alta tasa de staff inactivo.';
+            } else {
+              _currentAIInsight = '✅ Equipo balanceado. Los logs muestran estabilidad.';
+            }
+          });
+        }
+      } else {
+        // 🏥 Lógica nueva para Nutricionistas (KPIs Clínicos)
+        final stats = await _apiService.getNutriStats(token);
+        
+        if (mounted) {
+          setState(() {
+            _countPacientes = stats['total_pacientes'] ?? 0;
+            _countValidaciones = stats['validaciones_pendientes'] ?? 0;
+            _countAlertasCriticas = stats['alertas_criticas'] ?? 0;
+            _adherenciaMedia = (stats['adherencia_media'] ?? 0.0).toDouble();
+            _tendenciaAdherencia = (stats['tendencia_adherencia'] as List?)
+                ?.map((e) => (e as num).toDouble())
+                .toList() ?? [];
+            _recentAlerts = (stats['alertas_recientes'] as List?)
+                ?.map((e) => Map<String, dynamic>.from(e))
+                .toList() ?? [];
+            
+            _isLoading = false;
+            
+            // Insight específico para Nutri
+            if (_countAlertasCriticas > 0) {
+              _currentAIInsight = '🚨 Tienes $_countAlertasCriticas alertas críticas de salud. ¡Revísalas pronto!';
+            } else if (_countValidaciones > 0) {
+              _currentAIInsight = '📝 Hay $_countValidaciones planes esperando tu validación profesional.';
+            } else if (_adherenciaMedia < 50) {
+              _currentAIInsight = '📉 La adherencia media es baja. Considera contactar a tus pacientes.';
+            } else {
+              _currentAIInsight = '🌟 ¡Excelente! Tus pacientes mantienen una adherencia del $_adherenciaMedia%.';
+            }
+          });
+        }
       }
     } on DioException catch (e) {
       // Detectar error de autenticación (token expirado)
@@ -310,7 +342,7 @@ class _DashboardViewState extends State<DashboardView> {
                   if (_isAdmin(context))
                     _buildAdminModernStats()
                   else
-                    _buildKpiGrid(),
+                    _buildNutriKPIs(),
 
                   const SizedBox(height: 35),
 
@@ -467,6 +499,206 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
+
+  Widget _buildNutriKPIs() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 📈 Main KPI Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                'Seguimiento',
+                '$_countPacientes',
+                'Pacientes',
+                Icons.people_alt_rounded,
+                primaryBlue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                'Pendientes',
+                '$_countValidaciones',
+                'Validaciones',
+                Icons.fact_check_rounded,
+                Colors.orange,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                'Alertas',
+                '$_countAlertasCriticas',
+                'Críticas',
+                Icons.crisis_alert_rounded,
+                Colors.red,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 25),
+        
+        // 📊 Adherence Chart Section
+        _buildSectionSubtitle('Adherencia del Equipo (7 días)'),
+        const SizedBox(height: 15),
+        Container(
+          height: 200,
+          padding: const EdgeInsets.fromLTRB(10, 20, 20, 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: _buildAdherenceChart(),
+        ),
+        const SizedBox(height: 15),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'PROMEDIO ACTUAL: $_adherenciaMedia%',
+                style: TextStyle(
+                  color: primaryBlue,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, String unit, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: color.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+        border: Border.all(color: color.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1A237E),
+              letterSpacing: -0.5,
+            ),
+          ),
+          Text(
+            unit,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdherenceChart() {
+    if (_tendenciaAdherencia.isEmpty) {
+      return const Center(child: Text('Cargando tendencia...'));
+    }
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 25,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.grey.withOpacity(0.1),
+            strokeWidth: 1,
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+                int idx = value.toInt();
+                if (idx < 0 || idx >= days.length) return const SizedBox();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    days[idx],
+                    style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold, fontSize: 10),
+                  ),
+                );
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 50,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${value.toInt()}%',
+                  style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.bold, fontSize: 10),
+                );
+              },
+              reservedSize: 35,
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: 6,
+        minY: 0,
+        maxY: 100,
+        lineBarsData: [
+          LineChartBarData(
+            spots: List.generate(_tendenciaAdherencia.length, (i) {
+              return FlSpot(i.toDouble(), _tendenciaAdherencia[i]);
+            }),
+            isCurved: true,
+            gradient: LinearGradient(colors: [primaryBlue, primaryBlue.withOpacity(0.5)]),
+            barWidth: 4,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [primaryBlue.withOpacity(0.2), primaryBlue.withOpacity(0)],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildKpiGrid() {
     return Column(
@@ -994,47 +1226,113 @@ class _DashboardViewState extends State<DashboardView> {
 
 
   Widget _buildHealthAlertsSection() {
-    // Datos mockeados por ahora para mostrar el diseño
-    final alerts = [
-      {'client': 'Roberto Gomez', 'issue': 'Ingesta calórica muy baja', 'urgency': 'Alta'},
-      {'client': 'Ana Lucia', 'issue': 'Desviación en plan de cardio', 'urgency': 'Media'},
-    ];
-
-    return Column(
-      children: alerts.map((alert) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+    if (_recentAlerts.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
+          color: Colors.green.shade50,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.red.shade100, width: 1),
+          border: Border.all(color: Colors.green.shade100, width: 1),
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
-              child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-            ),
+            Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 20),
             const SizedBox(width: 12),
+            const Text(
+              'No hay alertas pendientes. ¡Todo en orden!',
+              style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A531B), fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: _recentAlerts.map((alert) => Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        decoration: BoxDecoration(
+          color: alert['urgency'] == 'Alta' ? Colors.red.shade50 : Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: alert['urgency'] == 'Alta' ? Colors.red.shade100 : Colors.orange.shade100, 
+            width: 1.2
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (alert['urgency'] == 'Alta' ? Colors.red : Colors.orange).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4)
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: alert['urgency'] == 'Alta' ? Colors.red.shade100 : Colors.orange.shade100, 
+                shape: BoxShape.circle
+              ),
+              child: Icon(
+                alert['urgency'] == 'Alta' ? Icons.warning_amber_rounded : Icons.info_outline_rounded, 
+                color: alert['urgency'] == 'Alta' ? Colors.red : Colors.orange.shade800, 
+                size: 22
+              ),
+            ),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(alert['client']!, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: -0.2)),
-                  Text(alert['issue']!, style: TextStyle(color: Colors.red.shade800, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          alert['paciente'] ?? 'Paciente', 
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800, 
+                            fontSize: 14, 
+                            letterSpacing: -0.2, 
+                            color: Color(0xFF1A1A1A)
+                          ),
+                          softWrap: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: alert['urgency'] == 'Alta' ? Colors.red : Colors.orange,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          alert['urgency'] ?? 'Baja',
+                          style: const TextStyle(
+                            color: Colors.white, 
+                            fontSize: 10, 
+                            fontWeight: FontWeight.w900, 
+                            letterSpacing: 0.5
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    alert['problema'] ?? '', 
+                    style: TextStyle(
+                      color: alert['urgency'] == 'Alta' ? Colors.red.shade900 : Colors.orange.shade900, 
+                      fontSize: 13, 
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                    ),
+                    softWrap: true,
+                  ),
                 ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: alert['urgency'] == 'Alta' ? Colors.red : Colors.orange,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                alert['urgency']!,
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
               ),
             ),
           ],

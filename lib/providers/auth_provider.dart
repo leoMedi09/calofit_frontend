@@ -13,6 +13,7 @@ class AuthProvider with ChangeNotifier {
   String? _userEmail;
   int? _userId;
   String? _userIdFirebase;
+  bool _showWelcomeMessage = false;
   final ApiService _apiService = ApiService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
@@ -26,6 +27,11 @@ class AuthProvider with ChangeNotifier {
   int? get userId => _userId;
   bool get isAuthenticated => _token != null;
   String? get userIdFirebase => _userIdFirebase;
+  bool get showWelcomeMessage => _showWelcomeMessage;
+
+  void consumeWelcomeMessage() {
+    _showWelcomeMessage = false;
+  }
 
   // lib/providers/auth_provider.dart
 
@@ -94,6 +100,7 @@ class AuthProvider with ChangeNotifier {
       await _saveSession(rememberMe);
 
       // 5️⃣ NOTIFICACIÓN (Esto dispara el redibujado de todas las pantallas)
+      _showWelcomeMessage = true;
       notifyListeners();
 
       debugPrint('✅ Login completado y estado notificado para: $_userName (${isStaff ? "Staff" : "Cliente"})');

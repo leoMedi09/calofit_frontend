@@ -491,6 +491,27 @@ class ApiService {
     }
   }
 
+  /// 🩺 Consulta al Copiloto Clínico (Staff)
+  /// Nueva ruta aislada para nutricionistas y admins.
+  Future<Map<String, dynamic>> consultarCopiloto(String mensaje, String token, {List<Map<String, dynamic>>? historial}) async {
+    try {
+      final payload = {
+        'mensaje': mensaje,
+        if (historial != null) 'historial': historial,
+      };
+
+      debugPrint('🩺 >>> PETICIÓN COPILOTO CLÍNICO <<<');
+      final response = await _dio.post('/copiloto/consultar',
+          data: payload,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+
+      return response.data;
+    } on DioException catch (e) {
+      debugPrint('❌ Error en Copiloto: ${e.message}');
+      throw Exception('Error en Copiloto: ${e.response?.data['detail'] ?? e.message}');
+    }
+  }
+
   // ============ ALERTAS DE SALUD (STAFF) ============
 
   /// 🚨 Obtiene alertas de salud de los clientes asignados (solo staff)
@@ -587,6 +608,18 @@ class ApiService {
         errorMessage = e.response?.statusMessage ?? 'Error del servidor (500)';
       }
       throw Exception('Error obteniendo pacientes: $errorMessage');
+    }
+  }
+
+  /// 📊 Obtiene estadísticas clave para el dashboard del nutricionista
+  Future<Map<String, dynamic>> getNutriStats(String token) async {
+    try {
+      print('🔍 Obteniendo estadísticas de nutricionista...');
+      final response = await _dio.get('/nutricionista/stats',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception('Error al obtener estadísticas: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 

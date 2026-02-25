@@ -13,74 +13,45 @@ class StaffProfileView extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        SliverAppBar(
-          expandedHeight: 200,
-          backgroundColor: primaryBlue,
-          elevation: 0,
-          pinned: true,
-          toolbarHeight: 0,
-          flexibleSpace: FlexibleSpaceBar(
-            background: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [primaryBlue, secondaryBlue],
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mi Perfil'.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12, 
+                    fontWeight: FontWeight.w900, 
+                    color: primaryBlue.withOpacity(0.8),
+                    letterSpacing: 1.5
+                  ),
                 ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(40),
-                  bottomRight: Radius.circular(40),
+                const SizedBox(height: 4),
+                Text(
+                  authProvider.userName ?? 'Usuario',
+                  style: const TextStyle(
+                    fontSize: 32, 
+                    fontWeight: FontWeight.w900, 
+                    color: Color(0xFF1A237E),
+                    letterSpacing: -1.2,
+                  ),
                 ),
-                boxShadow: [
-                  BoxShadow(color: Color(0x331E88E5), blurRadius: 20, offset: Offset(0, 10)),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 42, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.account_circle_rounded, color: Colors.white, size: 14),
-                          SizedBox(width: 6),
-                          Text(
-                            'MI PERFIL PROFESIONAL',
-                            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Configuración de Cuenta',
-                      style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.w500, letterSpacing: -0.2),
-                    ),
-                    Text(
-                      authProvider.userName?.split(' ')[0] ?? 'Mi Perfil',
-                      style: const TextStyle(
-                        fontSize: 28, 
-                        fontWeight: FontWeight.w900, 
-                        color: Colors.white,
-                        letterSpacing: -1.0,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Gestión y Configuración de Cuenta',
+                  style: TextStyle(
+                    fontSize: 14, 
+                    color: Colors.grey.shade600, 
+                    fontWeight: FontWeight.w500
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               _buildInfoCard(
@@ -123,28 +94,33 @@ class StaffProfileView extends StatelessWidget {
 
   Widget _buildInfoCard(String title, List<Widget> children) {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+              ),
+              const Divider(height: 24),
+              ...children,
+            ],
           ),
-          const Divider(height: 24),
-          ...children,
-        ],
+        ),
       ),
     );
   }

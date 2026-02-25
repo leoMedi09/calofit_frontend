@@ -20,6 +20,75 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
   int _selectedIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.showWelcomeMessage) {
+        _showToast(
+          context,
+          "¡Bienvenido Staff, ${authProvider.userName}! 🛠️",
+          const Color(0xFF2E7D32) // Verde Premium
+        );
+        authProvider.consumeWelcomeMessage();
+      }
+    });
+  }
+
+  void _showToast(BuildContext context, String message, Color color) {
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 100), // Flotando sobre el contenido inferior
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(30), // Forma de píldora
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min, // Ajuste al contenido
+                children: [
+                  const Icon(Icons.stars_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontWeight: FontWeight.w800, 
+                        fontSize: 14,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 4), () {
+      overlayEntry.remove();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final String userRole = (authProvider.userRole ?? 'STAFF').toUpperCase();

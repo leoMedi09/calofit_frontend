@@ -151,6 +151,33 @@ class ApiService {
     }
   }
 
+  // ✅ Check-in Semanal
+  Future<Map<String, dynamic>> getCheckInStatus(String token) async {
+    try {
+      final response = await _dio.get(
+        '/clientes/checkin-status',
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      return response.data;
+    } on DioException catch (e) {
+      print('❌ Error obteniendo status de check-in: ${e.response?.data}');
+      throw Exception(e.response?.data['detail'] ?? 'Error de conexión');
+    }
+  }
+
+  Future<void> postCheckIn(String token, Map<String, dynamic> data) async {
+    try {
+      await _dio.post(
+        '/clientes/checkin',
+        data: data,
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+    } on DioException catch (e) {
+      print('❌ Error enviando check-in: ${e.response?.data}');
+      throw Exception(e.response?.data['detail'] ?? 'Error al guardar check-in');
+    }
+  }
+
   // ✅ Actualizar contraseña de un miembro del staff (Admin only)
   Future<void> updateStaffPassword(int userId, String newPassword, String token) async {
     try {
@@ -255,6 +282,18 @@ class ApiService {
       return response.data['response'] ?? response.data['answer'] ?? 'Sin respuesta';
     } catch (e) {
       throw Exception('Error consultando asistente: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getSugerenciaEstrategica(int clientId, String token) async {
+    try {
+      final response = await _dio.get(
+        '/nutricionista/cliente/$clientId/sugerir-estrategia',
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Error al obtener sugerencia de la IA: $e');
     }
   }
 
@@ -608,6 +647,20 @@ class ApiService {
         errorMessage = e.response?.statusMessage ?? 'Error del servidor (500)';
       }
       throw Exception('Error obteniendo pacientes: $errorMessage');
+    }
+  }
+
+  /// 🎯 Actualiza la guía estratégica (foco, recomendados, prohibidos) del cliente (staff)
+  Future<void> actualizarGuiaEstrategica(int clienteId, Map<String, dynamic> data, String token) async {
+    try {
+      print('🎯 Actualizando guía estratégica para cliente $clienteId...');
+      await _dio.post('/nutricionista/actualizar-guia-estrategica/$clienteId',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      print('✅ Guía estratégica actualizada');
+    } on DioException catch (e) {
+      print('❌ Error actualizando guía: ${e.response?.data}');
+      throw Exception('Error actualizando guía: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 

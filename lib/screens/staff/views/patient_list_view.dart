@@ -119,6 +119,7 @@ class _PatientListViewState extends State<PatientListView> {
         final patient = _filteredPatients[index];
         final double adherence = double.tryParse(patient['adherencia']?.toString() ?? '0') ?? 0;
         final bool isMale = patient['gender']?.toString().toLowerCase() == 'm';
+        final bool isValidated = patient['is_validated'] == true;
         
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -166,15 +167,25 @@ class _PatientListViewState extends State<PatientListView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          patient['full_name'] ?? 'Sin nombre',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: Color(0xFF263238),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                patient['full_name'] ?? 'Sin nombre',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Color(0xFF263238),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isValidated) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.verified, color: Colors.blue, size: 16),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -511,7 +522,14 @@ class _PatientQuickPreview extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.1)),
+              border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.12)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,11 +538,12 @@ class _PatientQuickPreview extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    patient['alerta'] ?? 'Cargando análisis inteligente...',
+                    patient['alerta'] ?? 'Analizando actividad reciente...',
                     style: const TextStyle(
                       fontSize: 14, 
-                      height: 1.5,
+                      height: 1.6,
                       fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w500,
                       color: Color(0xFF455A64),
                     ),
                   ),
@@ -532,6 +551,7 @@ class _PatientQuickPreview extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 32), // 👈 Incrementamos el espacio aquí (era 0 o implícito)
           if (isAdmin) ...[
             const SizedBox(height: 32),
             SizedBox(
@@ -603,7 +623,7 @@ class _PatientQuickPreview extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context, true),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E88E5),
+                            backgroundColor: const Color(0xFF2E7D32),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
@@ -635,15 +655,17 @@ class _PatientQuickPreview extends StatelessWidget {
                     }
                   }
                 },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF1E88E5), width: 1.5),
-                  foregroundColor: const Color(0xFF1E88E5),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: const Text('Validar Plan Diario', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               ),
             ),
           ],
+          const SizedBox(height: 24), // 👈 Más espacio al final para que no choque con el borde inferior
           const SizedBox(height: 10),
         ],
       ),

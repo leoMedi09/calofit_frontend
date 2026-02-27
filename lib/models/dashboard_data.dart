@@ -19,6 +19,7 @@ class DailySummary {
   final double imcActual;
   final String aiInsight;
   final PlanNutricional? planObjetivo;
+  final bool isStrategyValidated;
 
   DailySummary({
     required this.calorias,
@@ -36,6 +37,7 @@ class DailySummary {
     required this.imcActual,
     required this.aiInsight,
     this.planObjetivo,
+    this.isStrategyValidated = false,
   });
 
   factory DailySummary.fromJson(Map<String, dynamic> json) {
@@ -81,7 +83,8 @@ class DailySummary {
       caloriasQuemadas: toDouble(json['resumen']?['calorias_quemadas'] ?? json['calorias_quemadas']),
       imcActual: toDouble(dieta['imc'] ?? dieta['imc_actual']),
       aiInsight: (json['ai_insight'] ?? dieta['notes'] ?? dieta['ai_insight'] ?? "").toString(),
-      planObjetivo: plan != null ? PlanNutricional.fromJson(plan) : null,  
+      planObjetivo: plan != null ? PlanNutricional.fromJson(plan) : null,
+      isStrategyValidated: json['is_strategy_validated'] as bool? ?? false,
     );
   }
 }

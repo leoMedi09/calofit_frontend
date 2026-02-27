@@ -13,6 +13,8 @@ import '../widgets/plan_status_badge.dart';
 import '../widgets/plan_alert_card.dart';
 
 import '../providers/balance_provider.dart';
+import '../widgets/checkin_card.dart';
+import '../screens/checkin_wizard_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -24,6 +26,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   AnimationController? _progressController;
+  
+  // ✅ Estado de Check-in
+  bool _checkInNeeded = false;
+  int _precisionScore = 100;
+  double _baselineWeight = 70.0;
+  double _baselineHeight = 170.0;
 
   @override
   void initState() {
@@ -133,6 +141,30 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         _progressController?.forward();
       }
       
+      // ✅ Cargar Estado de Check-in
+      try {
+        final checkInStatus = await _apiService.getCheckInStatus(authProvider.token!);
+        setState(() {
+          _checkInNeeded = checkInStatus['needed'] ?? false;
+          _precisionScore = checkInStatus['precision_score'] ?? 100;
+        });
+      } catch (checkInErr) {
+        debugPrint('Error cargando status de check-in: $checkInErr');
+      }
+
+      // ✅ Obtener peso/altura base para el wizard
+      if (_checkInNeeded) {
+        try {
+          final profile = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
+          setState(() {
+            _baselineWeight = profile.weight;
+            _baselineHeight = profile.height;
+          });
+        } catch (profileErr) {
+          debugPrint('Error cargando perfil para baseline: $profileErr');
+        }
+      }
+      
     } catch (e) {
       debugPrint('Error cargando dashboard via provider: $e');
     }
@@ -197,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           child: CustomScrollView(
             slivers: [
               // Header personalizado
-              _buildCustomHeader(authProvider),
+              _buildCustomHeader(authProvider, dailySummary),
               
               // Contenido principal
               SliverPadding(
@@ -212,6 +244,29 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ),
                       )
                     else if (dailySummary != null) ...[ // Hero Section: Progreso del día
+                      
+                      // ✅ NUEVO: Card de Check-in Semanal
+                      if (_checkInNeeded || _precisionScore < 100)
+                        CheckInCard(
+                          precisionScore: _precisionScore,
+                          isNeeded: _checkInNeeded,
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CheckInWizardScreen(
+                                  currentWeight: _baselineWeight,
+                                  currentHeight: _baselineHeight,
+                                ),
+                              ),
+                            );
+                            if (result == true) {
+                              _loadDashboardData(); // Recargar datos tras completar
+                            }
+                          },
+                        ),
+                      const SizedBox(height: 10),
+
                       _buildProgressHero(dailySummary),
                       const SizedBox(height: 20),
                       
@@ -253,8 +308,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       // Insight de IA
                       if (dailySummary.aiInsight.isNotEmpty) ...[
                         _buildAIInsightModern(dailySummary),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                       ],
+
+                      // ✨ NUEVO: Estado de Validación Estratégica
+                      if (dailySummary.isStrategyValidated)
+                        _buildValidationBadge(),
+                      const SizedBox(height: 20),
                       
                       // Stats rápidas
                       _buildQuickStats(dailySummary),
@@ -291,7 +351,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ==================== CUSTOM HEADER ====================
-  Widget _buildCustomHeader(AuthProvider authProvider) {
+  Widget _buildCustomHeader(AuthProvider authProvider, DailySummary? dailySummary) {
     return SliverAppBar(
       expandedHeight: 140,
       floating: false,
@@ -381,22 +441,32 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            authProvider.userName ?? 'Usuario',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    authProvider.userName ?? 'Usuario',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
+                                if (dailySummary?.isStrategyValidated == true) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.verified, color: Colors.lightBlueAccent, size: 24),
+                                ],
                               ],
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
                         ],
                       ),
                     ),
@@ -1204,6 +1274,52 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           label: 'Perfil',
         ),
       ],
+    );
+  }
+
+  Widget _buildValidationBadge() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.white],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green.shade200),
+        boxShadow: [
+          BoxShadow(color: Colors.green.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.verified_user_rounded, color: Colors.green, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Estrategia Validada',
+                  style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 14),
+                ),
+                Text(
+                  'Tu nutricionista ha revisado y aprobado tu plan estratégico para esta semana.',
+                  style: TextStyle(color: Colors.green.shade900, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

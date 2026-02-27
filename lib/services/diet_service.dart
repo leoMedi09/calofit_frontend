@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/dieta.dart';
 
+import '../config/api_config.dart';
+
 class DietService {
-  // CAMBIA ESTO: Usa la IP de tu PC, no pongas localhost
-  static const String baseUrl = "http://192.168.1.100:8000";
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static Future<Dieta?> obtenerDieta(String uid) async {
     try {

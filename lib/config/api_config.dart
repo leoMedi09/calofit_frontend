@@ -9,9 +9,9 @@ class ApiConfig {
       // Para Flutter Web
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
-      // Para dispositivo físico Android en WiFi / Ethernet (IP local actual: 192.168.15.45)
+      // Para dispositivo físico Android en WiFi / Ethernet (IP local actual: 192.168.15.63)
       // Si usas el EMULADOR de Android Studio, usa: 'http://10.0.2.2:8000'
-      return 'http://192.168.15.45:8000'; 
+      return 'http://192.168.15.63:8000'; 
     } else if (Platform.isIOS) {
       // Para iOS Simulator
       return 'http://localhost:8000';

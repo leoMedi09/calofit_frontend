@@ -37,6 +37,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   List<String> _medicalConditionsList = [];
   bool _isAILoading = false;
   bool _isValidated = false;
+  String _semanaStatus = 'falta_checkin';
 
   @override
   void initState() {
@@ -84,6 +85,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         _forbiddenList = List<String>.from(progressData['forbidden_foods'] ?? []);
         _medicalConditionsList = List<String>.from(progressData['medical_conditions'] ?? []);
         _isValidated = progressData['is_validated'] == true;
+        _semanaStatus = progressData['semana_status'] ?? 'falta_checkin';
       });
 
       try {
@@ -297,7 +299,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   Widget _buildMetricsGrid() {
-    final weight = _fullData?['current_weight']?.toString() ?? '--';
+    final weightRaw = _fullData?['current_weight'];
+    final weight = weightRaw is num ? weightRaw.toStringAsFixed(1) : '--';
     final height = _fullData?['current_height']?.toString() ?? '--';
     
     return Row(
@@ -341,47 +344,161 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   Widget _buildProgressCharts() {
-    final historialPeso = _fullData?['historial_peso'] as List?;
+    final historialPeso = (_fullData?['historial_peso'] as List?) ?? [];
     
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('EVOLUCIÓN DE PESO', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1, color: Colors.blueGrey)),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: historialPeso == null || historialPeso.isEmpty
-              ? const Center(child: Text('No hay datos suficientes para graficar'))
-              : LineChart(
-                  LineChartData(
-                    gridData: const FlGridData(show: false),
-                    titlesData: const FlTitlesData(show: false),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: List.generate(historialPeso.length, (i) {
-                          return FlSpot(i.toDouble(), (historialPeso[i]['valor'] as num).toDouble());
-                        }),
-                        isCurved: true,
-                        color: const Color(0xFF1E88E5),
-                        barWidth: 4,
-                        isStrokeCapRound: true,
-                        dotData: const FlDotData(show: true),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: const Color(0xFF1E88E5).withOpacity(0.1),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'EVOLUCIÓN SEMANAL', 
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2, color: Color(0xFF455A64))
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Peso (kg)',
+                  style: TextStyle(color: Colors.blue[800], fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          if (historialPeso.isEmpty)
+            const SizedBox(
+              height: 200,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.show_chart_rounded, color: Colors.grey, size: 40),
+                    SizedBox(height: 8),
+                    Text('Aún no hay registros de peso para graficar', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 220,
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 5,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.withOpacity(0.1),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 35,
+                        interval: 5,
+                        getTitlesWidget: (value, meta) => Text(
+                          value.toInt().toString(),
+                          style: TextStyle(color: Colors.grey[400], fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ),
-                    ],
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          int index = value.toInt();
+                          if (index >= 0 && index < historialPeso.length) {
+                             String fecha = historialPeso[index]['fecha']?.toString() ?? '';
+                             if (fecha.isNotEmpty) {
+                               // Extract day/month from YYYY-MM-DD
+                               try {
+                                 DateTime dt = DateTime.parse(fecha);
+                                 return Padding(
+                                   padding: const EdgeInsets.only(top: 8.0),
+                                   child: Text(
+                                     '${dt.day}/${dt.month}',
+                                     style: TextStyle(color: Colors.grey[500], fontSize: 9, fontWeight: FontWeight.bold),
+                                   ),
+                                 );
+                               } catch (_) {}
+                             }
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: List.generate(historialPeso.length, (i) {
+                        return FlSpot(i.toDouble(), (historialPeso[i]['valor'] as num).toDouble());
+                      }),
+                      isCurved: true,
+                      color: const Color(0xFF1E88E5),
+                      barWidth: 4,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                          radius: 5,
+                          color: Colors.white,
+                          strokeWidth: 3,
+                          strokeColor: const Color(0xFF1E88E5),
+                        ),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF1E88E5).withOpacity(0.2),
+                            const Color(0xFF1E88E5).withOpacity(0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ],
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (touchedSpot) => const Color(0xFF263238),
+                      getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                        return touchedBarSpots.map((barSpot) {
+                          return LineTooltipItem(
+                            '${barSpot.y.toStringAsFixed(1)} kg',
+                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                          );
+                        }).toList();
+                      },
+                    ),
+                    handleBuiltInTouches: true,
                   ),
                 ),
-          ),
+              ),
+            ),
         ],
       ),
     );
@@ -434,6 +551,71 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     );
   }
 
+  Future<void> _validarPlanSemanal() async {
+    final bool alreadyValidated = _semanaStatus == 'validado';
+    final bool needsCheckIn = _semanaStatus == 'falta_checkin';
+
+    if (needsCheckIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ El paciente debe realizar su Check-in antes de poder validar el plan semanal.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(alreadyValidated ? 'Actualizar Validación' : 'Confirmar Validación'),
+        content: Text(alreadyValidated 
+          ? '¿Deseas actualizar la validación del plan semanal de este paciente?'
+          : '¿Estás seguro de que deseas validar el plan nutricional semanal para este paciente?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await _apiService.validarPlanPaciente(widget.patientData['id'], authProvider.token!);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(alreadyValidated ? 'Validación actualizada' : 'Plan semanal validado exitosamente'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          _loadData(); // Recargar estado
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _askAICopilot() async {
     setState(() => _isAILoading = true);
     try {
@@ -453,7 +635,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✨ El Asistente IA ha completado los campos. ¡Revísalos!'),
+            content: Text('✨ Guía Semanal IA generada con éxito. ¡Revísala!'),
             backgroundColor: Colors.indigo,
           ),
         );
@@ -499,12 +681,12 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                       const Icon(Icons.auto_awesome_rounded, color: Color(0xFF1E88E5), size: 18),
                       const SizedBox(width: 6),
                       const Text(
-                        'GUÍA ESTRATÉGICA PARA IA', 
+                        'GUÍA ESTRATÉGICA SEMANAL (IA)', 
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
                       ),
                     ],
                   ),
-                  if (_isValidated)
+                  if (_semanaStatus == 'validado')
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
@@ -518,65 +700,121 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                           Icon(Icons.verified, color: Colors.green, size: 12),
                           SizedBox(width: 4),
                           Text(
-                            'VALIDADO',
+                            'PLAN VALIDADO ✅',
                             style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_semanaStatus == 'pendiente')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.pending_actions_rounded, color: Colors.orange, size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'PENDIENTE VALIDAR',
+                            style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_semanaStatus == 'falta_checkin')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.timer_off_rounded, color: Colors.red, size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'FALTA CHECK-IN',
+                            style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
                 ],
               ),
-              _isAILoading 
-                ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
-                : GestureDetector(
-                    onTap: _askAICopilot,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1E88E5).withOpacity(0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_semanaStatus != 'falta_checkin') 
+                    IconButton(
+                      icon: Icon(
+                        _semanaStatus == 'validado' ? Icons.check_circle_rounded : Icons.fact_check_rounded,
+                        color: _semanaStatus == 'validado' ? Colors.green : Colors.orange,
+                        size: 28,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.psychology_alt_rounded, size: 20, color: Colors.white),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Preguntar Asistente', 
-                            style: TextStyle(
-                              color: Colors.white, 
-                              fontWeight: FontWeight.w800, 
-                              fontSize: 13,
-                              letterSpacing: 0.3
-                            )
-                          ),
-                        ],
-                      ),
+                      tooltip: _semanaStatus == 'validado' ? 'Actualizar Validación' : 'Validar Plan Semanal',
+                      onPressed: _validarPlanSemanal,
                     ),
-                  ),
+                  const SizedBox(width: 8),
+                  _isAILoading 
+                    ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
+                    : GestureDetector(
+                        onTap: _askAICopilot,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF1E88E5).withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.psychology_alt_rounded, size: 20, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'IA Sugerir', 
+                                style: TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.w800, 
+                                  fontSize: 13,
+                                  letterSpacing: 0.3
+                                )
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 24),
           
           _buildEditField(
-            'Foco Semanal (Misión de la IA)', 
+            'Misión de la Semana (Enfoque IA)', 
             _strategicFocusController, 
             Icons.center_focus_strong_rounded, 
             '', 
             isNumber: false,
             maxLines: 5,
-            hint: 'Ej: Controlar ansiedad por dulces en las tardes...'
+            hint: 'Misión: Priorizar saciedad y control glucémico...'
           ),
           
           const SizedBox(height: 24),

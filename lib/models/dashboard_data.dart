@@ -19,6 +19,7 @@ class DailySummary {
   final double imcActual;
   final String aiInsight;
   final PlanNutricional? planObjetivo;
+  final String? aiStrategicFocus;
   final bool isStrategyValidated;
 
   DailySummary({
@@ -37,6 +38,7 @@ class DailySummary {
     required this.imcActual,
     required this.aiInsight,
     this.planObjetivo,
+    this.aiStrategicFocus,
     this.isStrategyValidated = false,
   });
 
@@ -84,6 +86,7 @@ class DailySummary {
       imcActual: toDouble(dieta['imc'] ?? dieta['imc_actual']),
       aiInsight: (json['ai_insight'] ?? dieta['notes'] ?? dieta['ai_insight'] ?? "").toString(),
       planObjetivo: plan != null ? PlanNutricional.fromJson(plan) : null,
+      aiStrategicFocus: json['ai_strategic_focus'] as String?,
       isStrategyValidated: json['is_strategy_validated'] as bool? ?? false,
     );
   }

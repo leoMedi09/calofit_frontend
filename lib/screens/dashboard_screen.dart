@@ -32,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   int _precisionScore = 100;
   double _baselineWeight = 70.0;
   double _baselineHeight = 170.0;
+  bool _dialogShown = false; // ✅ Para mostrar el popup solo una vez al entrar
 
   @override
   void initState() {
@@ -164,6 +165,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           debugPrint('Error cargando perfil para baseline: $profileErr');
         }
       }
+
+      // ✅ Mostrar Diálogo de Emergencia si hoy es necesario y no se ha mostrado
+      if (_checkInNeeded && !_dialogShown && mounted) {
+        _dialogShown = true;
+        _showEmergencyCheckInDialog();
+      }
       
     } catch (e) {
       debugPrint('Error cargando dashboard via provider: $e');
@@ -268,6 +275,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       const SizedBox(height: 10),
 
                       _buildProgressHero(dailySummary),
+                      if (dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildStrategicMissionCard(dailySummary.aiStrategicFocus!),
+                      ],
                       const SizedBox(height: 20),
                       
                       // Macronutrientes en cards horizontales
@@ -634,6 +645,71 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Widget _buildVerticalDivider() {
     return Container(width: 1, height: 30, color: Colors.white12);
+  }
+
+  Widget _buildStrategicMissionCard(String mission) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E88E5).withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E88E5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'MISIÓN SEMANAL DEL COACH',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1565C0),
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            mission,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF263238),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tu asistente IA basará sus consejos en este objetivo.',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1E88E5).withOpacity(0.8),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStatColumn(String label, String value) {
@@ -1317,6 +1393,92 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEmergencyCheckInDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        title: const Column(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 50),
+            SizedBox(height: 10),
+            Text(
+              'RECALIBRACIÓN REQUERIDA',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey, fontSize: 14),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '🚨 Tu plan nutricional está perdiendo precisión.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Ha pasado el sábado y no hemos recibido tus medidas de peso y talla. Sin estos datos, no podemos asegurar que tus macros de esta semana sean los correctos.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.fitness_center_rounded, color: Colors.orange),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Recuerda: En World Light Gym tienes básculas y medidores listos para ti.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('MÁS TARDE', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CheckInWizardScreen(
+                    currentWeight: _baselineWeight,
+                    currentHeight: _baselineHeight,
+                  ),
+                ),
+              ).then((value) {
+                if (value == true) _loadDashboardData();
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A237E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('ACTUALIZAR AHORA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           ),
         ],
       ),

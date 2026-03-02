@@ -19,18 +19,18 @@ class CheckInCard extends StatelessWidget {
         : (precisionScore > 30 ? Colors.orange : Colors.red);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF3F51B5), const Color(0xFF1A237E)],
+          colors: [const Color(0xFF283593), const Color(0xFF1A237E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3F51B5).withOpacity(0.3),
-            blurRadius: 15,
+            color: const Color(0xFF1A237E).withOpacity(0.2),
+            blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
@@ -39,9 +39,9 @@ class CheckInCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(32),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -51,31 +51,31 @@ class CheckInCard extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withOpacity(0.15),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.speed_rounded, color: Colors.white, size: 24),
+                          child: const Icon(Icons.speed_rounded, color: Colors.white, size: 20),
                         ),
                         const SizedBox(width: 12),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'CALIBRACIÓN DE IA',
                               style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.0,
                               ),
                             ),
                             Text(
                               'Check-in Semanal',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -87,8 +87,8 @@ class CheckInCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.amber,
-                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFFFFD54F),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           'HOY',
@@ -97,7 +97,7 @@ class CheckInCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -109,11 +109,11 @@ class CheckInCard extends StatelessWidget {
                             children: [
                               const Text(
                                 'Precisión del Plan',
-                                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
                               ),
                               Text(
                                 '$precisionScore%',
-                                style: TextStyle(color: statusColor, fontSize: 16, fontWeight: FontWeight.w900),
+                                style: TextStyle(color: statusColor, fontSize: 15, fontWeight: FontWeight.w900),
                               ),
                             ],
                           ),
@@ -134,12 +134,12 @@ class CheckInCard extends StatelessWidget {
                     const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 32),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
                   isNeeded 
-                      ? '⚠️ Tu plan necesita datos frescos para la próxima semana. ¡Actualiza ahora!' 
-                      : '✅ Datos al día. Tu IA está operando al máximo nivel de precisión.',
-                  style: const TextStyle(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic),
+                      ? '⚠️ Requiere datos para la próxima semana. ¡Actualiza ahora!' 
+                      : '✅ IA operando al máximo nivel de precisión.',
+                  style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 10, fontStyle: FontStyle.italic),
                 ),
               ],
             ),

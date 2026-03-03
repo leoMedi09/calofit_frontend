@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../widgets/profile_avatar.dart';
 
 class PatientRecordView extends StatefulWidget {
   final Map<String, dynamic> patientData;
@@ -215,6 +216,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
 
   Widget _buildHeaderCard() {
     final bool isMale = widget.patientData['gender']?.toString().toLowerCase() == 'm';
+    final String? photoUrl = widget.patientData['profile_picture_url'] ?? widget.patientData['profilePictureUrl'];
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -228,22 +231,15 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         children: [
           Row(
             children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    widget.patientData['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
-                    style: TextStyle(
-                      fontSize: 24, 
-                      fontWeight: FontWeight.w800, 
-                      color: isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)
-                    ),
-                  ),
+              ProfileAvatar(
+                photoUrl: photoUrl,
+                name: widget.patientData['full_name'] ?? 'U',
+                radius: 30,
+                backgroundColor: isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC),
+                textStyle: TextStyle(
+                  fontSize: 24, 
+                  fontWeight: FontWeight.w800, 
+                  color: isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)
                 ),
               ),
               const SizedBox(width: 16),

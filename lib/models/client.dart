@@ -13,6 +13,7 @@ class Client {
   final List<String> medicalConditions;
   final String activityLevel;
   final String goal;
+  final String? profilePictureUrl;
 
   Client({
     required this.id,
@@ -28,6 +29,7 @@ class Client {
     required this.medicalConditions,
     required this.activityLevel,
     required this.goal,
+    this.profilePictureUrl,
   });
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
@@ -66,6 +68,7 @@ class Client {
           : [],
       activityLevel: json['activity_level'] ?? 'Sedentario',
       goal: json['goal'] ?? 'Mantener peso',
+      profilePictureUrl: json['profile_picture_url'] ?? json['profilePictureUrl'],
     );
   }
 
@@ -83,6 +86,7 @@ class Client {
       'medical_conditions': medicalConditions,
       'activity_level': activityLevel,
       'goal': goal,
+      'profile_picture_url': profilePictureUrl,
     };
   }
 }

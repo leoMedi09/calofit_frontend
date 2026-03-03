@@ -32,6 +32,7 @@ class LoginResponse {
   final String? userEmail;
   final int? userId;
   final String? firebaseUid;
+  final String? profilePictureUrl; // ✅ Añadido
 
   LoginResponse({
     this.token,
@@ -41,6 +42,7 @@ class LoginResponse {
     this.userEmail,
     this.userId,
     this.firebaseUid,
+    this.profilePictureUrl,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,7 @@ class LoginResponse {
       userName: userInfo?['name'] as String? ?? userInfo?['first_name'] as String?,
       userEmail: userInfo?['email'] as String?,
       userId: userInfo?['id'] as int?,
+      profilePictureUrl: userInfo?['profile_picture_url'] as String?,
     );
   }
 }

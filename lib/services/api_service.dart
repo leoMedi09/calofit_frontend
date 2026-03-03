@@ -111,6 +111,37 @@ class ApiService {
     }
   }
 
+  // ✅ Subir Foto de Perfil (Modular)
+  Future<String> uploadProfilePicture(String token, String filePath, bool isStaff) async {
+    try {
+      final String endpoint = isStaff ? '/usuarios/perfil/foto' : '/clientes/perfil/foto';
+      print('📤 Subiendo foto a $endpoint desde $filePath');
+      
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+
+      final response = await _dio.post(
+        endpoint,
+        data: formData,
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'multipart/form-data',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ Foto subida exitosamente: ${response.data['url']}');
+        return response.data['url'];
+      } else {
+        throw Exception('Error al subir la foto: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      print('❌ Error Dio al subir foto: ${e.response?.data}');
+      throw Exception(e.response?.data['detail'] ?? 'Error al conectar con el servidor');
+    }
+  }
+
   // Usuarios
   Future<List<User>> getUsers(String token) async {
     try {

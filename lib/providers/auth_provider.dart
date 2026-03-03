@@ -13,6 +13,7 @@ class AuthProvider with ChangeNotifier {
   String? _userEmail;
   int? _userId;
   String? _userIdFirebase;
+  String? _profilePictureUrl; // ✅ Añadido para el rediseño premium
   bool _showWelcomeMessage = false;
   final ApiService _apiService = ApiService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -25,6 +26,7 @@ class AuthProvider with ChangeNotifier {
   String? get userName => _userName;
   String? get userEmail => _userEmail;
   int? get userId => _userId;
+  String? get profilePictureUrl => _profilePictureUrl;
   bool get isAuthenticated => _token != null;
   String? get userIdFirebase => _userIdFirebase;
   bool get showWelcomeMessage => _showWelcomeMessage;
@@ -125,6 +127,7 @@ class AuthProvider with ChangeNotifier {
       if (_userName != null) await prefs.setString('userName', _userName!);
       if (_userEmail != null) await prefs.setString('userEmail', _userEmail!);
       if (_userId != null) await prefs.setInt('userId', _userId!);
+      if (_profilePictureUrl != null) await prefs.setString('profilePictureUrl', _profilePictureUrl!);
       if (_userIdFirebase != null) await prefs.setString('userIdFirebase', _userIdFirebase!);
     } else {
       await _removeSession();
@@ -218,5 +221,27 @@ class AuthProvider with ChangeNotifier {
       await prefs.setString('userName', newName);
     }
     notifyListeners();
+  }
+
+  Future<void> uploadProfilePicture(String filePath) async {
+    if (_token == null || _userType == null) return;
+    
+    try {
+      bool isStaff = (_userType == 'staff' || _userType == 'admin');
+      String newUrl = await _apiService.uploadProfilePicture(_token!, filePath, isStaff);
+      
+      _profilePictureUrl = newUrl;
+      
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('remember_me') == true) {
+        await prefs.setString('profilePictureUrl', newUrl);
+      }
+      
+      notifyListeners();
+      debugPrint('✅ AuthProvider: Foto de perfil actualizada a $newUrl');
+    } catch (e) {
+      debugPrint('❌ AuthProvider: Error al subir foto: $e');
+      rethrow;
+    }
   }
 }

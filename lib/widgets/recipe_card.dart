@@ -4,8 +4,9 @@ import '../models/assistant_response.dart';
 class RecipeCard extends StatelessWidget {
   final Section section;
   final VoidCallback? onAdd;
+  final VoidCallback? onSave;
 
-  const RecipeCard({Key? key, required this.section, this.onAdd})
+  const RecipeCard({Key? key, required this.section, this.onAdd, this.onSave})
       : super(key: key);
 
   /// Parsea "P: 9.4g | C: 18.4g | G: 15.2g | Cal: 350kcal" → Map
@@ -70,21 +71,29 @@ class RecipeCard extends StatelessWidget {
           child: const Icon(Icons.restaurant_menu,
               color: Colors.orange, size: 20),
         ),
-        trailing: onAdd != null
-            ? TextButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add_task, size: 16, color: Colors.teal),
-                label: const Text('AÑADIR',
-                    style: TextStyle(
-                        color: Colors.teal,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11)),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.teal.shade50,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
+        trailing: (onAdd != null || onSave != null)
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onAdd != null)
+                    IconButton(
+                      icon: const Icon(Icons.add_task, color: Colors.teal),
+                      onPressed: onAdd,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Registrar',
+                    ),
+                  if (onSave != null) ...[
+                    const SizedBox(width: 12),
+                    IconButton(
+                      icon: const Icon(Icons.bookmark_add, color: Colors.blue),
+                      onPressed: onSave,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Guardar',
+                    ),
+                  ],
+                ],
               )
             : null,
         title: Text(
@@ -128,25 +137,7 @@ class RecipeCard extends StatelessWidget {
           ...section.preparacion.asMap().entries
               .map((e) => _stepRow(e.key + 1, e.value, Colors.orange)),
 
-          if (onAdd != null) ...[
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('REGISTRAR ESTA OPCIÓN'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-          ],
+
 
           if (section.nota.isNotEmpty) ...[
             const SizedBox(height: 20),

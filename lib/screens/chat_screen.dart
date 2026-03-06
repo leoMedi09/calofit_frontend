@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../models/client.dart';
@@ -35,8 +37,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Client? _clientProfile; 
   String? _latestFuzzyHint;
 
-  // 🔄 ONE-STREAM: Una sola lista de mensajes
-  final List<Map<String, dynamic>> _messages = [
+  // 🔄 ONE-STREAM: Una sola lista de mensajes (ahora persistente)
+  List<Map<String, dynamic>> _messages = [
     {
       'role': 'assistant',
       'response': AssistantResponse(
@@ -57,6 +59,129 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _initTts();
     _focusNode.addListener(_onFocusChange);
     _loadClientProfile();
+    _loadChatHistory();
+  }
+
+  // ═══ PART A: Historial Persistente del Chat ═══
+  Future<void> _loadChatHistory() async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final userId = auth.userId ?? 'default';
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('chat_history_$userId');
+      if (saved != null) {
+        final List decoded = jsonDecode(saved);
+        final List<Map<String, dynamic>> loaded = [];
+        for (final item in decoded) {
+          if (item['type'] == 'assistant_v3' && item['response_json'] != null) {
+            loaded.add({
+              'role': 'assistant',
+              'response': AssistantResponse.fromJson(item['response_json']),
+              'type': 'assistant_v3',
+            });
+          } else if (item['type'] == 'registro_exitoso') {
+            loaded.add({
+              'role': item['role'] ?? 'assistant',
+              'content': item['content'] ?? '',
+              'type': 'registro_exitoso',
+              'badge': item['badge'],
+              'data': item['data'],
+            });
+          } else {
+            loaded.add({
+              'role': item['role'] ?? 'user',
+              'content': item['content'] ?? '',
+              'type': item['type'] ?? 'text',
+            });
+          }
+        }
+        if (loaded.isNotEmpty && mounted) {
+          setState(() => _messages = loaded);
+          _scrollToBottom();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error cargando historial: $e');
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final userId = auth.userId ?? 'default';
+      final prefs = await SharedPreferences.getInstance();
+
+      // Serializar los últimos 50 mensajes
+      final toSave = _messages.length > 50
+          ? _messages.sublist(_messages.length - 50)
+          : _messages;
+
+      final serialized = toSave.map((msg) {
+        if (msg['type'] == 'assistant_v3' && msg['response'] is AssistantResponse) {
+          return {
+            'type': 'assistant_v3',
+            'role': 'assistant',
+            'response_json': (msg['response'] as AssistantResponse).toMap(),
+          };
+        } else if (msg['type'] == 'registro_exitoso') {
+          return {
+            'type': 'registro_exitoso',
+            'role': msg['role'],
+            'content': msg['content'],
+            'badge': msg['badge'],
+            'data': msg['data'],
+          };
+        }
+        return {
+          'type': msg['type'] ?? 'text',
+          'role': msg['role'],
+          'content': msg['content'],
+        };
+      }).toList();
+
+      await prefs.setString('chat_history_$userId', jsonEncode(serialized));
+    } catch (e) {
+      debugPrint('Error guardando historial: $e');
+    }
+  }
+
+  Future<void> _clearChatHistory() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Limpiar historial'),
+        content: const Text('¿Eliminar todas las conversaciones guardadas?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Limpiar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final userId = auth.userId ?? 'default';
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('chat_history_$userId');
+      setState(() {
+        _messages = [
+          {
+            'role': 'assistant',
+            'response': AssistantResponse(
+              usuario: '',
+              dataCientifica: ScientificData(progresoDiario: {}),
+              respuestaEstructurada: StructuredResponse(
+                textoConversacional: '¡Historial limpiado! 🧹 ¿En qué puedo ayudarte?',
+                secciones: [],
+              ),
+            ),
+            'type': 'assistant_v3',
+          },
+        ];
+      });
+    }
   }
 
   Future<void> _loadClientProfile() async {
@@ -147,6 +272,47 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
     if (quickMessage == null) _inputController.clear();
 
+    // ═══ CALOFIT_REGISTER: Registro consistente desde card ═══
+    if (text.startsWith('CALOFIT_REGISTER:')) {
+      final consultaId = text.replaceFirst('CALOFIT_REGISTER:', '');
+      setState(() => _isTyping = true);
+      _scrollToBottom();
+
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final balance = Provider.of<BalanceProvider>(context, listen: false);
+      final token = auth.token;
+      if (token == null) return;
+
+      try {
+        final result = await _apiService.confirmarRegistroConId(consultaId, token);
+
+        if (result['balance_actualizado'] != null) {
+          balance.updateFromAssistant(result['balance_actualizado']);
+          balance.fetchFullBalance(token).catchError((e) => print("Silent refresh failed: \$e"));
+        }
+
+        setState(() {
+          _isTyping = false;
+          _messages.add({
+            'role': 'assistant',
+            'content': result['mensaje'] ?? 'Registrado.',
+            'type': 'registro_exitoso',
+            'badge': 'comida',
+            'data': result['balance_actualizado'],
+          });
+        });
+        _saveChatHistory();
+        _scrollToBottom();
+      } catch (e) {
+        setState(() {
+          _isTyping = false;
+          _messages.add({'role': 'assistant', 'content': 'Error al registrar: \$e', 'type': 'error'});
+        });
+        _saveChatHistory();
+      }
+      return;
+    }
+
     setState(() {
       _messages.add({'role': 'user', 'content': text, 'type': 'text'});
       _isTyping = true;
@@ -195,6 +361,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           
           if (!_isMuted) _speak(result['mensaje'], "reg_${_messages.length}");
         });
+        _saveChatHistory();
 
       } else {
         // 👉 RUTA CONSULTA (/consultar)
@@ -237,12 +404,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           
           if (!_isMuted) _speak(ttsText, "answ_${_messages.length}");
         });
+        _saveChatHistory();
       }
     } catch (e) {
       setState(() {
         _isTyping = false;
-        _messages.add({'role': 'assistant', 'content': 'Ups, tuve un problema de conexión. 📶', 'type': 'error'});
+        _messages.add({'role': 'assistant', 'content': 'Ups, tuve un problema de conexión. 📡', 'type': 'error'});
       });
+      _saveChatHistory();
     }
     _scrollToBottom();
   }
@@ -266,7 +435,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           Expanded(child: _buildMessageList()),
           
           if (_isTyping) _buildTypingIndicator(),
-          if (!_isTyping && _messages.length < 3) _buildQuickActions(),
+          if (!_isTyping) _buildQuickActions(),
           _buildInputArea(),
           _buildStickyStatusBar(),
         ],
@@ -308,6 +477,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         ],
       ),
       actions: [
+        // Botón limpiar historial
+        IconButton(
+          icon: Icon(Icons.delete_outline, color: Colors.grey.shade400, size: 20),
+          tooltip: 'Limpiar historial',
+          onPressed: _clearChatHistory,
+        ),
         if (_speakingMessageId != null)
           IconButton(
             icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
@@ -405,6 +580,40 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           return AssistantMessageBubble(
             response: msg['response'],
             onAction: (text) => _handleUnifiedSubmit(quickMessage: text),
+            onSave: (section) async {
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              final token = auth.token;
+              if (token == null) return;
+              try {
+                await _apiService.guardarSugerencia(
+                  tipo: section.tipo,
+                  nombre: section.nombre,
+                  ingredientes: section.ingredientes,
+                  preparacion: section.preparacion,
+                  macros: section.macros,
+                  nota: section.nota,
+                  token: token,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('🔖 "${section.nombre}" guardado en tu recetario'),
+                      backgroundColor: Colors.blue.shade700,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error al guardar: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
           );
         } else if (msg['role'] == 'user') {
           return _buildUserBubble(msg['content']);
@@ -601,21 +810,24 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildQuickActions() {
-    return SizedBox(
-      height: 40,
+    return Container(
+      height: 44,
+      margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _quickChip("🥕 Poca caloría", "Dame opciones de cenas bajas en calorías"),
-          _quickChip("💪 Rutina Express", "Rutina de 15 min en casa"),
-          _quickChip("🍎 Comí una manzana", "Registra que me comí una manzana"),
+          _quickChip("🍽️ ¿Qué como ahora?", "Dime qué puedo comer en este momento según mi plan."),
+          _quickChip("🏋️ Mi Rutina", "Dime qué rutina de ejercicios me toca hoy."),
+          _quickChip("🍎 Registrar Comida", "He comido ", autofill: true),
+          _quickChip("🏃 Registrar Ejercicio", "Hoy entrené ", autofill: true),
+          _quickChip("📊 Mi Balance", "¿Cómo va mi progreso y macros de hoy?"),
         ],
       ),
     );
   }
 
-  Widget _quickChip(String label, String message) {
+  Widget _quickChip(String label, String message, {bool autofill = false}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ActionChip(
@@ -623,7 +835,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         backgroundColor: Colors.white,
         side: BorderSide(color: Colors.grey.shade300),
         shape: StadiumBorder(),
-        onPressed: () => _handleUnifiedSubmit(quickMessage: message),
+        onPressed: () {
+          if (autofill) {
+            _inputController.text = message;
+            _focusNode.requestFocus();
+          } else {
+            _handleUnifiedSubmit(quickMessage: message);
+          }
+        },
       ),
     );
   }

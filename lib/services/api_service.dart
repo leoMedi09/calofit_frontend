@@ -526,6 +526,64 @@ class ApiService {
     }
   }
 
+  /// ✅ Confirma registro usando consulta_id (valores exactos de la card)
+  Future<Map<String, dynamic>> confirmarRegistroConId(String consultaId, String token) async {
+    try {
+      print('✅ Confirmando registro con consulta_id: $consultaId');
+      final response = await _dio.post('/asistente/confirmar-registro',
+          data: {'consulta_id': consultaId},
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return response.data;
+    } catch (e) {
+      print('❌ Error en confirmar registro: $e');
+      throw Exception('Error al confirmar registro: $e');
+    }
+  }
+
+  /// 🔖 Guarda una sugerencia (receta/rutina) de la IA para después
+  Future<Map<String, dynamic>> guardarSugerencia({
+    required String tipo,
+    required String nombre,
+    required List<String> ingredientes,
+    required List<String> preparacion,
+    required String macros,
+    required String nota,
+    required String token,
+  }) async {
+    try {
+      final response = await _dio.post('/asistente/guardar-sugerencia',
+          data: {
+            'tipo': tipo,
+            'nombre': nombre,
+            'ingredientes': ingredientes,
+            'preparacion': preparacion,
+            'macros': macros,
+            'nota': nota,
+          },
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return response.data;
+    } catch (e) {
+      throw Exception('Error al guardar sugerencia: $e');
+    }
+  }
+
+  /// 📋 Lista las sugerencias guardadas del usuario
+  Future<List<dynamic>> listarSugerencias(String token) async {
+    try {
+      final response = await _dio.get('/asistente/mis-sugerencias',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return response.data;
+    } catch (e) {
+      throw Exception('Error al listar sugerencias: $e');
+    }
+  }
+
+  /// 🗑️ Elimina una sugerencia guardada
+  Future<void> eliminarSugerencia(int id, String token) async {
+    await _dio.delete('/asistente/sugerencia/$id',
+        options: Options(headers: {'Authorization': 'Bearer $token'}));
+  }
+
   /// 💬 Consulta al asistente IA con control adaptativo (fuzzy logic)
   /// El tono del asistente se adapta según adherencia y progreso.
   /// Se envía el historial para mantener el contexto de la conversación.

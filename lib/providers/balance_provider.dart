@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/dashboard_data.dart';
+import '../models/suggestion.dart';
 import '../services/api_service.dart';
 
 class BalanceProvider with ChangeNotifier {
@@ -12,6 +13,11 @@ class BalanceProvider with ChangeNotifier {
 
   Map<String, dynamic>? _fullBalanceData;
   Map<String, dynamic>? get fullBalanceData => _fullBalanceData;
+
+  List<Suggestion> _suggestions = [];
+  List<Suggestion> get suggestions => _suggestions;
+  bool _isSuggestionsLoading = false;
+  bool get isSuggestionsLoading => _isSuggestionsLoading;
 
   // Helper interno de casteo seguro
   double _toDouble(dynamic val) {
@@ -92,5 +98,32 @@ class BalanceProvider with ChangeNotifier {
   void setSummary(DailySummary summary) {
     _dailySummary = summary;
     notifyListeners();
+  }
+
+  // ============ RECETARIO (SUGERENCIAS) ============
+
+  Future<void> fetchSuggestions(String token) async {
+    _isSuggestionsLoading = true;
+    notifyListeners();
+    try {
+      final List<dynamic> data = await _apiService.listarSugerencias(token);
+      _suggestions = data.map((item) => Suggestion.fromJson(item)).toList();
+    } catch (e) {
+      print('Error loading suggestions: $e');
+    } finally {
+      _isSuggestionsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteSuggestion(int id, String token) async {
+    try {
+      await _apiService.eliminarSugerencia(id, token);
+      _suggestions.removeWhere((s) => s.id == id);
+      notifyListeners();
+    } catch (e) {
+      print('Error deleting suggestion: $e');
+      rethrow;
+    }
   }
 }

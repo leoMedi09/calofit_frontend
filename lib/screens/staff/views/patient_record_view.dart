@@ -99,11 +99,25 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             _proteinController.text = (firstDay['proteinas_g'] ?? 150).toString();
             _carbsController.text = (firstDay['carbohidratos_g'] ?? 200).toString();
             _fatsController.text = (firstDay['grasas_g'] ?? 60).toString();
+          } else if (progressData['metabolismo_estimado'] != null) {
+            // 🆕 FALLBACK IA: Sincronización con lo que ve el cliente (v80.0)
+            final est = progressData['metabolismo_estimado'];
+            _caloriesController.text = (est['calorias_objetivo'] ?? '').toString();
+            _proteinController.text = (est['proteinas_g'] ?? '').toString();
+            _carbsController.text = (est['carbohidratos_g'] ?? '').toString();
+            _fatsController.text = (est['grasas_g'] ?? '').toString();
           }
           _obsController.text = planData['observaciones'] ?? '';
         });
       } catch (e) {
         debugPrint("No se encontró plan: $e");
+        if (progressData['metabolismo_estimado'] != null) {
+            final est = progressData['metabolismo_estimado'];
+            _caloriesController.text = (est['calorias_objetivo'] ?? '').toString();
+            _proteinController.text = (est['proteinas_g'] ?? '').toString();
+            _carbsController.text = (est['carbohidratos_g'] ?? '').toString();
+            _fatsController.text = (est['grasas_g'] ?? '').toString();
+        }
       }
 
       setState(() => _isLoading = false);
@@ -299,32 +313,49 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     final weight = weightRaw is num ? weightRaw.toStringAsFixed(1) : '--';
     final height = _fullData?['current_height']?.toString() ?? '--';
     
-    return Row(
+    // 🆕 Sincronización Metabólica (v80.0)
+    final gastoEstimadoRaw = _fullData?['metabolismo_estimado']?['calorias_objetivo'];
+    final gastoEstimado = gastoEstimadoRaw != null ? '$gastoEstimadoRaw kcal' : '--';
+
+    return Column(
       children: [
-        _buildMetricCard('Peso', '$weight kg', Icons.monitor_weight_outlined, Colors.orange),
-        const SizedBox(width: 16),
-        _buildMetricCard('Altura', '$height cm', Icons.height_rounded, Colors.blue),
-        const SizedBox(width: 16),
-        _buildMetricCard('IMC', _calculateIMC(weight, height), Icons.analytics_outlined, Colors.purple),
+        Row(
+          children: [
+            _buildMetricCard('Peso actual', '$weight kg', Icons.monitor_weight_outlined, Colors.orange),
+            const SizedBox(width: 16),
+            _buildMetricCard('Altura', '$height cm', Icons.height_rounded, Colors.blue),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _buildMetricCard('IMC Actual', _calculateIMC(weight, height), Icons.analytics_outlined, Colors.purple),
+            const SizedBox(width: 16),
+            _buildMetricCard('Gasto Estimado', gastoEstimado, Icons.bolt_rounded, Colors.teal, isPremium: true),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(String title, String value, IconData icon, Color color, {bool isPremium = false}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey[100]!),
+          border: Border.all(color: isPremium ? color.withOpacity(0.2) : Colors.grey[100]!),
+          boxShadow: isPremium ? [
+            BoxShadow(color: color.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+          ] : null,
         ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF263238))),
-            Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isPremium ? color : const Color(0xFF263238))),
+            Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600)),
           ],
         ),
       ),

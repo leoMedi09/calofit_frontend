@@ -8,8 +8,9 @@ import 'workout_card.dart';
 class AssistantMessageBubble extends StatelessWidget {
   final AssistantResponse response;
   final Function(String)? onAction;
+  final Function(Section)? onSave; // Callback para guardar sugerencia
 
-  const AssistantMessageBubble({Key? key, required this.response, this.onAction}) : super(key: key);
+  const AssistantMessageBubble({Key? key, required this.response, this.onAction, this.onSave}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -68,37 +69,74 @@ class AssistantMessageBubble extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: MarkdownBody(
-                    data: _cleanResponseText(
-                      response.respuestaEstructurada.textoConversacional,
-                      response.respuestaEstructurada.secciones,
-                    ),
-                    selectable: true, // Permitir copiar texto
-                    styleSheet: MarkdownStyleSheet(
-                      p: TextStyle(
-                        color: theme['textColor'],
-                        fontSize: 15,
-                        height: 1.5,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Badge superior de la categoría (Intención)
+                      if (intent != 'CHAT' && intent != 'NORMAL')
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme['bgColor'] == Colors.white ? Colors.grey.shade50 : theme['bgColor'],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme['borderColor'],
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                theme['icon'],
+                                size: 14,
+                                color: theme['color'],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                theme['label'] ?? 'Información',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme['color'],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      MarkdownBody(
+                        data: _cleanResponseText(
+                          response.respuestaEstructurada.textoConversacional,
+                          response.respuestaEstructurada.secciones,
+                        ),
+                        selectable: true, // Permitir copiar texto
+                        styleSheet: MarkdownStyleSheet(
+                          p: TextStyle(
+                            color: theme['textColor'],
+                            fontSize: 15,
+                            height: 1.5,
+                          ),
+                          strong: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                          // Estilo mejorado para tablas
+                          tableHead: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                          tableBorder: TableBorder.all(color: Colors.grey.shade300, width: 1),
+                          tableBody: const TextStyle(fontSize: 14),
+                          blockquote: TextStyle(color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                          blockquoteDecoration: BoxDecoration(
+                            border: Border(left: BorderSide(color: Colors.blue.shade300, width: 4)),
+                            color: Colors.blue.shade50,
+                          ),
+                          code: TextStyle(
+                            backgroundColor: Colors.grey.shade100,
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                      strong: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                      // Estilo mejorado para tablas
-                      tableHead: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                      tableBorder: TableBorder.all(color: Colors.grey.shade300, width: 1),
-                      tableBody: const TextStyle(fontSize: 14),
-                      blockquote: TextStyle(color: Colors.grey.shade700, fontStyle: FontStyle.italic),
-                      blockquoteDecoration: BoxDecoration(
-                        border: Border(left: BorderSide(color: Colors.blue.shade300, width: 4)),
-                        color: Colors.blue.shade50,
-                      ),
-                      code: TextStyle(
-                        backgroundColor: Colors.grey.shade100,
-                        fontFamily: 'monospace',
-                        fontSize: 13,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
 
@@ -107,13 +145,23 @@ class AssistantMessageBubble extends StatelessWidget {
                   if (sec.tipo == 'comida') {
                     return RecipeCard(
                       section: sec,
-                      onAdd: onAction != null ? () => onAction!("Comí ${sec.nombre}") : null,
+                      onAdd: onAction != null
+                          ? () => onAction!(sec.consultaId != null
+                              ? "CALOFIT_REGISTER:${sec.consultaId}"
+                              : "Comí ${sec.nombre}")
+                          : null,
+                      onSave: onSave != null ? () => onSave!(sec) : null,
                     );
                   }
                   if (sec.tipo == 'ejercicio') {
                     return WorkoutCard(
                       section: sec,
-                      onAdd: onAction != null ? () => onAction!("Hice ${sec.nombre}") : null,
+                      onAdd: onAction != null
+                          ? () => onAction!(sec.consultaId != null
+                              ? "CALOFIT_REGISTER:${sec.consultaId}"
+                              : "Hice ${sec.nombre}")
+                          : null,
+                      onSave: onSave != null ? () => onSave!(sec) : null,
                     );
                   }
                   return const SizedBox.shrink();
@@ -217,6 +265,7 @@ class AssistantMessageBubble extends StatelessWidget {
         'borderColor': Colors.red.shade200,
         'textColor': Colors.red.shade900,
         'icon': Icons.warning_amber_rounded,
+        'label': 'Aviso Importante',
       };
     }
 
@@ -224,26 +273,39 @@ class AssistantMessageBubble extends StatelessWidget {
       case 'RECIPE':
         return {
           'color': Colors.orange.shade700,
-          'bgColor': Colors.white, // Antes: orange.shade50 (Causaba diseño "feo")
-          'borderColor': Colors.orange.shade100,
+          'bgColor': Colors.orange.shade50.withOpacity(0.4), // Fondo muy tenue pero distintivo
+          'borderColor': Colors.orange.shade200,
           'textColor': Colors.black87,
           'icon': Icons.restaurant_menu_rounded,
+          'label': 'Nutrición',
         };
       case 'POWER':
         return {
           'color': Colors.blue.shade700,
-          'bgColor': Colors.white,
-          'borderColor': Colors.blue.shade100,
+          'bgColor': Colors.blue.shade50.withOpacity(0.5), // Fondo deportivo
+          'borderColor': Colors.blue.shade200,
           'textColor': Colors.black87,
-          'icon': Icons.bolt_rounded,
+          'icon': Icons.fitness_center_rounded,
+          'label': 'Ejercicio',
         };
       case 'SUCCESS':
+      case 'LOG':
         return {
           'color': Colors.green.shade700,
           'bgColor': Colors.green.shade50.withOpacity(0.5),
-          'borderColor': Colors.green.shade100,
+          'borderColor': Colors.green.shade200,
           'textColor': Colors.green.shade900,
           'icon': Icons.check_circle_rounded,
+          'label': 'Registro',
+        };
+      case 'PROGRESS':
+        return {
+          'color': Colors.purple.shade600,
+          'bgColor': Colors.purple.shade50.withOpacity(0.4),
+          'borderColor': Colors.purple.shade200,
+          'textColor': Colors.black87,
+          'icon': Icons.insights_rounded,
+          'label': 'Balance',
         };
       case 'INFO':
       default:
@@ -253,7 +315,9 @@ class AssistantMessageBubble extends StatelessWidget {
           'borderColor': Colors.grey.shade200,
           'textColor': Colors.black87,
           'icon': Icons.lightbulb_rounded,
+          'label': 'Asistente',
         };
     }
   }
 }
+

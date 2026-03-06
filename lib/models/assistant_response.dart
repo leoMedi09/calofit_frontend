@@ -2,7 +2,8 @@ class AssistantResponse {
   final String usuario;
   final ScientificData dataCientifica;
   final StructuredResponse respuestaEstructurada;
-  final String? intencion; // v70.8: INFO, RECIPE, POWER, SUCCESS, DANGER
+  final String? intencion; // INFO, RECIPE, POWER, SUCCESS, DANGER, PROGRESS
+  final String? tipoPregunta; // ABIERTA, RAPIDA
   final bool? alertaSalud;
   final String? advertencia;
 
@@ -11,6 +12,7 @@ class AssistantResponse {
     required this.dataCientifica,
     required this.respuestaEstructurada,
     this.intencion,
+    this.tipoPregunta,
     this.alertaSalud,
     this.advertencia,
   });
@@ -21,6 +23,7 @@ class AssistantResponse {
       dataCientifica: ScientificData.fromJson(json['data_cientifica'] ?? {}),
       respuestaEstructurada: StructuredResponse.fromJson(json['respuesta_estructurada'] ?? {}),
       intencion: json['intencion'],
+      tipoPregunta: json['tipo_pregunta'],
       alertaSalud: json['alerta_salud'] as bool?,
       advertencia: json['advertencia_nutricional'],
     );
@@ -30,6 +33,7 @@ class AssistantResponse {
     return {
       'usuario': usuario,
       'intencion': intencion,
+      'tipo_pregunta': tipoPregunta,
       'data_cientifica': dataCientifica.progresoDiario,
       'respuesta_estructurada': {
         'texto_conversacional': respuestaEstructurada.textoConversacional,
@@ -77,6 +81,7 @@ class Section {
   final List<String> ingredientes;
   final List<String> preparacion;
   final String nota;
+  final String? consultaId; // ID del cache backend para consistencia
 
   Section({
     required this.tipo,
@@ -85,6 +90,7 @@ class Section {
     required this.ingredientes,
     required this.preparacion,
     required this.nota,
+    this.consultaId,
   });
 
   factory Section.fromJson(Map<String, dynamic> json) {
@@ -114,6 +120,7 @@ class Section {
       ingredientes: items,
       preparacion: pasos,
       nota: (json['nota'] ?? '').toString(),
+      consultaId: json['consulta_id'],
     );
   }
 
@@ -125,6 +132,7 @@ class Section {
       'ingredientes': ingredientes,
       'preparacion': preparacion,
       'nota': nota,
+      'consulta_id': consultaId,
     };
   }
 }

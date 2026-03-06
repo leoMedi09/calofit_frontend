@@ -277,7 +277,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       _buildProgressHero(dailySummary),
                       if (dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ...[
                         const SizedBox(height: 20),
-                        _buildStrategicMissionCard(dailySummary.aiStrategicFocus!),
+                        _buildStrategicMissionCard(
+                          dailySummary.aiStrategicFocus!,
+                          dailySummary.isStrategyValidated
+                        ),
                       ],
                       const SizedBox(height: 20),
                       
@@ -322,11 +325,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         const SizedBox(height: 16),
                       ],
 
-                      // ✨ NUEVO: Estado de Validación Estratégica
-                      if (dailySummary.isStrategyValidated)
-                        _buildValidationBadge(),
-                      const SizedBox(height: 20),
-                      
                       // Stats rápidas
                       _buildQuickStats(dailySummary),
                     ] else
@@ -647,18 +645,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return Container(width: 1, height: 30, color: Colors.white12);
   }
 
-  Widget _buildStrategicMissionCard(String mission) {
+  Widget _buildStrategicMissionCard(String mission, bool isValidated) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFFE3F2FD),
+        color: isValidated ? const Color(0xFFE8F5E9) : const Color(0xFFE3F2FD),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.3), width: 1.5),
+        border: Border.all(
+          color: isValidated ? Colors.green.withOpacity(0.3) : const Color(0xFF1E88E5).withOpacity(0.3), 
+          width: 1.5
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E88E5).withOpacity(0.1),
+            color: (isValidated ? Colors.green : const Color(0xFF1E88E5)).withOpacity(0.08),
             blurRadius: 15,
-            offset: const Offset(0, 6),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -666,46 +667,81 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1E88E5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isValidated ? Colors.green : const Color(0xFF1E88E5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isValidated ? Icons.verified_rounded : Icons.auto_awesome_rounded, 
+                      color: Colors.white, 
+                      size: 14
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'MISIÓN SEMANAL',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: isValidated ? Colors.green.shade800 : const Color(0xFF1565C0),
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'MISIÓN SEMANAL DEL COACH',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1565C0),
-                  letterSpacing: 1.1,
+              if (isValidated)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'VALIDADO',
+                    style: TextStyle(color: Colors.green.shade900, fontSize: 10, fontWeight: FontWeight.w900),
+                  ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
             mission,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: Color(0xFF263238),
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Tu asistente IA basará sus consejos en este objetivo.',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF1E88E5).withOpacity(0.8),
-              fontStyle: FontStyle.italic,
-            ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline, 
+                size: 14, 
+                color: isValidated ? Colors.green.shade700 : const Color(0xFF1E88E5)
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  isValidated 
+                    ? 'Tu nutricionista aprobó este enfoque.' 
+                    : 'Tu asistente IA usa esto como norte estratégico.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: (isValidated ? Colors.green.shade700 : const Color(0xFF1E88E5)).withOpacity(0.8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

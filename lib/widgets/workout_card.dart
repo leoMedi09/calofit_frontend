@@ -4,8 +4,9 @@ import '../models/assistant_response.dart';
 class WorkoutCard extends StatelessWidget {
   final Section section;
   final VoidCallback? onAdd;
+  final VoidCallback? onSave;
 
-  const WorkoutCard({Key? key, required this.section, this.onAdd}) : super(key: key);
+  const WorkoutCard({Key? key, required this.section, this.onAdd, this.onSave}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +33,29 @@ class WorkoutCard extends StatelessWidget {
           ),
           child: const Icon(Icons.fitness_center, color: Colors.blue, size: 20),
         ),
-        trailing: onAdd != null 
-          ? TextButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.bolt, size: 16, color: Colors.teal),
-              label: const Text("AÑADIR", style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 11)),
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.teal.shade50,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+        trailing: (onAdd != null || onSave != null)
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onAdd != null)
+                  IconButton(
+                    icon: const Icon(Icons.bolt, color: Colors.teal),
+                    onPressed: onAdd,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Registrar',
+                  ),
+                if (onSave != null) ...[
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: const Icon(Icons.bookmark_add, color: Colors.blue),
+                    onPressed: onSave,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Guardar',
+                  ),
+                ],
+              ],
             )
           : null,
         title: Text(
@@ -75,24 +89,7 @@ class WorkoutCard extends StatelessWidget {
           ...section.preparacion.asMap().entries.map((e) => 
             _stepRow(e.key + 1, e.value, Colors.blue)
           ),
-          if (onAdd != null) ...[
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text("REGISTRAR ESTA RUTINA"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-          ],
+
           if (section.nota.isNotEmpty) ...[
             const SizedBox(height: 20),
             Container(

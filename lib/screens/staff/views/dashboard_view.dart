@@ -6,8 +6,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:dio/dio.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../services/url_service.dart';
+import '../../../widgets/plan_status_badge.dart';
 import '../../../screens/login_screen.dart';
-import 'audit_view.dart';
 import 'staff_registration_form.dart';
 import 'team_list_view.dart';
 
@@ -154,6 +155,20 @@ class _DashboardViewState extends State<DashboardView> {
           });
         }
       }
+      
+      // ✅ Sincronizar Foto de Perfil del Staff
+      try {
+        final profile = await _apiService.getStaffProfile(token);
+        final identity = profile['identidad'];
+        if (identity != null && identity['foto_perfil'] != null) {
+          final newUrl = identity['foto_perfil'] as String;
+          if (newUrl != authProvider.profilePictureUrl) {
+            authProvider.updateProfilePictureUrl(newUrl);
+          }
+        }
+      } catch (staffProfileErr) {
+        debugPrint('Error sincronizando perfil de staff: $staffProfileErr');
+      }
     } on DioException catch (e) {
       // Detectar error de autenticación (token expirado)
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
@@ -264,59 +279,73 @@ class _DashboardViewState extends State<DashboardView> {
               SliverAppBar(
                 expandedHeight: 140,
                 floating: false,
-                pinned: true,
                 elevation: 0,
+                backgroundColor: primaryBlue,
+                title: Text(
+                  'Hola, ${authProvider.userName ?? "Staff"}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
                 centerTitle: false,
-                backgroundColor: const Color(0xFF1565C0),
-                title: authProvider.userName != null 
-                  ? Text(
-                      'Hola, ${authProvider.userName}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    )
-                  : null,
                 flexibleSpace: FlexibleSpaceBar(
-                  collapseMode: CollapseMode.parallax,
                   background: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        stops: [0.3, 0.9],
-                        colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                        colors: [secondaryBlue, primaryBlue, Color(0xFF1E88E5)],
                       ),
                     ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: -30,
-                          right: -30,
-                          child: Container(
-                            width: 150,
-                            height: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              shape: BoxShape.circle,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 60, 24, 10),
+                      child: Row(
+                        children: [
+                          _buildProfileIcon(authProvider),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '¡BIENVENIDO!',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  authProvider.userName ?? 'Staff',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black26,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 50, 20, 10),
-                          child: _buildWelcomeHeader(context),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    onPressed: () => _handleLogout(context, authProvider),
-                  ),
-                  const SizedBox(width: 8),
+                actions: const [
+                  SizedBox(width: 8),
                 ],
               ),
               
@@ -420,14 +449,19 @@ class _DashboardViewState extends State<DashboardView> {
           child: CircleAvatar(
             radius: 30,
             backgroundColor: Colors.white,
-            child: Text(
-              authProvider.userName?.substring(0, 1).toUpperCase() ?? 'U',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E88E5),
-              ),
-            ),
+            backgroundImage: authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty
+                ? NetworkImage(UrlService.formatImageUrl(authProvider.profilePictureUrl))
+                : null,
+            child: authProvider.profilePictureUrl == null || authProvider.profilePictureUrl!.isEmpty
+                ? Text(
+                    authProvider.userName?.substring(0, 1).toUpperCase() ?? 'U',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E88E5),
+                    ),
+                  )
+                : null,
           ),
         ),
         const SizedBox(width: 20),
@@ -1338,6 +1372,38 @@ class _DashboardViewState extends State<DashboardView> {
           ],
         ),
       )).toList(),
+    );
+  }
+
+  Widget _buildProfileIcon(AuthProvider authProvider) {
+    final String initials = (authProvider.userName ?? '?').isNotEmpty 
+        ? (authProvider.userName ?? '?').substring(0, 1).toUpperCase() 
+        : '?';
+    final String? photoUrl = authProvider.profilePictureUrl;
+    
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(0.3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ]
+      ),
+      child: CircleAvatar(
+        radius: 30,
+        backgroundColor: Colors.white,
+        backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+            ? NetworkImage(UrlService.formatImageUrl(photoUrl))
+            : null,
+        child: (photoUrl == null || photoUrl.isEmpty)
+            ? Text(initials, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: primaryBlue))
+            : null,
+      ),
     );
   }
 }

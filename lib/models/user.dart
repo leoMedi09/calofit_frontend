@@ -7,6 +7,7 @@ class User {
   final String roleName;
   final bool isActive;
   final int? pacientesCount;
+  final String? profilePictureUrl;
 
   User({
     required this.id, 
@@ -17,6 +18,7 @@ class User {
     required this.roleName,
     this.isActive = true,
     this.pacientesCount,
+    this.profilePictureUrl,
   });
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
@@ -31,6 +33,7 @@ class User {
       roleName: json['role_name'] ?? 'staff',
       isActive: json['is_active'] ?? true,
       pacientesCount: json['pacientes_count'],
+      profilePictureUrl: json['profile_picture_url'],
     );
   }
 
@@ -44,6 +47,7 @@ class User {
       'role_name': roleName,
       'is_active': isActive,
       'pacientes_count': pacientesCount,
+      'profile_picture_url': profilePictureUrl,
     };
   }
 }

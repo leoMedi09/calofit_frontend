@@ -87,13 +87,14 @@ class AuthProvider with ChangeNotifier {
         throw Exception('Error: El servidor no devolvió un token de acceso.');
       }
 
-      // 3️⃣ ASIGNACIÓN DE ESTADO (Primero en memoria)
       _token = response.token;
       _userType = response.userType;
       _userRole = response.userRole;
       _userName = response.userName;
       _userEmail = response.userEmail;
       _userId = response.userId;
+      _profilePictureUrl = response.profilePictureUrl;
+      debugPrint('👤 AuthProvider: profilePictureUrl recibido = $_profilePictureUrl');
       _userIdFirebase = (response.firebaseUid != null && response.firebaseUid!.isNotEmpty) 
           ? response.firebaseUid 
           : firebaseUid;
@@ -157,7 +158,10 @@ class AuthProvider with ChangeNotifier {
       _userName = prefs.getString('userName');
       _userEmail = prefs.getString('userEmail');
       _userId = prefs.getInt('userId');
+      _profilePictureUrl = prefs.getString('profilePictureUrl');
       _userIdFirebase = prefs.getString('userIdFirebase');
+      
+      debugPrint('👤 AuthProvider: Sesión cargada. profilePictureUrl = $_profilePictureUrl');
       
       // ✅ NOTIFICAR AL INICIO: Permitir que la App cargue la UI al instante
       notifyListeners();
@@ -220,6 +224,18 @@ class AuthProvider with ChangeNotifier {
     if (prefs.getBool('remember_me') == true) {
       await prefs.setString('userName', newName);
     }
+    notifyListeners();
+  }
+
+  Future<void> updateProfilePictureUrl(String newUrl) async {
+    _profilePictureUrl = newUrl;
+    
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('remember_me') == true) {
+      await prefs.setString('profilePictureUrl', newUrl);
+    }
+    
+    debugPrint('✅ AuthProvider: Foto de perfil sincronizada localmente a $newUrl');
     notifyListeners();
   }
 

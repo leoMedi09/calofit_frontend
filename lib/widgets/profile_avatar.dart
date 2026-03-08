@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/url_service.dart';
 
 class ProfileAvatar extends StatelessWidget {
   final String? photoUrl;
@@ -31,7 +32,7 @@ class ProfileAvatar extends StatelessWidget {
         radius: radius,
         backgroundColor: backgroundColor ?? const Color(0xFFE8EAF6),
         backgroundImage: (photoUrl != null && photoUrl!.isNotEmpty) 
-          ? NetworkImage(photoUrl!) 
+          ? NetworkImage(UrlService.formatImageUrl(photoUrl!)) 
           : null,
         child: (photoUrl == null || photoUrl!.isEmpty)
           ? Text(

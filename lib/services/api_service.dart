@@ -155,6 +155,21 @@ class ApiService {
       throw Exception('Error obteniendo usuarios: $e');
     }
   }
+  
+  // ✅ Obtener perfil del personal (Nutri/Coach/Admin)
+  Future<Map<String, dynamic>> getStaffProfile(String token) async {
+    try {
+      print('🔍 Obteniendo perfil de staff...');
+      final response = await _dio.get('/usuarios/me',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      
+      print('✅ Perfil de staff obtenido: ${response.data}');
+      return response.data;
+    } catch (e) {
+      print('❌ Error obteniendo perfil de staff: $e');
+      throw Exception('Error obteniendo perfil de staff: $e');
+    }
+  }
 
   // Clientes
   Future<List<Client>> getClients(String token) async {

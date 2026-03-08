@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../services/url_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 class AssistantCopilotView extends StatefulWidget {
@@ -83,6 +84,7 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5), // Mismo fondo que el cliente
       body: SafeArea(
@@ -163,6 +165,7 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
   }
 
   Widget _buildChatBubble(String text, bool isUser) {
+    final authProvider = Provider.of<AuthProvider>(context);
     final String displayHeroText = isUser ? text : _cleanResponseText(text);
     final bool isLongMessage = !isUser && displayHeroText.length > 300;
     
@@ -214,7 +217,12 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
               child: CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.grey[200],
-                child: Icon(Icons.person_rounded, color: Colors.grey[600], size: 20),
+                backgroundImage: authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty
+                    ? NetworkImage(UrlService.formatImageUrl(authProvider.profilePictureUrl))
+                    : null,
+                child: authProvider.profilePictureUrl == null || authProvider.profilePictureUrl!.isEmpty
+                    ? Icon(Icons.person_rounded, color: Colors.grey[600], size: 20)
+                    : null,
               ),
             ),
           ],

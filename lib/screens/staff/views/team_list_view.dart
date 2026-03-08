@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../services/url_service.dart';
 import '../../../models/user.dart';
 
 class TeamListView extends StatefulWidget {
@@ -307,14 +308,19 @@ class _TeamListViewState extends State<TeamListView> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: roleColor.withOpacity(0.1),
-                      child: Text(
-                        member.firstName.substring(0, 1).toUpperCase(),
-                        style: TextStyle(
-                          color: roleColor, 
-                          fontWeight: FontWeight.bold, 
-                          fontSize: 20
-                        ),
-                      ),
+                      backgroundImage: member.profilePictureUrl != null && member.profilePictureUrl!.isNotEmpty
+                          ? NetworkImage(UrlService.formatImageUrl(member.profilePictureUrl))
+                          : null,
+                      child: member.profilePictureUrl == null || member.profilePictureUrl!.isEmpty
+                          ? Text(
+                              member.firstName.substring(0, 1).toUpperCase(),
+                              style: TextStyle(
+                                color: roleColor, 
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 20
+                              ),
+                            )
+                          : null,
                     ),
                     Container(
                       height: 16,

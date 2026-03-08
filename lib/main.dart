@@ -4,15 +4,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/balance_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/staff/staff_main_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/verify_code_screen.dart';
-
-
-import 'providers/balance_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -60,7 +58,9 @@ class MyApp extends StatelessWidget {
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
             if (!auth.isAuthenticated) return const LoginScreen();
-            return (auth.userType == 'staff' || auth.userType == 'admin') ? const StaffMainScreen() : const DashboardScreen();
+            return (auth.userType == 'staff' || auth.userType == 'admin') 
+                ? const StaffMainScreen() 
+                : const DashboardScreen();
           },
         ),
         routes: {

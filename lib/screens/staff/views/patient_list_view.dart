@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../services/url_service.dart';
 import 'patient_record_view.dart';
 
 class PatientListView extends StatefulWidget {
@@ -195,23 +196,22 @@ class _PatientListViewState extends State<PatientListView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Avatar
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: (isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC)),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              patient['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
-                              style: TextStyle(
-                                color: (isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)),
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ),
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: (isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC)),
+                          backgroundImage: patient['profile_picture_url'] != null && patient['profile_picture_url'].toString().isNotEmpty
+                              ? NetworkImage(UrlService.formatImageUrl(patient['profile_picture_url']))
+                              : null,
+                          child: patient['profile_picture_url'] == null || patient['profile_picture_url'].toString().isEmpty
+                              ? Text(
+                                  patient['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
+                                  style: TextStyle(
+                                    color: (isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)),
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                  ),
+                                )
+                              : null,
                         ),
                         const SizedBox(width: 14),
                         
@@ -422,10 +422,15 @@ class _PatientListViewState extends State<PatientListView> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: CircleAvatar(
                             backgroundColor: isCurrentlyAssigned ? const Color(0xFF4CAF50) : const Color(0xFF1E88E5).withOpacity(0.1),
-                            child: Icon(
-                              isCurrentlyAssigned ? Icons.check_rounded : Icons.person_outline_rounded,
-                              color: isCurrentlyAssigned ? Colors.white : const Color(0xFF1E88E5),
-                            ),
+                            backgroundImage: nutri['profile_picture_url'] != null && nutri['profile_picture_url'].toString().isNotEmpty
+                                ? NetworkImage(UrlService.formatImageUrl(nutri['profile_picture_url']))
+                                : null,
+                            child: nutri['profile_picture_url'] == null || nutri['profile_picture_url'].toString().isEmpty
+                                ? Icon(
+                                    isCurrentlyAssigned ? Icons.check_rounded : Icons.person_outline_rounded,
+                                    color: isCurrentlyAssigned ? Colors.white : const Color(0xFF1E88E5),
+                                  )
+                                : null,
                           ),
                           title: Text(
                             '${nutri['first_name']} ${nutri['last_name_paternal']}',
@@ -536,23 +541,22 @@ class _PatientQuickPreview extends StatelessWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: (isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC)),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    patient['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
-                    style: TextStyle(
-                      fontSize: 32, 
-                      color: (isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)), 
-                      fontWeight: FontWeight.bold
-                    ),
-                  ),
-                ),
+              CircleAvatar(
+                radius: 35,
+                backgroundColor: (isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC)),
+                backgroundImage: patient['profile_picture_url'] != null && patient['profile_picture_url'].toString().isNotEmpty
+                    ? NetworkImage(UrlService.formatImageUrl(patient['profile_picture_url']))
+                    : null,
+                child: patient['profile_picture_url'] == null || patient['profile_picture_url'].toString().isEmpty
+                    ? Text(
+                        patient['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
+                        style: TextStyle(
+                          fontSize: 32, 
+                          color: (isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)), 
+                          fontWeight: FontWeight.bold
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 20),
               Expanded(

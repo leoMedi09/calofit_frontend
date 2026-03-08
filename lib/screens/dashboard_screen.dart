@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../services/url_service.dart';
 import '../models/dashboard_data.dart';
 import '../screens/login_screen.dart';
 import '../screens/edit_profile_screen.dart';
@@ -49,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       // ✅ Mostrar Toast de bienvenida si acaba de iniciar sesión
       if (authProvider.showWelcomeMessage) {
         final String name = authProvider.userName ?? 'Usuario';
-        _showToast(context, '¡Bienvenido, $name!', Colors.green[700]!);
+        _showToast(context, '¡Bienvenido(a), $name!', const Color(0xFF1E88E5));
         authProvider.consumeWelcomeMessage();
       }
       
@@ -153,17 +154,23 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         debugPrint('Error cargando status de check-in: $checkInErr');
       }
 
-      // ✅ Obtener peso/altura base para el wizard
-      if (_checkInNeeded) {
-        try {
-          final profile = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
+      // Buscar el perfil completo si es necesario o para sincronizar datos
+      try {
+        final profile = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
+        
+        // ✅ Sincronizar foto de perfil si es diferente
+        if (profile.profilePictureUrl != null && profile.profilePictureUrl != authProvider.profilePictureUrl) {
+          authProvider.updateProfilePictureUrl(profile.profilePictureUrl!);
+        }
+
+        if (_checkInNeeded) {
           setState(() {
             _baselineWeight = profile.weight;
             _baselineHeight = profile.height;
           });
-        } catch (profileErr) {
-          debugPrint('Error cargando perfil para baseline: $profileErr');
         }
+      } catch (profileErr) {
+        debugPrint('Error sincronizando perfil en dashboard: $profileErr');
       }
 
       // ✅ Mostrar Diálogo de Emergencia si hoy es necesario y no se ha mostrado
@@ -367,17 +374,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       pinned: true,
       elevation: 0,
       backgroundColor: const Color(0xFF1565C0),
-      // Sticky title that appears when collapsed
-      title: authProvider.userName != null 
-        ? Text(
-            'Hola, ${authProvider.userName}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          )
-        : null,
+      title: Text(
+        'Hola, ${authProvider.userName ?? "Usuario"}',
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
+      ),
       centerTitle: false,
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,
@@ -392,7 +396,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ),
           child: Stack(
             children: [
-              // Subtle background pattern or shapes
               Positioned(
                 top: -30,
                 right: -30,
@@ -424,14 +427,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       child: CircleAvatar(
                         radius: 30,
                         backgroundColor: Colors.white,
-                        child: Text(
-                          authProvider.userName?.substring(0, 1).toUpperCase() ?? 'U',
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E88E5),
-                          ),
-                        ),
+                        backgroundImage: authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty
+                            ? NetworkImage(UrlService.formatImageUrl(authProvider.profilePictureUrl))
+                            : null,
+                        child: (authProvider.profilePictureUrl == null || authProvider.profilePictureUrl!.isEmpty)
+                            ? Text(
+                                authProvider.userName?.substring(0, 1).toUpperCase() ?? 'U',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E88E5),
+                                ),
+                              )
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -450,32 +458,32 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             ),
                           ),
                           const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    authProvider.userName ?? 'Usuario',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black26,
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  authProvider.userName ?? 'Usuario',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black26,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                if (dailySummary?.isStrategyValidated == true) ...[
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.verified, color: Colors.lightBlueAccent, size: 24),
-                                ],
+                              ),
+                              if (dailySummary?.isStrategyValidated == true) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.verified, color: Colors.lightBlueAccent, size: 24),
                               ],
-                            ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -486,12 +494,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout, color: Colors.white),
-          onPressed: () => _showLogoutDialog(authProvider),
-        ),
-        const SizedBox(width: 8),
+      actions: const [
+        SizedBox(width: 8),
       ],
     );
   }

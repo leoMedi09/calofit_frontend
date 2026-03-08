@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../services/url_service.dart';
+import '../../edit_profile_screen.dart';
+import 'team_management_view.dart';
+import 'audit_view.dart';
 
 class StaffProfileView extends StatefulWidget {
-  const StaffProfileView({super.key});
+  final bool showBackButton;
+  const StaffProfileView({super.key, this.showBackButton = true});
 
   @override
   State<StaffProfileView> createState() => _StaffProfileViewState();
@@ -14,26 +19,60 @@ class StaffProfileView extends StatefulWidget {
 class _StaffProfileViewState extends State<StaffProfileView> {
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
+  File? _localImageFile; // For local preview
+  String? _pendingPhotoPath; // To store path for deferred upload
 
-  Future<void> _pickAndUploadImage(AuthProvider authProvider) async {
+  // Colores Originales (Azul Calofit)
+  static const Color vNavy = Color(0xFF1E88E5); // Azul Primario
+  static const Color vNavyDark = Color(0xFF1565C0); // Azul Secundario
+  static const Color vAccent = Color(0xFF1E88E5);
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    
+    if (image != null) {
+      setState(() {
+        _localImageFile = File(image.path);
+        _pendingPhotoPath = image.path;
+      });
+    }
+  }
+
+  void _viewFullScreenImage(String? photoUrl) {
+    if (_localImageFile == null && (photoUrl == null || photoUrl.isEmpty)) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FullScreenImageViewer(
+          imageFile: _localImageFile,
+          imageUrl: UrlService.formatImageUrl(photoUrl),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _savePhoto(AuthProvider authProvider) async {
+    if (_pendingPhotoPath == null) return;
+    
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
-      );
-
-      if (image == null) return;
-
       setState(() => _isUploading = true);
-
-      await authProvider.uploadProfilePicture(image.path);
+      await authProvider.uploadProfilePicture(_pendingPhotoPath!);
+      
+      setState(() {
+        _pendingPhotoPath = null;
+        // _localImageFile is kept until refresh or success
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Foto de perfil actualizada'),
+            content: Text('✅ Foto de perfil guardada'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -43,7 +82,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error al subir imagen: $e'),
+            content: Text('❌ Error al guardar imagen: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -60,13 +99,8 @@ class _StaffProfileViewState extends State<StaffProfileView> {
     final String? photoUrl = authProvider.profilePictureUrl;
     final String initials = (authProvider.userName ?? '?').substring(0, 1).toUpperCase();
 
-    // Colores Premium
-    const Color vIndigo = Color(0xFF1A237E);
-    const Color vBlue = Color(0xFF1E88E5);
-    const Color vCyan = Color(0xFF00ACC1);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: const Color(0xFFF0F2F8),
       body: CustomScrollView(
         slivers: [
           // Header con Gradiente y Perfil
@@ -81,7 +115,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [vIndigo, vBlue, vCyan],
+                      colors: [vNavyDark, vNavy],
                     ),
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(50),
@@ -90,14 +124,15 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                   ),
                 ),
                 // Botón Atrás
-                Positioned(
-                  top: 50, // Ajustado para safe area aproximado
-                  left: 20,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
-                    onPressed: () => Navigator.pop(context),
+                if (widget.showBackButton)
+                  Positioned(
+                    top: 50, // Ajustado para safe area aproximado
+                    left: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ),
-                ),
                 // Botón Atrás (opcional si es necesario)
                 
                 // Contenido del Perfil (Glassmorphism effect simulated)
@@ -121,24 +156,27 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                               child: CircleAvatar(
                                 radius: 60,
                                 backgroundColor: Colors.grey.shade200,
-                                backgroundImage: photoUrl != null 
-                                  ? NetworkImage(photoUrl) 
-                                  : null,
-                                child: photoUrl == null 
-                                  ? Text(initials, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: vIndigo))
+                                backgroundImage: _localImageFile != null 
+                                  ? FileImage(_localImageFile!) as ImageProvider
+                                  : (photoUrl != null && photoUrl.isNotEmpty
+                                    ? NetworkImage(UrlService.formatImageUrl(photoUrl)) 
+                                    : null),
+                                child: _localImageFile == null && (photoUrl == null || photoUrl.isEmpty)
+                                  ? Text(initials, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: vNavy))
                                   : null,
                               ),
                             ),
                           ),
+                          // Botón Cámara (Seleccionar)
                           Positioned(
                             bottom: 0,
                             right: 0,
                             child: GestureDetector(
-                              onTap: _isUploading ? null : () => _pickAndUploadImage(authProvider),
+                              onTap: _pickImage,
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: vBlue,
+                                  color: vAccent,
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 3),
                                   boxShadow: [
@@ -149,9 +187,24 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                                     )
                                   ],
                                 ),
-                                child: _isUploading 
-                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                                child: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          // Botón Ojo (Ver)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: () => _viewFullScreenImage(photoUrl),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: vNavy,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(Icons.remove_red_eye_rounded, size: 16, color: Colors.white),
                               ),
                             ),
                           ),
@@ -168,7 +221,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                         ),
                       ),
                       Text(
-                        (authProvider.userRole ?? 'Especialista').toUpperCase(),
+                        (authProvider.userRole ?? 'Perfil').toUpperCase(),
                         style: TextStyle(
                           fontSize: 14, 
                           fontWeight: FontWeight.w600, 
@@ -211,16 +264,45 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                   _buildProfileTile(Icons.work_rounded, 'Departamento', 'Wellness & Nutrition'),
                 ]),
                 const SizedBox(height: 24),
-                _buildSectionTitle('Ajustes y Seguridad'),
-                const SizedBox(height: 12),
-                _buildInfoCard([
-                  if (authProvider.userRole == 'Administrador')
-                    _buildActionTile(Icons.lock_reset_rounded, 'Actualizar Contraseña', () {
-                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente...')));
+                if (authProvider.userRole?.toUpperCase().contains('ADMIN') ?? false) ...[
+                  _buildSectionTitle('Administración del Sistema'),
+                  const SizedBox(height: 12),
+                  _buildInfoCard([
+                    _buildActionTile(Icons.people_alt_rounded, 'Gestión de Equipo', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamManagementView()));
                     }),
-                  _buildActionTile(Icons.language_rounded, 'Idioma', () {}),
-                ]),
-                const SizedBox(height: 32),
+                    _buildActionTile(Icons.history_toggle_off_rounded, 'Registros de Auditoría', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AuditView()));
+                    }),
+                  ]),
+                  const SizedBox(height: 24),
+                ],
+
+
+                // Botón Guardar Foto (Si hay una pendiente)
+                if (_pendingPhotoPath != null)
+                  Container(
+                    width: double.infinity,
+                    height: 55,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ElevatedButton(
+                      onPressed: _isUploading ? null : () => _savePhoto(authProvider),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: vAccent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 4,
+                      ),
+                      child: _isUploading 
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'GUARDAR NUEVA FOTO',
+                            style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                          ),
+                    ),
+                  ),
+
+                const SizedBox(height: 12),
                 
                 // Botón Cerrar Sesión
                 Container(
@@ -258,7 +340,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
         style: const TextStyle(
           fontSize: 16, 
           fontWeight: FontWeight.w800, 
-          color: Color(0xFF3949AB),
+          color: vNavy,
         ),
       ),
     );
@@ -305,7 +387,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
           color: const Color(0xFFF1F4FF),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(icon, color: const Color(0xFF3949AB), size: 22),
+        child: Icon(icon, color: vNavy, size: 22),
       ),
       title: Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
@@ -321,13 +403,12 @@ class _StaffProfileViewState extends State<StaffProfileView> {
           color: const Color(0xFFF1F4FF),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(icon, color: const Color(0xFF3949AB), size: 22),
+        child: Icon(icon, color: vNavy, size: 22),
       ),
       title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
       trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
     );
   }
-
   void _showLogoutDialog(BuildContext context, AuthProvider authProvider) {
     showDialog(
       context: context,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../services/url_service.dart';
 import 'team_management_view.dart';
 import 'audit_view.dart';
 import 'staff_profile_view.dart';
@@ -42,12 +43,8 @@ class StaffMenuView extends StatelessWidget {
               ),
               background: Container(color: Colors.white),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF1A237E)),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 8),
+            actions: const [
+              SizedBox(width: 8),
             ],
           ),
 
@@ -142,7 +139,7 @@ class StaffMenuView extends StatelessWidget {
               child: CircleAvatar(
                 radius: 35,
                 backgroundColor: Colors.white,
-                backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                backgroundImage: photoUrl != null ? NetworkImage(UrlService.formatImageUrl(photoUrl)) : null,
                 child: photoUrl == null 
                   ? Text(initials, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: Color(0xFF1A237E)))
                   : null,

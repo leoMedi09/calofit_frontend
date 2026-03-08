@@ -145,7 +145,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
         ),
       },
       'profile': {
-        'view': const StaffProfileView(),
+        'view': const StaffProfileView(showBackButton: false),
         'item': const BottomNavigationBarItem(
           icon: Icon(Icons.person_outline_rounded), 
           activeIcon: Icon(Icons.person_rounded),
@@ -157,12 +157,12 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
     // Filtrar secciones por rol
     List<String> activeSectionKeys;
     if (userRole.contains('ADMIN')) {
-      // Simplificado para Admin: Dashboard, Pacientes, Asistente, Menú (Nueva)
-      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'menu'];
+      // Simplificado para Admin: Dashboard, Pacientes, Asistente, Perfil (Nueva)
+      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'profile'];
     } else if (userRole.contains('NUTRI') || userRole.contains('COACH')) {
-      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'menu']; 
+      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'profile']; 
     } else {
-      activeSectionKeys = ['dashboard', 'assistant', 'menu'];
+      activeSectionKeys = ['dashboard', 'assistant', 'profile'];
     }
 
     final List<Widget> filteredViews = activeSectionKeys.map((k) => allSections[k]!['view'] as Widget).toList();
@@ -237,7 +237,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       case 1: return 'Gestión de Equipo';
       case 2: return 'Auditoría del Sistema';
       case 3: return 'Asistente IA';
-      case 4: return 'Perfil del Staff';
+      case 4: return 'Perfil';
       default: return 'CaloFit';
     }
   }

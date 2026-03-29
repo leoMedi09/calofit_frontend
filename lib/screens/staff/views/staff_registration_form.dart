@@ -33,7 +33,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
 
   final Map<String, int> _roleIds = {
     'ADMIN': 1,
-    'COACH': 2,
     'NUTRI': 3,
   };
 
@@ -233,7 +232,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
           isExpanded: true,
           items: const [
             DropdownMenuItem(value: 'NUTRI', child: Text('Nutricionista')),
-            DropdownMenuItem(value: 'COACH', child: Text('Entrenador')),
             DropdownMenuItem(value: 'ADMIN', child: Text('Administrador')),
           ],
           onChanged: (value) {

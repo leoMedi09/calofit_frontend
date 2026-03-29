@@ -70,6 +70,12 @@ class _DashboardViewState extends State<DashboardView> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token ?? '';
+      
+      if (token.isEmpty) {
+        _refreshTimer?.cancel();
+        return;
+      }
+
       final currentUserRole = authProvider.userRole?.toLowerCase() ?? '';
       final isAdmin = currentUserRole.contains('admin') || currentUserRole.contains('administrador');
 
@@ -881,7 +887,7 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildAdminModernStats() {
-    final int totalStaffCount = _countNutri + _countCoach + _countAdmin;
+    final int totalStaffCount = _countNutri + _countAdmin;
 
     return Column(
       children: [
@@ -952,12 +958,6 @@ class _DashboardViewState extends State<DashboardView> {
                                     radius: 14,
                                     showTitle: false,
                                   ),
-                                  PieChartSectionData(
-                                    value: _countCoach.toDouble(),
-                                    color: const Color(0xFFFFB74D),
-                                    radius: 14,
-                                    showTitle: false,
-                                  ),
                                 ],
                               ),
                             ),
@@ -988,13 +988,12 @@ class _DashboardViewState extends State<DashboardView> {
                       ),
                     ),
                     const SizedBox(height: 35),
-                    // Stats Inferiores (Admin, Nutri, Trainer)
+                    // Stats Inferiores (Admin, Nutri)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildHeroIndicator('Admins', _countAdmin.toString()),
                         _buildHeroIndicator('Nutris', _countNutri.toString()),
-                        _buildHeroIndicator('Trainers', _countCoach.toString()),
                       ],
                     ),
                   ],
@@ -1015,14 +1014,6 @@ class _DashboardViewState extends State<DashboardView> {
           Icons.person_add_alt_1_rounded,
           const Color(0xFF1E88E5),
           () => _openRegistrationForm(context),
-        ),
-        const SizedBox(height: 12),
-        _buildActionItem(
-          'Ver Mi Equipo',
-          'Gestionar miembros y roles.',
-          Icons.groups_3_rounded,
-          const Color(0xFF7E57C2), 
-          () => _navigateToTeamList(context),
         ),
       ],
     );
@@ -1138,12 +1129,6 @@ class _DashboardViewState extends State<DashboardView> {
       backgroundColor: Colors.transparent,
       builder: (context) => const StaffRegistrationForm(),
     ).then((_) => _refreshData());
-  }
-
-  void _navigateToTeamList(BuildContext context) {
-    // Usamos el callback para cambiar a la pestaña de Equipo (Índice 1)
-    // Esto mantiene la barra de navegación visible y evita el desvío del flujo principal
-    widget.onNavigate?.call(1);
   }
 
   Widget _buildMiniLegend(String label, String value, Color color) {

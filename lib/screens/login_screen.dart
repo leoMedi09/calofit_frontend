@@ -9,19 +9,20 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   // Controladores para Cliente
   final _clientEmailController = TextEditingController();
   final _clientPasswordController = TextEditingController();
   bool _clientRememberMe = false;
-  
+
   // Controladores para Personal
   final _staffEmailController = TextEditingController();
   final _staffPasswordController = TextEditingController();
   bool _staffRememberMe = false;
-  
+
   bool _isLoading = false;
   String? _errorMessage;
   bool _isClientPasswordVisible = false;
@@ -49,17 +50,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Future<void> _login(bool isClient) async {
-    String email = (isClient ? _clientEmailController.text : _staffEmailController.text).trim();
-    final password = isClient ? _clientPasswordController.text : _staffPasswordController.text;
+    String email =
+        (isClient ? _clientEmailController.text : _staffEmailController.text)
+            .trim();
+    final password = isClient
+        ? _clientPasswordController.text
+        : _staffPasswordController.text;
     final rememberMe = isClient ? _clientRememberMe : _staffRememberMe;
 
-    
-    debugPrint('🔐 Iniciando login en TAB: ${isClient ? "CLIENTE" : "PERSONAL"}');
+    debugPrint(
+        '🔐 Iniciando login en TAB: ${isClient ? "CLIENTE" : "PERSONAL"}');
     debugPrint('📧 Email: $email');
     debugPrint('🔄 isStaff será: ${!isClient}');
-    
+
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Por favor, ingresa tu email y contraseña');
+      setState(
+          () => _errorMessage = 'Por favor, ingresa tu email y contraseña');
       return;
     }
 
@@ -77,28 +83,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final auth = Provider.of<AuthProvider>(context, listen: false);
 
       if (auth.isAuthenticated) {
-          final String finalType = auth.userType?.toLowerCase() ?? '';
-          debugPrint('🚀 Login exitoso. Rol detectado: $finalType');
-          
-          String route = (finalType == 'staff' || finalType == 'admin') 
-              ? '/staff-main' 
-              : '/dashboard';
-          
-          debugPrint('🎯 Navegando a ruta: $route');
-          Navigator.pushNamedAndRemoveUntil(context, route, (route) => false);
+        final String finalType = auth.userType?.toLowerCase() ?? '';
+        debugPrint('🚀 Login exitoso. Rol detectado: $finalType');
+
+        String route = (finalType == 'staff' || finalType == 'admin')
+            ? '/staff-main'
+            : '/dashboard';
+
+        debugPrint('🎯 Navegando a ruta: $route');
+        Navigator.pushNamedAndRemoveUntil(context, route, (route) => false);
       } else {
         setState(() => _errorMessage = 'No se pudo validar la sesión.');
       }
-
     } catch (e) {
       debugPrint('❌ Error capturado en UI: $e');
       if (!mounted) return;
-      
+
       String message;
-      if (e.toString().contains('SocketException') || e.toString().contains('connection errored') || e.toString().contains('No route to host')) {
-        message = 'No se pudo conectar al servidor. Revisa tu conexión Wi-Fi y el Firewall.';
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('connection errored') ||
+          e.toString().contains('No route to host')) {
+        message =
+            'No se pudo conectar al servidor. Revisa tu conexión Wi-Fi y el Firewall.';
       } else {
-        message = isClient 
+        message = isClient
             ? 'Credenciales incorrectas. Verifica tu email y contraseña.'
             : 'Acceso denegado. Verifica tus credenciales o contacta al administrador.';
       }
@@ -118,7 +126,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('CaloFit', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('CaloFit',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -176,7 +185,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Correo Electrónico',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.email),
                   filled: true,
                   fillColor: Colors.grey[50],
@@ -188,20 +198,24 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 obscureText: !_isClientPasswordVisible,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isClientPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      _isClientPasswordVisible
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
                       color: Colors.grey,
                     ),
-                    onPressed: () => setState(() => _isClientPasswordVisible = !_isClientPasswordVisible),
+                    onPressed: () => setState(() =>
+                        _isClientPasswordVisible = !_isClientPasswordVisible),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],
                 ),
               ),
-              
+
               Row(
                 children: [
                   Checkbox(
@@ -216,7 +230,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   const Text('Recordar sesión'),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/forgot-password'),
                     child: const Text('¿Olvidaste tu contraseña?'),
                   ),
                 ],
@@ -231,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     textAlign: TextAlign.center,
                   ),
                 ),
-                
+
               const SizedBox(height: 16),
               _isLoading
                   ? const CircularProgressIndicator()
@@ -248,11 +263,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Ingresar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        child: const Text('Ingresar',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),
               const SizedBox(height: 24),
-              
+
               // SOLO PARA CLIENTES: Link de registro
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -260,7 +277,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   const Text('¿No tienes cuenta?'),
                   TextButton(
                     onPressed: () => Navigator.pushNamed(context, '/register'),
-                    child: const Text('Regístrate', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                    child: const Text('Regístrate',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.blue)),
                   ),
                 ],
               ),
@@ -297,7 +316,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 decoration: InputDecoration(
                   labelText: 'Correo Electrónico',
                   hintText: 'ejemplo@correo.com',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.email_outlined),
                   filled: true,
                   fillColor: Colors.grey[50],
@@ -309,20 +329,24 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 obscureText: !_isStaffPasswordVisible,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isStaffPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      _isStaffPasswordVisible
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
                       color: Colors.grey,
                     ),
-                    onPressed: () => setState(() => _isStaffPasswordVisible = !_isStaffPasswordVisible),
+                    onPressed: () => setState(() =>
+                        _isStaffPasswordVisible = !_isStaffPasswordVisible),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],
                 ),
               ),
-              
+
               Row(
                 children: [
                   Checkbox(
@@ -347,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     textAlign: TextAlign.center,
                   ),
                 ),
-                
+
               const SizedBox(height: 16),
               _isLoading
                   ? const CircularProgressIndicator()
@@ -364,11 +388,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Ingresar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        child: const Text('Ingresar',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),
               const SizedBox(height: 24),
-              
+
               // ADVERTENCIA PARA STAFF: No hay registro
               Container(
                 padding: const EdgeInsets.all(16),
@@ -383,8 +409,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Si eres nutricionista o entrenador, contacta al administrador para obtener tu acceso.',
-                        style: TextStyle(color: Colors.orange[900], fontSize: 13),
+                        'Si eres nutricionista, contacta al administrador para obtener tu acceso.',
+                        style:
+                            TextStyle(color: Colors.orange[900], fontSize: 13),
                       ),
                     ),
                   ],

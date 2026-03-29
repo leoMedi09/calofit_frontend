@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import 'views/dashboard_view.dart';
-import 'views/team_management_view.dart';
 import 'views/audit_view.dart';
 import 'views/assistant_copilot_view.dart';
 import 'views/staff_profile_view.dart';
 import 'views/patient_list_view.dart';
 import 'views/staff_menu_view.dart';
+import 'views/team_list_view.dart';
 
 class StaffMainScreen extends StatefulWidget {
   const StaffMainScreen({super.key});
@@ -129,7 +129,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
         ),
       },
       'team': {
-        'view': const TeamManagementView(),
+        'view': const TeamListView(),
         'item': const BottomNavigationBarItem(
           icon: Icon(Icons.people_alt_outlined), 
           activeIcon: Icon(Icons.people_alt_rounded),
@@ -157,12 +157,11 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
     // Filtrar secciones por rol
     List<String> activeSectionKeys;
     if (userRole.contains('ADMIN')) {
-      // Simplificado para Admin: Dashboard, Pacientes, Asistente, Perfil (Nueva)
-      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'profile'];
-    } else if (userRole.contains('NUTRI') || userRole.contains('COACH')) {
-      activeSectionKeys = ['dashboard', 'patients', 'assistant', 'profile']; 
+      activeSectionKeys = ['dashboard', 'team', 'patients', 'profile'];
+    } else if (userRole.contains('NUTRI')) {
+      activeSectionKeys = ['dashboard', 'team', 'patients', 'profile']; 
     } else {
-      activeSectionKeys = ['dashboard', 'assistant', 'profile'];
+      activeSectionKeys = ['dashboard', 'profile'];
     }
 
     final List<Widget> filteredViews = activeSectionKeys.map((k) => allSections[k]!['view'] as Widget).toList();
@@ -177,7 +176,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       backgroundColor: Colors.grey[50],
       appBar: null,
       body: filteredViews[_selectedIndex],
-      floatingActionButton: activeSectionKeys[_selectedIndex] != 'assistant' 
+      floatingActionButton: (activeSectionKeys.contains('assistant') && activeSectionKeys[_selectedIndex] != 'assistant')
           ? FloatingActionButton(
               onPressed: () {
                 int assistantIndex = activeSectionKeys.indexOf('assistant');

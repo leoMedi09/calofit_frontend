@@ -34,6 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   double _baselineWeight = 70.0;
   double _baselineHeight = 170.0;
   bool _dialogShown = false; // ✅ Para mostrar el popup solo una vez al entrar
+  int? _assignedNutriId; // ✅ Verifica si tiene Nutri asignado
 
   @override
   void initState() {
@@ -163,6 +164,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           authProvider.updateProfilePictureUrl(profile.profilePictureUrl!);
         }
 
+        setState(() {
+          _assignedNutriId = profile.assignedNutriId;
+        });
+
         if (_checkInNeeded) {
           setState(() {
             _baselineWeight = profile.weight;
@@ -259,6 +264,44 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       )
                     else if (dailySummary != null) ...[ // Hero Section: Progreso del día
                       
+                      // ✅ NUEVO: Bloqueo de Nutricionista
+                      if (_assignedNutriId == null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 20),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.orange.shade300, width: 2),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 28),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      '¡Nutricionista Pendiente!',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade900,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Tu perfil está bajo revisión. Un administrador te asignará un especialista muy pronto para habilitar las funciones analíticas y el Asistente de IA.',
+                                style: TextStyle(color: Colors.orange.shade800, height: 1.4),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // ✅ NUEVO: Card de Check-in Semanal
                       if (_checkInNeeded || _precisionScore < 100)
                         CheckInCard(
@@ -352,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _assignedNutriId == null ? null : FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,

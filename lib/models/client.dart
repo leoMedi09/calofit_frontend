@@ -14,6 +14,7 @@ class Client {
   final String activityLevel;
   final String goal;
   final String? profilePictureUrl;
+  final int? assignedNutriId; // ✅ Verifica si tiene nutricionista
 
   Client({
     required this.id,
@@ -30,6 +31,7 @@ class Client {
     required this.activityLevel,
     required this.goal,
     this.profilePictureUrl,
+    this.assignedNutriId,
   });
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
@@ -69,6 +71,7 @@ class Client {
       activityLevel: json['activity_level'] ?? 'Sedentario',
       goal: json['goal'] ?? 'Mantener peso',
       profilePictureUrl: json['profile_picture_url'] ?? json['profilePictureUrl'],
+      assignedNutriId: json['assigned_nutri_id'],
     );
   }
 
@@ -87,6 +90,7 @@ class Client {
       'activity_level': activityLevel,
       'goal': goal,
       'profile_picture_url': profilePictureUrl,
+      'assigned_nutri_id': assignedNutriId,
     };
   }
 }

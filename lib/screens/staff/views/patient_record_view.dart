@@ -190,7 +190,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       appBar: AppBar(
         title: Text(
           widget.patientData['full_name'] ?? 'Expediente',
-          style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF263238)),
+          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF263238), fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -200,10 +200,11 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save_rounded, color: Color(0xFF1E88E5)),
-            onPressed: _savePlan,
-          ),
+          if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH'))
+            IconButton(
+              icon: const Icon(Icons.save_rounded, color: Color(0xFF1E88E5)),
+              onPressed: _savePlan,
+            ),
         ],
       ),
       body: _isLoading 
@@ -213,15 +214,30 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             children: [
               _buildHeaderCard(),
               const SizedBox(height: 24),
+              
+              // 🍎 SECCIÓN NUEVA: CONSUMO DE HOY (Macro Tracking Diario)
+              _buildTodayConsumption(),
+              const SizedBox(height: 24),
+
               _buildMetricsGrid(),
               const SizedBox(height: 24),
-              _buildStrategicGuideSection(), // v80.0
-              const SizedBox(height: 24),
-              _buildAIInsightsSection(), // v80.0: Ahora incluye historial de alertas
-              const SizedBox(height: 24),
+
+              // 🛡️ Guía Estratégica (Solo para Nutris/Admins)
+              if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH')) ...[
+                _buildStrategicGuideSection(),
+                const SizedBox(height: 24),
+                _buildAIInsightsSection(),
+                const SizedBox(height: 24),
+              ],
+
               _buildProgressCharts(),
               const SizedBox(height: 24),
               _buildNutritionalPlanSection(),
+              const SizedBox(height: 24),
+              
+              // 📝 SECCIÓN NUEVA: NOTAS DEL ENTRENADOR
+              _buildCoachNotesSection(),
+
               const SizedBox(height: 80),
             ],
           ),
@@ -532,6 +548,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   Widget _buildNutritionalPlanSection() {
+    final bool isCoach = Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH');
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -544,34 +562,204 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('CONFIGURACIÓN DEL PLAN', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1, color: Colors.blueGrey)),
-              const Icon(Icons.edit_note_rounded, color: Colors.grey),
+              const Text('CONFIGURACIÓN DEL PLAN', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.2, color: Colors.blueGrey)),
+              if (isCoach)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(8)),
+                  child: const Text('SOLO LECTURA', style: TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold)),
+                )
+              else
+                const Icon(Icons.edit_note_rounded, color: Colors.blue),
             ],
           ),
           const SizedBox(height: 24),
-          _buildEditField('Calorías Diarias', _caloriesController, Icons.local_fire_department_rounded, 'kcal', isNumber: true),
+          _buildEditField('Calorías Diarias', _caloriesController, Icons.local_fire_department_rounded, 'kcal', isNumber: true, readOnly: isCoach),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildEditField('Proteína', _proteinController, null, 'g', isNumber: true)),
+              Expanded(child: _buildEditField('Proteína', _proteinController, null, 'g', isNumber: true, readOnly: isCoach)),
               const SizedBox(width: 12),
-              Expanded(child: _buildEditField('Carbs', _carbsController, null, 'g', isNumber: true)),
+              Expanded(child: _buildEditField('Carbs', _carbsController, null, 'g', isNumber: true, readOnly: isCoach)),
               const SizedBox(width: 12),
-              Expanded(child: _buildEditField('Grasas', _fatsController, null, 'g', isNumber: true)),
+              Expanded(child: _buildEditField('Grasas', _fatsController, null, 'g', isNumber: true, readOnly: isCoach)),
             ],
           ),
           const SizedBox(height: 24),
-          const Text('NOTAS CLÍNICAS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.grey)),
+          Text(isCoach ? 'NOTAS DEL NUTRICIONISTA' : 'NOTAS CLÍNICAS', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 8),
           TextField(
             controller: _obsController,
             maxLines: 4,
+            readOnly: isCoach,
             decoration: InputDecoration(
               hintText: 'Añade observaciones sobre el paciente...',
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodayConsumption() {
+    // 🔋 Datos REALES del día (vienen en _fullData desde el backend)
+    final ingesta = _fullData?['today_summary'] ?? {
+      'calorias_consumidas': _fullData?['current_day_calories'] ?? 0,
+      'proteinas': _fullData?['current_day_protein'] ?? 0,
+      'carbos': _fullData?['current_day_carbs'] ?? 0,
+      'grasas': _fullData?['current_day_fats'] ?? 0,
+      'calorias_quemadas': _fullData?['current_day_burned'] ?? 0,
+    };
+
+    final int consumido = (ingesta['calorias_consumidas'] ?? 0).toInt();
+    final int quemado = (ingesta['calorias_quemadas'] ?? 0).toInt();
+    final int neto = consumido - quemado;
+    
+    final double objetivoCal = double.tryParse(_caloriesController.text) ?? 2000;
+    final double progress = (objetivoCal > 0) ? (consumido / objetivoCal) : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF1E88E5).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('RESUMEN ENERGÉTICO HOY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.5)),
+              Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Fila de Balance: Consumido vs Quemado vs Neto
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$consumido', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  const Text('INGERIDAS', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              Container(height: 30, width: 1, color: Colors.white24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   Text('$quemado', style: const TextStyle(color: Color(0xFFFFCC80), fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                   const Text('QUEMADAS', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              Container(height: 30, width: 1, color: Colors.white24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('$neto', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  const Text('BALANCE NETO', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: progress.clamp(0.0, 1.0),
+                    backgroundColor: Colors.white.withOpacity(0.15),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    minHeight: 8,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text('${(progress * 100).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildMacroSmall('PROTEÍNA', '${ingesta['proteinas']}g'),
+              _buildMacroSmall('CARBOS', '${ingesta['carbos']}g'),
+              _buildMacroSmall('GRASAS', '${ingesta['grasas']}g'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroSmall(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w900)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildCoachNotesSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.blue.shade50),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.assignment_ind_rounded, color: Colors.blue, size: 20),
+              SizedBox(width: 8),
+              Text('NOTAS DEL ENTRENADOR', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1, color: Color(0xFF263238))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            maxLines: 4,
+            decoration: InputDecoration(
+              hintText: 'Ej: "Hoy lo noté bajo de energía en pierna", "Revisar su ingesta pre-entreno"...',
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+              filled: true,
+              fillColor: Colors.blue.shade50.withOpacity(0.3),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              Icon(Icons.info_outline, size: 14, color: Colors.blueGrey),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Estas notas son enviadas al nutricionista para ajustar el plan del atleta.',
+                  style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -998,7 +1186,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     );
   }
 
-  Widget _buildEditField(String label, TextEditingController controller, IconData? icon, String unit, {bool isNumber = true, int maxLines = 1, String? hint}) {
+  Widget _buildEditField(String label, TextEditingController controller, IconData? icon, String unit, {bool isNumber = true, int maxLines = 1, String? hint, bool readOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1008,6 +1196,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.multiline,
           maxLines: maxLines,
+          readOnly: readOnly,
           style: const TextStyle(fontWeight: FontWeight.bold),
           decoration: InputDecoration(
             hintText: hint,
@@ -1015,7 +1204,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             prefixIcon: icon != null ? Icon(icon, size: 18, color: const Color(0xFF1E88E5)) : null,
             suffixText: unit.isNotEmpty ? unit : null,
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: readOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           ),

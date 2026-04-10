@@ -1,30 +1,30 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:dio/dio.dart';
-import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import '../services/url_service.dart';
-import '../models/dashboard_data.dart';
-import '../screens/login_screen.dart';
-import '../screens/edit_profile_screen.dart';
-import '../screens/chat_screen.dart';
-import '../screens/mi_balance_screen.dart';
-import '../widgets/plan_status_badge.dart';
-import '../widgets/plan_alert_card.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../services/url_service.dart';
+import '../../models/dashboard_data.dart';
+import '../auth/login_screen.dart';
+import 'views/edit_profile_screen.dart';
+import 'views/chat_screen.dart';
+import 'views/mi_balance_screen.dart';
+import '../../widgets/plan_status_badge.dart';
+import '../../widgets/plan_alert_card.dart';
 
-import '../providers/balance_provider.dart';
-import '../widgets/checkin_card.dart';
-import '../screens/checkin_wizard_screen.dart';
+import '../../providers/balance_provider.dart';
+import '../../widgets/checkin_card.dart';
+import 'views/checkin_wizard_screen.dart';
+import 'onboarding_profile_screen.dart';
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class ClientMainScreen extends StatefulWidget {
+  const ClientMainScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<ClientMainScreen> createState() => _ClientMainScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
+class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   AnimationController? _progressController;
   
@@ -45,8 +45,24 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
     
     // Carga inicial de datos a través del Provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // 🆕 Verificar si el cliente tiene el perfil completo
+      if (authProvider.userId != null && authProvider.token != null) {
+        try {
+          final client = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
+          if (!client.isProfileComplete && mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => OnboardingProfileScreen(client: client)),
+            );
+            return;
+          }
+        } catch (_) {
+          // Si falla la verificación, continuar con el dashboard normal
+        }
+      }
       
       // ✅ Mostrar Toast de bienvenida si acaba de iniciar sesión
       if (authProvider.showWelcomeMessage) {
@@ -1298,7 +1314,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ),
           ),
           const SizedBox(height: 16),
-          _buildStatRow('Gasto Metabólico Basal (BMR)', '${dailySummary.gastoMetabolicoBasal.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
+          _buildStatRow('Gasto Energético Total (TDEE)', '${dailySummary.gastoMetabolicoBasal.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
           const Divider(height: 16),
           _buildStatRow('Actividad Física hoy', '${dailySummary.caloriasQuemadas.toStringAsFixed(0)} kcal', Icons.directions_run_rounded, Colors.green),
           const Divider(height: 16),

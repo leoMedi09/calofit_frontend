@@ -8,7 +8,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 import '../../../widgets/plan_status_badge.dart';
-import '../../../screens/login_screen.dart';
+import '../../auth/login_screen.dart';
 import 'staff_registration_form.dart';
 import 'team_list_view.dart';
 
@@ -887,7 +887,7 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildAdminModernStats() {
-    final int totalStaffCount = _countNutri + _countAdmin;
+    final int totalStaffCount = _countNutri + _countAdmin + _countCoach; // ✅ Incluimos Coaches
 
     return Column(
       children: [
@@ -958,6 +958,12 @@ class _DashboardViewState extends State<DashboardView> {
                                     radius: 14,
                                     showTitle: false,
                                   ),
+                                  PieChartSectionData(
+                                    value: _countCoach.toDouble(),
+                                    color: const Color(0xFFFFA726), // ✅ Naranja para Coaches
+                                    radius: 14,
+                                    showTitle: false,
+                                  ),
                                 ],
                               ),
                             ),
@@ -994,6 +1000,7 @@ class _DashboardViewState extends State<DashboardView> {
                       children: [
                         _buildHeroIndicator('Admins', _countAdmin.toString()),
                         _buildHeroIndicator('Nutris', _countNutri.toString()),
+                        _buildHeroIndicator('Trainers', _countCoach.toString()), // ✅ Indicador añadido
                       ],
                     ),
                   ],

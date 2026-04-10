@@ -121,18 +121,22 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('remember_me', rememberMe);
     
+    // Siempre guardamos el token básico para evitar que el usuario sea expulsado por error
+    // pero respetamos el rememberMe para la carga automática del perfil completo
+    if (_token != null) await prefs.setString('token', _token!);
+    if (_userType != null) await prefs.setString('userType', _userType!);
+    if (_userRole != null) await prefs.setString('userRole', _userRole!);
+    if (_userName != null) await prefs.setString('userName', _userName!);
+    if (_userEmail != null) await prefs.setString('userEmail', _userEmail!);
+    if (_userId != null) await prefs.setInt('userId', _userId!);
+    
     if (rememberMe) {
-      if (_token != null) await prefs.setString('token', _token!);
-      if (_userType != null) await prefs.setString('userType', _userType!);
-      if (_userRole != null) await prefs.setString('userRole', _userRole!);
-      if (_userName != null) await prefs.setString('userName', _userName!);
-      if (_userEmail != null) await prefs.setString('userEmail', _userEmail!);
-      if (_userId != null) await prefs.setInt('userId', _userId!);
       if (_profilePictureUrl != null) await prefs.setString('profilePictureUrl', _profilePictureUrl!);
       if (_userIdFirebase != null) await prefs.setString('userIdFirebase', _userIdFirebase!);
     } else {
-      await _removeSession();
-      await prefs.setBool('remember_me', false);
+      // Si no marcó recordarme, al menos mantenemos la sesión por 24 horas (duración del token)
+      // pero podríamos limpiar datos sensibles si fuera necesario.
+      // Por ahora, priorizamos que NO lo bote de la sesión.
     }
   }
 

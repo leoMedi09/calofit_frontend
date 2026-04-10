@@ -341,17 +341,19 @@ class _PatientListViewState extends State<PatientListView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _PatientQuickPreview(
+      builder: (context) => PatientPreviewModal(
         patient: patient, 
         apiService: _apiService,
-        onAssign: () => _showAssignmentDialog(context, patient),
+        onAssignNutri: () => _showAssignmentDialog(context, patient, roleToAssign: 'nutri'),
+        onAssignCoach: () => _showAssignmentDialog(context, patient, roleToAssign: 'coach'),
         onValidated: _loadPatients,
       ),
     );
   }
 
-  void _showAssignmentDialog(BuildContext context, Map<String, dynamic> patient) async {
+  void _showAssignmentDialog(BuildContext context, Map<String, dynamic> patient, {required String roleToAssign}) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final bool isNutri = roleToAssign == 'nutri';
     
     showDialog(
       context: context,
@@ -361,7 +363,10 @@ class _PatientListViewState extends State<PatientListView> {
 
     try {
       final staff = await _apiService.getStaffList(authProvider.token!);
-      final nutris = staff.where((s) => s['role_name']?.toString().toLowerCase().contains('nutri') ?? false).toList();
+      final filteredStaff = staff.where((s) {
+        final r = s['role_name']?.toString().toLowerCase() ?? '';
+        return isNutri ? r.contains('nutri') : r.contains('coach');
+      }).toList();
       
       if (context.mounted) Navigator.pop(context);
 
@@ -371,103 +376,87 @@ class _PatientListViewState extends State<PatientListView> {
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (context) => Container(
-            height: MediaQuery.of(context).size.height * 0.7,
+            height: MediaQuery.of(context).size.height * 0.75,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  child: Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10))),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Asignar Nutricionista',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF263238)),
-                ),
-                const SizedBox(height: 8),
                 Text(
-                  'Selecciona un especialista para ${patient['full_name']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  isNutri ? 'Asignar Nutricionista' : 'Asignar Coach / Trainer',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF263238), letterSpacing: -0.5),
+                ),
+                Text(
+                  'Elige un especialista para gestionar este perfil.',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 24),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: nutris.length,
+                    itemCount: filteredStaff.length,
                     itemBuilder: (context, index) {
-                      final nutri = nutris[index];
-                      final bool isCurrentlyAssigned = nutri['id'] == patient['nutri_id'];
+                      final member = filteredStaff[index];
+                      final bool isCurrentlyAssigned = isNutri 
+                          ? member['id'] == patient['nutri_id']
+                          : member['id'] == patient['coach_id'];
                       
+                      final Color roleColor = isNutri ? const Color(0xFF1E88E5) : Colors.orange.shade700;
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: isCurrentlyAssigned ? const Color(0xFFE8F5E9) : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          color: isCurrentlyAssigned ? roleColor.withOpacity(0.05) : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isCurrentlyAssigned ? const Color(0xFF4CAF50) : Colors.grey[200]!,
+                            color: isCurrentlyAssigned ? roleColor : Colors.grey[100]!,
                             width: isCurrentlyAssigned ? 2 : 1,
                           ),
                         ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          contentPadding: const EdgeInsets.all(12),
                           leading: CircleAvatar(
-                            backgroundColor: isCurrentlyAssigned ? const Color(0xFF4CAF50) : const Color(0xFF1E88E5).withOpacity(0.1),
-                            backgroundImage: nutri['profile_picture_url'] != null && nutri['profile_picture_url'].toString().isNotEmpty
-                                ? NetworkImage(UrlService.formatImageUrl(nutri['profile_picture_url']))
+                            radius: 24,
+                            backgroundColor: roleColor.withOpacity(0.1),
+                            backgroundImage: member['profile_picture_url'] != null
+                                ? NetworkImage(UrlService.formatImageUrl(member['profile_picture_url']))
                                 : null,
-                            child: nutri['profile_picture_url'] == null || nutri['profile_picture_url'].toString().isEmpty
-                                ? Icon(
-                                    isCurrentlyAssigned ? Icons.check_rounded : Icons.person_outline_rounded,
-                                    color: isCurrentlyAssigned ? Colors.white : const Color(0xFF1E88E5),
-                                  )
+                            child: member['profile_picture_url'] == null
+                                ? Icon(Icons.person_outline_rounded, color: roleColor)
                                 : null,
                           ),
                           title: Text(
-                            '${nutri['first_name']} ${nutri['last_name_paternal']}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            '${member['first_name']} ${member['last_name_paternal']}',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                           ),
-                          subtitle: Text('${nutri['pacientes_count'] ?? 0} pacientes asignados'),
+                          subtitle: Text('${member['pacientes_count'] ?? 0} atletas bajo su cargo', style: const TextStyle(fontSize: 12)),
                           trailing: isCurrentlyAssigned 
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF4CAF50),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text(
-                                  'ACTUAL',
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                ),
-                              )
+                            ? Icon(Icons.check_circle_rounded, color: roleColor)
                             : const Icon(Icons.chevron_right_rounded, color: Colors.grey),
                           onTap: isCurrentlyAssigned ? null : () async {
                             try {
                               await _apiService.assignEspecialista(
                                 patient['id'], 
-                                nutriId: nutri['id'], 
+                                nutriId: isNutri ? member['id'] : null, 
+                                trainerId: !isNutri ? member['id'] : null,
                                 token: authProvider.token!
                               );
                               if (context.mounted) {
                                 Navigator.pop(context); // Cerrar lista
                                 Navigator.pop(context); // Cerrar preview
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Nutricionista asignado correctamente'),
+                                  SnackBar(
+                                    content: Text('${isNutri ? "Nutricionista" : "Coach"} asignado con éxito'),
                                     backgroundColor: Colors.green,
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
-                                // Opcional: Recargar lista
                                 _loadPatients();
                               }
                             } catch (e) {
@@ -492,23 +481,26 @@ class _PatientListViewState extends State<PatientListView> {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al obtener especialistas: $e')),
+          SnackBar(content: Text('Error al obtener staff: $e')),
         );
       }
     }
   }
 }
 
-class _PatientQuickPreview extends StatelessWidget {
+class PatientPreviewModal extends StatelessWidget {
   final Map<String, dynamic> patient;
   final ApiService apiService;
-  final VoidCallback onAssign;
+  final VoidCallback onAssignNutri;
+  final VoidCallback onAssignCoach;
   final VoidCallback onValidated;
 
-  const _PatientQuickPreview({
+  const PatientPreviewModal({
+    super.key,
     required this.patient, 
     required this.apiService,
-    required this.onAssign,
+    required this.onAssignNutri,
+    required this.onAssignCoach,
     required this.onValidated,
   });
 
@@ -522,21 +514,14 @@ class _PatientQuickPreview extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
           ),
           const SizedBox(height: 24),
           Row(
@@ -565,12 +550,12 @@ class _PatientQuickPreview extends StatelessWidget {
                   children: [
                     Text(
                       patient['full_name'],
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF263238)),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF263238), letterSpacing: -0.5),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       patient['email'] ?? 'Sin correo', 
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14)
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)
                     ),
                   ],
                 ),
@@ -580,31 +565,15 @@ class _PatientQuickPreview extends StatelessWidget {
           const SizedBox(height: 32),
           const Text(
             'ANÁLISIS DE ADHERENCIA (IA)', 
-            style: TextStyle(
-              fontWeight: FontWeight.w800, 
-              letterSpacing: 1.2, 
-              fontSize: 11,
-              color: Color(0xFF1E88E5),
-            )
+            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 10, color: Color(0xFF1E88E5)),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [const Color(0xFF1E88E5).withOpacity(0.08), const Color(0xFF1E88E5).withOpacity(0.02)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.12)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: Colors.blue.withOpacity(0.05)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -614,38 +583,45 @@ class _PatientQuickPreview extends StatelessWidget {
                 Expanded(
                   child: Text(
                     patient['alerta'] ?? 'Analizando actividad reciente...',
-                    style: const TextStyle(
-                      fontSize: 14, 
-                      height: 1.6,
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF455A64),
-                    ),
+                    style: const TextStyle(fontSize: 14, height: 1.6, fontStyle: FontStyle.italic, fontWeight: FontWeight.w500, color: Color(0xFF475569)),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 32), // 👈 Incrementamos el espacio aquí (era 0 o implícito)
+          const SizedBox(height: 32),
           if (isAdmin) ...[
-            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: onAssign,
-                icon: Icon(
-                  patient['nutri_id'] != null ? Icons.sync_rounded : Icons.person_add_alt_1_outlined,
-                  color: Colors.white,
-                ),
+                onPressed: onAssignNutri,
+                icon: const Icon(Icons.restaurant_menu_rounded, color: Colors.white, size: 20),
                 label: Text(
                   patient['nutri_id'] != null ? 'Cambiar Nutricionista' : 'Asignar Nutricionista', 
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: patient['nutri_id'] != null 
-                      ? const Color(0xFF5C6BC0) // Indigo para "Cambiar"
-                      : const Color(0xFF2E7D32), // Verde para "Asignar"
+                  backgroundColor: const Color(0xFF1E88E5),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: onAssignCoach,
+                icon: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 20),
+                label: Text(
+                  patient['coach_id'] != null ? 'Cambiar Coach' : 'Asignar Coach / Trainer', 
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -659,13 +635,8 @@ class _PatientQuickPreview extends StatelessWidget {
               height: 56,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context); // Cerrar bottom sheet
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PatientRecordView(patientData: patient),
-                    ),
-                  );
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => PatientRecordView(patientData: patient)));
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E88E5),
@@ -673,7 +644,7 @@ class _PatientQuickPreview extends StatelessWidget {
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('Ver Expediente Completo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                child: const Text('Ver Expediente Completo', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               ),
             ),
           ],

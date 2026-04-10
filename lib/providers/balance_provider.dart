@@ -54,12 +54,13 @@ class BalanceProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchFullBalance(String token) async {
+  Future<void> fetchFullBalance(String token, {String? fecha}) async {
     try {
-      final data = await _apiService.getMiBalance(token);
+      final data = await _apiService.getMiBalance(token, fecha: fecha);
       _fullBalanceData = data;
       
-      if (data['resumen'] != null) {
+      // ✅ FIX: Solo actualilzamos el resumen de HOY (Dashboard) si NO estamos viajando en el tiempo
+      if (data['resumen'] != null && fecha == null) {
         final res = data['resumen'];
         // ✅ FIX (v60): Mapear macros reales desde el servidor, NO resetear a 0.0
         _dailySummary = DailySummary(

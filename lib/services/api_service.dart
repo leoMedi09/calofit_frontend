@@ -469,12 +469,14 @@ class ApiService {
 
   // ============ MI BALANCE DIARIO ============
 
-  /// 📊 Obtiene el balance calórico del día actual
+  /// 📊 Obtiene el balance calórico de un día específico (por defecto, hoy)
   /// Incluye: resumen, alimentos registrados, ejercicios registrados
-  Future<Map<String, dynamic>> getMiBalance(String token) async {
+  Future<Map<String, dynamic>> getMiBalance(String token, {String? fecha}) async {
     try {
-      print('🔍 Obteniendo balance del día...');
+      print('🔍 Obteniendo balance del día ${fecha ?? "hoy"}...');
+      final queryParams = fecha != null ? {'fecha': fecha} : null;
       final response = await _dio.get('/balance/hoy',
+          queryParameters: queryParams,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       print('✅ Balance obtenido: ${response.data}');
       return response.data;
@@ -859,6 +861,33 @@ class ApiService {
           options: Options(headers: {'Authorization': 'Bearer $token'}));
     } on DioException catch (e) {
       throw Exception('Error al actualizar plan: ${e.response?.data['detail'] ?? e.message}');
+    }
+  }
+
+  /// Crea un cliente mínimo desde el panel Admin.
+  /// Solo email + contraseña + firebase_uid. El resto lo completa el cliente en el Onboarding.
+  Future<void> adminCreateClient({
+    required String email,
+    required String password,
+    required String flutterUid,
+    required String token,
+    int? assignedNutriId,
+    int? assignedCoachId,
+  }) async {
+    try {
+      await _dio.post(
+        '/clientes/admin-crear',
+        data: {
+          'email': email,
+          'password': password,
+          'flutter_uid': flutterUid,
+          if (assignedNutriId != null) 'assigned_nutri_id': assignedNutriId,
+          if (assignedCoachId != null) 'assigned_coach_id': assignedCoachId,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al crear cliente: ${e.response?.data?['detail'] ?? e.message}');
     }
   }
 }

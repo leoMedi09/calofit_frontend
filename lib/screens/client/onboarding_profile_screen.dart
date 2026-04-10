@@ -1,0 +1,526 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/client.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import 'client_main_screen.dart';
+
+class OnboardingProfileScreen extends StatefulWidget {
+  final Client client;
+  const OnboardingProfileScreen({super.key, required this.client});
+
+  @override
+  State<OnboardingProfileScreen> createState() => _OnboardingProfileScreenState();
+}
+
+class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
+    with TickerProviderStateMixin {
+  final PageController _pageController = PageController();
+  final ApiService _apiService = ApiService();
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+
+  int _currentPage = 0;
+  bool _isLoading = false;
+
+  // Step 1 - Identidad
+  final _firstNameCtrl = TextEditingController();
+  final _lastNamePatCtrl = TextEditingController();
+  final _lastNameMatCtrl = TextEditingController();
+  String _selectedGender = 'M';
+  DateTime? _birthDate;
+
+  // Step 2 - Físico
+  final _weightCtrl = TextEditingController();
+  final _heightCtrl = TextEditingController();
+  String _activityLevel = 'Sedentario';
+  String _goal = 'Mantener peso';
+
+  // Step 3 - Salud
+  final List<String> _selectedConditions = [];
+  final List<String> _conditionOptions = [
+    'Diabetes',
+    'Hipertensión',
+    'Asma',
+    'Enfermedad Cardiovascular',
+    'Intolerancia a Lactosa',
+    'Ninguna',
+  ];
+
+  static const Color _navy = Color(0xFF1565C0);
+  static const Color _navyLight = Color(0xFF1E88E5);
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeInOut);
+    _animController.forward();
+
+    // Pre-fill if data already exists (partial profile)
+    _firstNameCtrl.text = widget.client.firstName;
+    _lastNamePatCtrl.text = widget.client.lastNamePaternal;
+    _lastNameMatCtrl.text = widget.client.lastNameMaternal;
+    _selectedGender = widget.client.gender;
+    _birthDate = widget.client.birthDate;
+    if (widget.client.weight > 0) _weightCtrl.text = widget.client.weight.toStringAsFixed(1);
+    if (widget.client.height > 0) _heightCtrl.text = widget.client.height.toStringAsFixed(0);
+    _activityLevel = widget.client.activityLevel;
+    _goal = widget.client.goal;
+    _selectedConditions.addAll(widget.client.medicalConditions);
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _pageController.dispose();
+    _firstNameCtrl.dispose();
+    _lastNamePatCtrl.dispose();
+    _lastNameMatCtrl.dispose();
+    _weightCtrl.dispose();
+    _heightCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(1995),
+      firstDate: DateTime(1940),
+      lastDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+      builder: (context, child) => Theme(
+        data: ThemeData.light().copyWith(colorScheme: const ColorScheme.light(primary: _navy)),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _birthDate = picked);
+  }
+
+  Future<void> _finishOnboarding() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    setState(() => _isLoading = true);
+
+    try {
+      final updated = Client(
+        id: widget.client.id,
+        email: widget.client.email,
+        flutterUid: widget.client.flutterUid,
+        firstName: _firstNameCtrl.text.trim(),
+        lastNamePaternal: _lastNamePatCtrl.text.trim(),
+        lastNameMaternal: _lastNameMatCtrl.text.trim(),
+        gender: _selectedGender,
+        birthDate: _birthDate,
+        weight: double.tryParse(_weightCtrl.text) ?? 70.0,
+        height: double.tryParse(_heightCtrl.text) ?? 170.0,
+        activityLevel: _activityLevel,
+        goal: _goal,
+        medicalConditions: _selectedConditions.contains('Ninguna') ? [] : _selectedConditions,
+        profilePictureUrl: widget.client.profilePictureUrl,
+        assignedNutriId: widget.client.assignedNutriId,
+        isProfileComplete: true,
+      );
+
+      await _apiService.updateClient(authProvider.userId!, updated, authProvider.token!);
+      authProvider.updateUserName(_firstNameCtrl.text.trim());
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const ClientMainScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _nextPage() {
+    if (_currentPage < 2) {
+      _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      setState(() => _currentPage++);
+      _animController.reset();
+      _animController.forward();
+    } else {
+      _finishOnboarding();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F4FF),
+      body: Column(
+        children: [
+          _buildUnifiedHeader(),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildStep1(),
+                _buildStep2(),
+                _buildStep3(),
+              ],
+            ),
+          ),
+          _buildBottomButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnifiedHeader() {
+    final steps = ['Tu Identidad', 'Tus Medidas', 'Tu Salud'];
+    final icons = [Icons.person_rounded, Icons.monitor_weight_rounded, Icons.favorite_rounded];
+    return Container(
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 20, bottom: 25, left: 24, right: 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [_navy, _navyLight], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        boxShadow: [
+          BoxShadow(color: Color(0x331565C0), blurRadius: 15, offset: Offset(0, 5))
+        ],
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(35), bottomRight: Radius.circular(35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('¡Bienvenido a CaloFit! 👋', style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          const Text('Cuéntanos sobre ti', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+          const SizedBox(height: 25),
+          Row(
+            children: List.generate(3, (i) {
+              final isActive = i == _currentPage;
+              final isDone = i < _currentPage;
+              
+              Color getBgColor() {
+                if (isActive) return Colors.white;
+                if (isDone) return Colors.greenAccent.withOpacity(0.25);
+                return Colors.white.withOpacity(0.15);
+              }
+              
+              Color getTextColor() {
+                if (isActive) return _navy;
+                if (isDone) return Colors.greenAccent;
+                return Colors.white60;
+              }
+
+              return Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOutCubic,
+                        padding: EdgeInsets.symmetric(vertical: isActive ? 12 : 10, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: getBgColor(),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: isActive ? [const BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))] : [],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(isDone ? Icons.check_circle_rounded : icons[i], color: getTextColor(), size: isActive ? 18 : 16),
+                            if (isActive || isDone) ...[
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(steps[i], style: TextStyle(color: getTextColor(), fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                              ),
+                            ]
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (i < 2) 
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Container(
+                          width: 14,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: isDone ? Colors.greenAccent.withOpacity(0.6) : Colors.white24,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep1() {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            _sectionTitle('Datos Personales', Icons.badge_rounded),
+            const SizedBox(height: 16),
+            _field(_firstNameCtrl, 'Nombre', Icons.person_outline),
+            _field(_lastNamePatCtrl, 'Apellido Paterno', Icons.person_outline),
+            _field(_lastNameMatCtrl, 'Apellido Materno', Icons.person_outline),
+            const SizedBox(height: 8),
+            _sectionTitle('Género', Icons.people_alt_outlined),
+            const SizedBox(height: 12),
+            Row(children: [
+              _genderChip('M', '♂ Masculino'),
+              const SizedBox(width: 12),
+              _genderChip('F', '♀ Femenino'),
+            ]),
+            const SizedBox(height: 20),
+            _sectionTitle('Fecha de Nacimiento', Icons.cake_outlined),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _selectDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _birthDate != null ? _navy : Colors.grey.shade200, width: 1.5),
+                ),
+                child: Row(children: [
+                  Icon(Icons.calendar_today_rounded, color: _birthDate != null ? _navy : Colors.grey),
+                  const SizedBox(width: 12),
+                  Text(
+                    _birthDate != null
+                        ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
+                        : 'Seleccionar fecha',
+                    style: TextStyle(color: _birthDate != null ? Colors.black87 : Colors.grey, fontWeight: FontWeight.w500),
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep2() {
+    // Mapa: Valor Backend -> Texto UI
+    final activityLevels = {
+      'Sedentario': 'Sedentario (0-1 días)',
+      'Ligero': 'Ligero (2-3 días)',
+      'Moderado': 'Moderado (3-5 días)',
+      'Activo': 'Activo (5-6 días)',
+      'Muy activo': 'Muy activo (Atleta/Intenso)'
+    };
+    
+    // Mapa: Valor Backend -> Texto UI
+    final goals = {
+      'perder peso': 'Perder peso (Agresivo)',
+      'perder_leve': 'Perder peso (Definición)',
+      'mantener peso': 'Mantener peso',
+      'ganar_leve': 'Ganar masa (Limpio)',
+      'ganar masa': 'Ganar masa (Volumen)'
+    };
+
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            _sectionTitle('Medidas Físicas', Icons.straighten_rounded),
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(child: _field(_weightCtrl, 'Peso (kg)', Icons.monitor_weight_outlined, isNumber: true)),
+              const SizedBox(width: 16),
+              Expanded(child: _field(_heightCtrl, 'Altura (cm)', Icons.height_rounded, isNumber: true)),
+            ]),
+            const SizedBox(height: 16),
+            _sectionTitle('Objetivo Principal', Icons.flag_rounded),
+            const SizedBox(height: 12),
+            _dropdownMap('Objetivo', Icons.flag_rounded, _goal, goals, (v) => setState(() => _goal = v!)),
+            const SizedBox(height: 16),
+            _sectionTitle('Nivel de Actividad', Icons.directions_run_rounded),
+            const SizedBox(height: 12),
+            _dropdownMap('Nivel de Actividad', Icons.directions_run_rounded, _activityLevel, activityLevels, (v) => setState(() => _activityLevel = v!)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep3() {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            _sectionTitle('Estado de Salud', Icons.favorite_rounded),
+            const SizedBox(height: 8),
+            Text('Selecciona tus condiciones médicas. Tu plan nutricional se adaptará a ellas.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: _conditionOptions.map((condition) {
+                final isSelected = _selectedConditions.contains(condition);
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  child: FilterChip(
+                    label: Text(condition),
+                    selected: isSelected,
+                    onSelected: (val) => setState(() {
+                      if (condition == 'Ninguna') {
+                        _selectedConditions.clear();
+                        if (val) _selectedConditions.add('Ninguna');
+                      } else {
+                        _selectedConditions.remove('Ninguna');
+                        val ? _selectedConditions.add(condition) : _selectedConditions.remove(condition);
+                      }
+                    }),
+                    selectedColor: _navyLight.withOpacity(0.15),
+                    checkmarkColor: _navy,
+                    labelStyle: TextStyle(color: isSelected ? _navy : Colors.grey.shade700, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: isSelected ? _navyLight : Colors.grey.shade300, width: isSelected ? 2 : 1),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(children: [
+                const Icon(Icons.verified_rounded, color: Colors.green, size: 28),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('¡Casi listo!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                  Text('Al finalizar, tu plan nutricional personalizado estará listo.', style: TextStyle(color: Colors.green.shade800, fontSize: 12)),
+                ])),
+              ]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomButton() {
+    return Container(
+      padding: EdgeInsets.only(left: 24, right: 24, bottom: MediaQuery.of(context).padding.bottom + 20, top: 16),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, -8))]),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _nextPage,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _navy,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            elevation: 6,
+            shadowColor: _navy.withOpacity(0.4),
+          ),
+          child: _isLoading
+              ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text(_currentPage == 2 ? '¡Empezar!' : 'Continuar', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                  const SizedBox(width: 8),
+                  Icon(_currentPage == 2 ? Icons.rocket_launch_rounded : Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, IconData icon) {
+    return Row(children: [
+      Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: _navy.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: _navy, size: 18)),
+      const SizedBox(width: 10),
+      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF37474F))),
+    ]);
+  }
+
+  Widget _field(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        textCapitalization: TextCapitalization.words,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: _navyLight, size: 20),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
+        ),
+      ),
+    );
+  }
+
+  Widget _genderChip(String value, String label) {
+    final isSelected = _selectedGender == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedGender = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? _navy : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isSelected ? _navy : Colors.grey.shade200, width: 2),
+          ),
+          child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Widget _dropdownMap(String label, IconData icon, String currentVal, Map<String, String> itemsMap, ValueChanged<String?> onChanged) {
+    // Si currentVal no es llave conocida, forzamos la primera de fallback
+    final safeValue = itemsMap.containsKey(currentVal) ? currentVal : itemsMap.keys.first;
+
+    return DropdownButtonFormField<String>(
+      value: safeValue,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: _navyLight, size: 20),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
+      ),
+      items: itemsMap.entries.map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value, overflow: TextOverflow.ellipsis))).toList(),
+      onChanged: onChanged,
+    );
+  }
+}

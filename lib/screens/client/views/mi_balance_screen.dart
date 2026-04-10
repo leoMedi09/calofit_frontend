@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
-import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
-import '../screens/chat_screen.dart';
-import '../models/dashboard_data.dart';
-import '../models/suggestion.dart';
-import '../providers/balance_provider.dart';
-import '../screens/edit_profile_screen.dart';
-import '../models/client.dart';
+import '../../../services/api_service.dart';
+import '../../../providers/auth_provider.dart';
+import 'chat_screen.dart';
+import '../../../models/suggestion.dart';
+import '../../../providers/balance_provider.dart';
+import 'edit_profile_screen.dart';
 
 class MiBalanceScreen extends StatefulWidget {
   const MiBalanceScreen({Key? key}) : super(key: key);
@@ -24,6 +21,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
   bool isLocalLoading = false;
   String? errorMessage;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
@@ -42,8 +40,13 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final balance = Provider.of<BalanceProvider>(context, listen: false);
     if (auth.token != null) {
-      balance.fetchFullBalance(auth.token!).then((_) {
-        _animController.forward(from: 0);
+      String? dateParam;
+      if (_selectedDate != null) {
+        dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+      }
+      balance.fetchFullBalance(auth.token!, fecha: dateParam).then((_) {
+        // Asegúrate que el controller no haga forward si el widget muere
+        if (mounted) _animController.forward(from: 0);
       });
       balance.fetchSuggestions(auth.token!);
     }
@@ -67,7 +70,12 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       final token = authProvider.token;
       if (token == null) throw Exception('No hay sesión activa');
 
-      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token);
+      String? dateParam;
+      if (_selectedDate != null) {
+        dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+      }
+
+      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token, fecha: dateParam);
       _animController.forward(from: 0);
       if (mounted) setState(() => isLocalLoading = false);
     } catch (e) {
@@ -131,7 +139,12 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
       }
-      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token);
+      
+      String? dateParam;
+      if (_selectedDate != null) {
+        dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+      }
+      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token, fecha: dateParam);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -345,22 +358,72 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       child: const Icon(Icons.assessment_rounded, color: Colors.white, size: 20),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'Mi Balance',
-                      style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Mi Balance',
+                          style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1),
+                        ),
+                        if (_selectedDate != null && 
+                            (_selectedDate!.day != DateTime.now().day || 
+                             _selectedDate!.month != DateTime.now().month))
+                          Text(
+                            'Historial: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                            style: TextStyle(color: Colors.orange.shade200, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                      ],
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 18),
+                      ),
+                      onPressed: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate ?? DateTime.now(),
+                          firstDate: DateTime(2023),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF1565C0), // header background color
+                                  onPrimary: Colors.white, // header text color
+                                  onSurface: Colors.black, // body text color
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setState(() => _selectedDate = picked);
+                          _loadBalance();
+                        }
+                      },
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
-                  ),
-                  onPressed: _loadBalance,
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                      ),
+                      onPressed: _loadBalance,
+                    ),
+                  ],
                 ),
               ],
             ),

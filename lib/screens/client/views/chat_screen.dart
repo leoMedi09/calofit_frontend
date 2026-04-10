@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import '../models/client.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_service.dart';
+import '../../../models/client.dart';
 import 'edit_profile_screen.dart';
 import 'mi_balance_screen.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import '../models/assistant_response.dart';
-import '../widgets/chat_bubble.dart';
-import '../providers/balance_provider.dart';
+import '../../../models/assistant_response.dart';
+import '../../../widgets/chat_bubble.dart';
+import '../../../providers/balance_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});

@@ -1,0 +1,654 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../models/client.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_service.dart';
+import 'chat_screen.dart';
+import 'mi_balance_screen.dart';
+import '../client_main_screen.dart';
+
+class EditProfileScreen extends StatefulWidget {
+  final Client client;
+  final VoidCallback? onProfileUpdated;
+
+  const EditProfileScreen({
+    super.key,
+    required this.client,
+    this.onProfileUpdated,
+  });
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final ApiService _apiService = ApiService();
+  bool _isLoading = false;
+  bool _isInitialized = false;
+
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNamePaternalController;
+  late TextEditingController _lastNameMaternalController;
+  late TextEditingController _weightController;
+  late TextEditingController _heightController;
+
+  final List<String> _selectedConditions = [];
+  String? _activityLevel;
+  String? _goal;
+  DateTime? _birthDate;
+
+  final List<String> _medicalConditionsOptions = [
+    'Diabetes',
+    'Hipertensión',
+    'Asma',
+    'Enfermedad Cardiovascular',
+    'Ninguna'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initControllers();
+  }
+
+  void _initControllers() {
+    _firstNameController = TextEditingController(text: widget.client.firstName);
+    _lastNamePaternalController = TextEditingController(text: widget.client.lastNamePaternal);
+    _lastNameMaternalController = TextEditingController(text: widget.client.lastNameMaternal);
+    _weightController = TextEditingController(text: widget.client.weight.toStringAsFixed(1));
+    _heightController = TextEditingController(text: widget.client.height.toStringAsFixed(0));
+
+    _selectedConditions.clear();
+    _selectedConditions.addAll(widget.client.medicalConditions);
+
+    for (var condition in _selectedConditions) {
+      if (!_medicalConditionsOptions.contains(condition) && condition != 'Ninguna') {
+        _medicalConditionsOptions.insert(_medicalConditionsOptions.length - 1, condition);
+      }
+    }
+    _activityLevel = widget.client.activityLevel;
+    _goal = widget.client.goal;
+    _birthDate = widget.client.birthDate;
+    _isInitialized = true;
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNamePaternalController.dispose();
+    _lastNameMaternalController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _updateProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final current = widget.client;
+      final updatedClient = Client(
+        id: current.id,
+        firstName: _firstNameController.text.trim(),
+        lastNamePaternal: _lastNamePaternalController.text.trim(),
+        lastNameMaternal: _lastNameMaternalController.text.trim(),
+        email: current.email,
+        flutterUid: current.flutterUid,
+        gender: current.gender,
+        birthDate: _birthDate ?? current.birthDate,
+        weight: double.tryParse(_weightController.text) ?? current.weight,
+        height: double.tryParse(_heightController.text) ?? current.height,
+        activityLevel: _activityLevel ?? current.activityLevel,
+        goal: _goal ?? current.goal,
+        medicalConditions: _selectedConditions.contains('Ninguna') ? [] : _selectedConditions,
+        profilePictureUrl: current.profilePictureUrl,
+        assignedNutriId: current.assignedNutriId,
+      );
+
+      await _apiService.updateClient(
+        authProvider.userId!,
+        updatedClient,
+        authProvider.token!,
+      );
+
+      authProvider.updateUserName(_firstNameController.text.trim());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Perfil actualizado correctamente.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        widget.onProfileUpdated?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text('¿Cerrar Sesión?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Se cerrará tu sesión en el dispositivo y volverás a la pantalla de acceso.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCELAR', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await authProvider.logout();
+              if (context.mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text('SALIR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      _initControllers();
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      bottomNavigationBar: _buildBottomNavigation(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -50,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          widget.client.firstName.isNotEmpty 
+                            ? widget.client.firstName.substring(0, 1).toUpperCase() 
+                            : 'U',
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E88E5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 60),
+            
+            // Cápsula de Nombre
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.blue.shade50),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${widget.client.firstName} ${widget.client.lastNamePaternal}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1565C0),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.client.email,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 30),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Datos Personales'),
+                    _buildTextField(_firstNameController, 'Nombre', Icons.person_outline),
+                    _buildTextField(_lastNamePaternalController, 'Apellido Paterno', Icons.person_outline),
+                    _buildTextField(_lastNameMaternalController, 'Apellido Materno', Icons.person_outline),
+                    Row(
+                      children: [
+                        Expanded(child: _buildReadOnlyField('Género', widget.client.gender == 'M' ? 'Masculino' : 'Femenino', Icons.people_alt_outlined)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildReadOnlyField('Edad', '${widget.client.age} años', Icons.cake_outlined)),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('Objetivo y Estilo de Vida'),
+                    _buildDropdownField(
+                      'Objetivo Principal', 
+                      Icons.flag_rounded, 
+                      _goal, 
+                      {
+                        'perder peso': 'Perder peso (Agresivo)',
+                        'perder_leve': 'Perder peso (Definición)',
+                        'mantener peso': 'Mantener peso',
+                        'ganar_leve': 'Ganar masa (Limpio)',
+                        'ganar masa': 'Ganar masa (Volumen)'
+                      },
+                      (val) => setState(() => _goal = val)
+                    ),
+                    _buildDropdownField(
+                      'Nivel de Actividad', 
+                      Icons.directions_run_rounded, 
+                      _activityLevel, 
+                      {
+                        'Sedentario': 'Sedentario (0-1 días)',
+                        'Ligero': 'Ligero (2-3 días)',
+                        'Moderado': 'Moderado (3-5 días)',
+                        'Activo': 'Activo (5-6 días)',
+                        'Muy activo': 'Muy activo (Atleta/Intenso)'
+                      },
+                      (val) => setState(() => _activityLevel = val)
+                    ),
+
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('Medidas Físicas'),
+                    Row(
+                      children: [
+                        Expanded(child: _buildTextField(_weightController, 'Peso (kg)', Icons.monitor_weight_outlined, isNumber: true)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildTextField(_heightController, 'Altura (cm)', Icons.height_outlined, isNumber: true)),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('Estado de Salud'),
+                    _buildMedicalConditionsChips(),
+
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _updateProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A237E),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 8,
+                          shadowColor: const Color(0xFF1A237E).withOpacity(0.5),
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                'GUARDAR CAMBIOS',
+                                style: TextStyle(
+                                  fontSize: 16, 
+                                  fontWeight: FontWeight.bold, 
+                                  color: Colors.white,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 60,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showLogoutDialog(context),
+                        icon: const Icon(Icons.logout_rounded, size: 20),
+                        label: const Text(
+                          'CERRAR SESIÓN',
+                          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Color(0xFFFFEBEE), width: 1.5),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF455A64),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isNumber = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.blue.shade300),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+          ),
+        ),
+        validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        initialValue: value,
+        enabled: false,
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.grey.shade400),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(String label, IconData icon, String? currentValue, Map<String, String> itemsMap, ValueChanged<String?> onChanged) {
+    final String? safeValue = (currentValue != null && itemsMap.containsKey(currentValue)) 
+        ? currentValue 
+        : (itemsMap.isNotEmpty ? itemsMap.keys.first : null);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: DropdownButtonFormField<String>(
+        value: safeValue,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.blue.shade300),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+          ),
+        ),
+        items: itemsMap.entries.map((entry) {
+          return DropdownMenuItem<String>(
+            value: entry.key,
+            child: Text(entry.value, overflow: TextOverflow.ellipsis),
+          );
+        }).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildMedicalConditionsChips() {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: [
+        ..._medicalConditionsOptions.map((condition) {
+          final isSelected = _selectedConditions.contains(condition);
+          return FilterChip(
+            label: Text(condition),
+            selected: isSelected,
+            onSelected: (selected) {
+              setState(() {
+                if (condition == 'Ninguna') {
+                  _selectedConditions.clear();
+                  if (selected) _selectedConditions.add('Ninguna');
+                } else {
+                  _selectedConditions.remove('Ninguna');
+                  selected ? _selectedConditions.add(condition) : _selectedConditions.remove(condition);
+                }
+              });
+            },
+            selectedColor: Colors.blue.shade100,
+            checkmarkColor: Colors.blue.shade700,
+            labelStyle: TextStyle(
+              color: isSelected ? Colors.blue.shade900 : Colors.grey.shade700,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+            backgroundColor: Colors.grey.shade100,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                color: isSelected ? Colors.blue.shade300 : Colors.grey.shade300,
+              ),
+            ),
+          );
+        }),
+        ActionChip(
+          label: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 16, color: Colors.white),
+              SizedBox(width: 4),
+              Text('Otra', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E88E5),
+          onPressed: _showAddConditionDialog,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: Color(0xFF1565C0)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showAddConditionDialog() {
+    final TextEditingController newConditionController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.medical_services_outlined, color: Color(0xFF1E88E5)),
+              SizedBox(width: 10),
+              Text('Nueva Condición', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: TextField(
+            controller: newConditionController,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: 'Ej. Hipotiroidismo',
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final condition = newConditionController.text.trim();
+                if (condition.isNotEmpty && !_medicalConditionsOptions.contains(condition)) {
+                  setState(() {
+                    _medicalConditionsOptions.insert(_medicalConditionsOptions.length - 1, condition); // Before 'Ninguna'
+                    _selectedConditions.remove('Ninguna');
+                    _selectedConditions.add(condition);
+                  });
+                }
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E88E5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Guardar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    return NavigationBar(
+      selectedIndex: 3,
+      onDestinationSelected: (index) {
+        if (index == 0) {
+          // Ir al inicio y limpiar el stack
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const ClientMainScreen()), (route) => false);
+        } else if (index == 1) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ChatScreen()));
+        } else if (index == 2) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MiBalanceScreen()));
+        }
+      },
+      backgroundColor: Colors.white,
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
+        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
+        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+      ],
+    );
+  }
+}

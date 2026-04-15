@@ -139,19 +139,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                   _buildProfileTile(Icons.work_rounded, 'Departamento', 'Wellness & Nutrition'),
                 ]),
                 const SizedBox(height: 24),
-                if (authProvider.userRole?.toUpperCase().contains('ADMIN') ?? false) ...[
-                  _buildSectionTitle('Administración del Sistema'),
-                  const SizedBox(height: 12),
-                  _buildInfoCard([
-                    _buildActionTile(Icons.people_alt_rounded, 'Gestión de Equipo', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamManagementView()));
-                    }),
-                    _buildActionTile(Icons.history_toggle_off_rounded, 'Registros de Auditoría', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AuditView()));
-                    }),
-                  ]),
-                  const SizedBox(height: 24),
-                ],
+
 
                 const SizedBox(height: 24),
                 

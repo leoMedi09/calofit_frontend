@@ -141,6 +141,27 @@ class ApiService {
       throw Exception(e.response?.data['detail'] ?? 'Error al conectar con el servidor');
     }
   }
+  
+  // ✅ CAMBIO DE CONTRASEÑA
+  Future<void> changePassword(String token, String newPassword, String confirmPassword) async {
+    try {
+      final response = await _dio.post(
+        '/auth/change-password',
+        data: {
+          'new_password': newPassword,
+          'confirm_password': confirmPassword
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      if (response.statusCode != 200) {
+        throw Exception('Error al cambiar contraseña');
+      }
+    } on DioException catch (e) {
+      print('❌ Error en cambio de contraseña: ${e.response?.data}');
+      throw Exception(e.response?.data['detail'] ?? 'Error al cambiar contraseña');
+    }
+  }
 
   // Usuarios
   Future<List<User>> getUsers(String token) async {
@@ -172,6 +193,27 @@ class ApiService {
   }
 
   // Clientes
+  
+  // ✅ Crear Cliente Express (Nutricionista)
+  Future<Map<String, dynamic>> createExpressClient(String email, String dni, String token) async {
+    try {
+      print('📤 Creando cliente express...');
+      final response = await _dio.post(
+        '/nutricionista/clientes/express',
+        data: {'email': email.trim(), 'dni': dni.trim()},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      print('✅ Cliente express creado: ${response.data}');
+      return response.data;
+    } on DioException catch (e) {
+      print('❌ Error creando cliente express: ${e.response?.data}');
+      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error creando cliente express: $e');
+    }
+  }
+
   Future<List<Client>> getClients(String token) async {
     try {
       final response = await _dio.get('/clientes/',
@@ -736,6 +778,23 @@ class ApiService {
     }
   }
 
+
+  /// ✅ Eliminar permanentemente miembro del staff (Admin only)
+  Future<void> deleteStaff(int userId, String token) async {
+    try {
+      final response = await _dio.delete(
+        '/admin/staff/$userId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Error al eliminar personal');
+      }
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      throw Exception('Error: $errorMessage');
+    }
+  }
+
   // ============ PANEL NUTRICIONISTA (Phase 2) ============
 
   /// 🏥 Obtiene la lista de clientes asignados al nutricionista/admin
@@ -888,6 +947,18 @@ class ApiService {
       );
     } on DioException catch (e) {
       throw Exception('Error al crear cliente: ${e.response?.data?['detail'] ?? e.message}');
+    }
+  }
+
+  /// Elimina permanentemente un cliente (BD + Firebase Auth)
+  Future<void> deleteClient(int clientId, String token) async {
+    try {
+      await _dio.delete(
+        '/nutricionista/cliente/$clientId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['detail'] ?? 'Error al eliminar el cliente.');
     }
   }
 }

@@ -18,6 +18,7 @@ class _PatientListViewState extends State<PatientListView> {
   List<Map<String, dynamic>> _filteredPatients = [];
   bool _isLoading = true;
   String _searchQuery = "";
+  bool _showPending = false; // 🆕 Filtro para ocultar nuevos registros hasta que se completen
 
   @override
   void initState() {
@@ -30,11 +31,12 @@ class _PatientListViewState extends State<PatientListView> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.token != null) {
-        final patients = await _apiService.getNutricionistaClientes(authProvider.token!);
+        final patients =
+            await _apiService.getNutricionistaClientes(authProvider.token!);
         setState(() {
           _patients = patients;
-          _filteredPatients = patients;
           _isLoading = false;
+          _filterPatients(_searchQuery); // Aplicar filtros actuales
         });
       }
     } catch (e) {
@@ -51,8 +53,18 @@ class _PatientListViewState extends State<PatientListView> {
     setState(() {
       _searchQuery = query;
       _filteredPatients = _patients.where((p) {
-        final fullName = p['full_name'].toString().toLowerCase();
-        return fullName.contains(query.toLowerCase());
+        final fullName = p['full_name']?.toString().toLowerCase() ?? '';
+        final email = p['email']?.toString().toLowerCase() ?? '';
+        final matchesQuery = fullName.contains(query.toLowerCase()) || email.contains(query.toLowerCase());
+        
+        // El backend ahora envía is_profile_complete
+        final bool isComplete = p['is_profile_complete'] == true;
+        
+        if (_showPending) {
+          return matchesQuery && !isComplete;
+        } else {
+          return matchesQuery && isComplete;
+        }
       }).toList();
     });
   }
@@ -66,47 +78,368 @@ class _PatientListViewState extends State<PatientListView> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _loadPatients,
-        child: Column(
-          children: [
-            _buildSearchHeader(),
-            Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredPatients.isEmpty 
-                  ? _buildEmptyState()
-                  : _buildPatientList(),
-            ),
-          ],
+    final authProvider = Provider.of<AuthProvider>(context);
+    final String role = authProvider.userRole?.toLowerCase() ?? '';
+    final bool isNutri = role.contains('nutri');
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadPatients,
+          child: Column(
+            children: [
+              _buildSearchHeader(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _filteredPatients.isEmpty
+                        ? _buildEmptyState()
+                        : _buildPatientList(),
+              ),
+            ],
+          ),
         ),
+      ),
+      floatingActionButton: isNutri
+          ? FloatingActionButton.extended(
+              onPressed: () => _showExpressCreationModal(context),
+              backgroundColor: const Color(0xFF1E88E5), // Azul premium
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: const Text('Inscribir Paciente',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          : null,
+    );
+  }
+
+  void _showExpressCreationModal(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController dniController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final bottomInsets = MediaQuery.of(context).viewInsets.bottom;
+          return Padding(
+            padding: EdgeInsets.only(bottom: bottomInsets),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                        width: 45,
+                        height: 5,
+                        decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFF1E88E5).withOpacity(0.1),
+                            shape: BoxShape.circle),
+                        child: const Icon(Icons.flash_on_rounded,
+                            color: Color(0xFF1E88E5)),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Creación Express',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF1A237E),
+                            letterSpacing: -0.5),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Registra un paciente rellenando solo su DNI y Correo. El DNI será su contraseña inicial.',
+                    style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Campo Email
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Correo Electrónico',
+                      labelStyle:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      prefixIcon: const Icon(Icons.email_outlined,
+                          size: 20, color: Color(0xFF1E88E5)),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade200)),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF1E88E5), width: 2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Campo DNI
+                  TextField(
+                    controller: dniController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Número de DNI',
+                      labelStyle:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      prefixIcon: const Icon(Icons.badge_outlined,
+                          size: 20, color: Color(0xFF1E88E5)),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade200)),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF1E88E5), width: 2)),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final email = emailController.text.trim();
+                              final dni = dniController.text.trim();
+
+                              if (email.isEmpty || dni.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Por favor llena DNI y Correo')));
+                                return;
+                              }
+
+                              setModalState(() => isSubmitting = true);
+                              try {
+                                final authProvider = Provider.of<AuthProvider>(
+                                    context,
+                                    listen: false);
+                                await _apiService.createExpressClient(
+                                    email, dni, authProvider.token!);
+
+                                if (context.mounted) {
+                                  Navigator.pop(context); // Cerrar Modal
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content:
+                                        Text('¡Paciente Creado Exitosamente!'),
+                                    backgroundColor: Color(0xFF2E7D32),
+                                    behavior: SnackBarBehavior.floating,
+                                  ));
+                                  _loadPatients(); // Refrescar lista
+                                }
+                              } catch (e) {
+                                setModalState(() => isSubmitting = false);
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                  content: Text(e.toString()),
+                                  backgroundColor: const Color(0xFFC62828),
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFF1E88E5), // Azul premium
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5))
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text('Crear Paciente',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16)),
+                                const SizedBox(width: 8),
+                                Icon(Icons.arrow_forward_rounded,
+                                    size: 20,
+                                    color: Colors.white.withOpacity(0.9)),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildSearchHeader() {
+    final int pendingCount = _patients.where((p) => p['is_profile_complete'] == false).length;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey[100]!, width: 1)),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: TextField(
-          onChanged: _filterPatients,
-          decoration: const InputDecoration(
-            hintText: 'Buscar paciente por nombre...',
-            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-            prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF1A237E), size: 20),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: TextField(
+              onChanged: _filterPatients,
+              decoration: const InputDecoration(
+                hintText: 'Buscar paciente por nombre...',
+                hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                prefixIcon:
+                    Icon(Icons.search_rounded, color: Color(0xFF1A237E), size: 20),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildFilterChip(
+                label: 'Pacientes Activos',
+                isSelected: !_showPending,
+                onTap: () {
+                  setState(() => _showPending = false);
+                  _filterPatients(_searchQuery);
+                },
+                icon: Icons.people_alt_rounded,
+              ),
+              const SizedBox(width: 8),
+              _buildFilterChip(
+                label: 'Pendientes',
+                count: pendingCount,
+                isSelected: _showPending,
+                onTap: () {
+                  setState(() => _showPending = true);
+                  _filterPatients(_searchQuery);
+                },
+                icon: Icons.pending_actions_rounded,
+                activeColor: Colors.purple,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required IconData icon,
+    int? count,
+    Color activeColor = const Color(0xFF1E88E5),
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? activeColor.withOpacity(0.2) : Colors.grey.shade200,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? activeColor : Colors.grey.shade500,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? activeColor : Colors.grey.shade600,
+              ),
+            ),
+            if (count != null && count > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? activeColor : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: isSelected ? Colors.white : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -115,22 +448,36 @@ class _PatientListViewState extends State<PatientListView> {
   Widget _buildPatientList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      physics:
+          const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       itemCount: _filteredPatients.length,
       itemBuilder: (context, index) {
         final patient = _filteredPatients[index];
-        final double adherence = double.tryParse(patient['adherencia']?.toString() ?? '0') ?? 0;
+        final double adherence =
+            double.tryParse(patient['adherencia']?.toString() ?? '0') ?? 0;
         final bool isMale = patient['gender']?.toString().toLowerCase() == 'm';
         final bool isValidated = patient['is_validated'] == true;
-        
+
         final String status = patient['semana_status'] ?? 'falta_checkin';
+        final bool isProfileComplete = patient['is_profile_complete'] ?? true;
+        
+        // Formatear objetivo (quitar guiones y capitalizar)
+        String rawGoal = patient['goal']?.toString().replaceAll('_', ' ') ?? 'Mantener peso';
+        String formattedGoal = rawGoal.isNotEmpty 
+            ? rawGoal[0].toUpperCase() + rawGoal.substring(1) 
+            : rawGoal;
+        
         Color statusColor = const Color(0xFFD32F2F); // Rojo suave profesional
         IconData statusIcon = Icons.error_outline_rounded;
         String statusLabel = "FALTA CHECK-IN";
-
-        if (status == "validado") {
-          statusColor = const Color(0xFF388E3C); // Verde Nutri (No azul)
-          statusIcon = Icons.task_alt_rounded; // Nuevo símbolo de tarea completada
+        
+        if (!isProfileComplete) {
+          statusColor = const Color(0xFF9C27B0); // Púrpura para Onboarding
+          statusIcon = Icons.app_registration_rounded;
+          statusLabel = "PERFIL INCOMPLETO";
+        } else if (status == "validado") {
+          statusColor = const Color(0xFF388E3C); // Verde Nutri
+          statusIcon = Icons.task_alt_rounded;
           statusLabel = "PLAN VALIDADO";
         } else if (status == "pendiente") {
           statusColor = const Color(0xFFF57C00); // Ámbar/Naranja
@@ -154,7 +501,7 @@ class _PatientListViewState extends State<PatientListView> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => _showPatientDetails(patient),
+              onTap: isProfileComplete ? () => _showPatientDetails(patient) : null,
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -165,11 +512,13 @@ class _PatientListViewState extends State<PatientListView> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: statusColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: statusColor.withOpacity(0.15)),
+                            border: Border.all(
+                                color: statusColor.withOpacity(0.15)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -198,15 +547,33 @@ class _PatientListViewState extends State<PatientListView> {
                         // Avatar
                         CircleAvatar(
                           radius: 24,
-                          backgroundColor: (isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC)),
-                          backgroundImage: patient['profile_picture_url'] != null && patient['profile_picture_url'].toString().isNotEmpty
-                              ? NetworkImage(UrlService.formatImageUrl(patient['profile_picture_url']))
-                              : null,
-                          child: patient['profile_picture_url'] == null || patient['profile_picture_url'].toString().isEmpty
+                          backgroundColor: (isMale
+                              ? const Color(0xFFE3F2FD)
+                              : const Color(0xFFFCE4EC)),
+                          backgroundImage:
+                              patient['profile_picture_url'] != null &&
+                                      patient['profile_picture_url']
+                                          .toString()
+                                          .isNotEmpty
+                                  ? NetworkImage(UrlService.formatImageUrl(
+                                      patient['profile_picture_url']))
+                                  : null,
+                          child: patient['profile_picture_url'] == null ||
+                                  patient['profile_picture_url']
+                                      .toString()
+                                      .isEmpty
                               ? Text(
-                                  patient['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
+                                  ((isProfileComplete && (patient['full_name']?.toString().trim().isNotEmpty ?? false))
+                                          ? patient['full_name']
+                                          : (patient['email'] ?? 'U'))
+                                      .toString()
+                                      .trim()
+                                      .substring(0, 1)
+                                      .toUpperCase(),
                                   style: TextStyle(
-                                    color: (isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)),
+                                    color: (isMale
+                                        ? const Color(0xFF1E88E5)
+                                        : const Color(0xFFD81B60)),
                                     fontWeight: FontWeight.w900,
                                     fontSize: 18,
                                   ),
@@ -214,18 +581,20 @@ class _PatientListViewState extends State<PatientListView> {
                               : null,
                         ),
                         const SizedBox(width: 14),
-                        
+
                         // Información
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                patient['full_name'] ?? 'Sin nombre',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 17,
-                                  color: Color(0xFF263238),
+                                isProfileComplete && (patient['full_name']?.toString().trim().isNotEmpty ?? false)
+                                    ? patient['full_name']
+                                    : (patient['email'] ?? "Nuevo Paciente"),
+                                style: TextStyle(
+                                  fontWeight: isProfileComplete ? FontWeight.w800 : FontWeight.w600,
+                                  fontSize: 16,
+                                  color: isProfileComplete ? const Color(0xFF263238) : Colors.purple[800],
                                   letterSpacing: -0.4,
                                 ),
                                 maxLines: 1,
@@ -233,52 +602,71 @@ class _PatientListViewState extends State<PatientListView> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                patient['goal'] ?? 'General',
+                                !isProfileComplete 
+                                    ? "Esperando primer acceso..."
+                                    : formattedGoal,
                                 style: TextStyle(
-                                  color: Colors.grey[500],
+                                  color: !isProfileComplete ? Colors.purple[300] : Colors.grey[500],
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              
-                              // Métricas
-                              Row(
-                                children: [
+
+                              // Métricas solo si el perfil está completo
+                              if (isProfileComplete) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
                                     _buildInfoTag(
-                                      Icons.monitor_weight_outlined, 
+                                      Icons.monitor_weight_outlined,
                                       '${double.tryParse(patient['weight']?.toString() ?? '0')?.toStringAsFixed(1) ?? '--'} kg',
                                       Colors.blueGrey[500]!,
                                       Colors.blueGrey[50]!,
                                     ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text('ADHERENCIA', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.grey[400])),
-                                            Text('${adherence.toInt()}%', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _getAdherenceColor(adherence))),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(2),
-                                          child: LinearProgressIndicator(
-                                            value: adherence / 100,
-                                            backgroundColor: Colors.grey[100],
-                                            valueColor: AlwaysStoppedAnimation<Color>(_getAdherenceColor(adherence)),
-                                            minHeight: 4,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text('ADHERENCIA',
+                                                  style: TextStyle(
+                                                      fontSize: 8,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: Colors.grey[400])),
+                                              Text('${adherence.toInt()}%',
+                                                  style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: _getAdherenceColor(
+                                                          adherence))),
+                                            ],
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 4),
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(2),
+                                            child: LinearProgressIndicator(
+                                              value: adherence / 100,
+                                              backgroundColor: Colors.grey[100],
+                                              valueColor: AlwaysStoppedAnimation<
+                                                      Color>(
+                                                  _getAdherenceColor(adherence)),
+                                              minHeight: 4,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                          ],
                           ),
                         ),
                       ],
@@ -293,7 +681,8 @@ class _PatientListViewState extends State<PatientListView> {
     );
   }
 
-  Widget _buildInfoTag(IconData icon, String value, Color color, Color bgColor, {String? label}) {
+  Widget _buildInfoTag(IconData icon, String value, Color color, Color bgColor,
+      {String? label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -328,8 +717,10 @@ class _PatientListViewState extends State<PatientListView> {
           Icon(Icons.person_search_rounded, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isEmpty ? 'No tienes pacientes asignados' : 'No se encontraron resultados',
-            style: const TextStyle(color: Colors.grey, fontSize: 16),
+            _searchQuery.isEmpty
+                ? (_showPending ? 'No hay registros express pendientes' : 'No tienes pacientes asignados')
+                : 'No se encontraron resultados para "$_searchQuery"',
+            style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -342,19 +733,22 @@ class _PatientListViewState extends State<PatientListView> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => PatientPreviewModal(
-        patient: patient, 
+        patient: patient,
         apiService: _apiService,
-        onAssignNutri: () => _showAssignmentDialog(context, patient, roleToAssign: 'nutri'),
-        onAssignCoach: () => _showAssignmentDialog(context, patient, roleToAssign: 'coach'),
+        onAssignNutri: () =>
+            _showAssignmentDialog(context, patient, roleToAssign: 'nutri'),
+        onAssignCoach: () =>
+            _showAssignmentDialog(context, patient, roleToAssign: 'coach'),
         onValidated: _loadPatients,
       ),
     );
   }
 
-  void _showAssignmentDialog(BuildContext context, Map<String, dynamic> patient, {required String roleToAssign}) async {
+  void _showAssignmentDialog(BuildContext context, Map<String, dynamic> patient,
+      {required String roleToAssign}) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final bool isNutri = roleToAssign == 'nutri';
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -367,7 +761,7 @@ class _PatientListViewState extends State<PatientListView> {
         final r = s['role_name']?.toString().toLowerCase() ?? '';
         return isNutri ? r.contains('nutri') : r.contains('coach');
       }).toList();
-      
+
       if (context.mounted) Navigator.pop(context);
 
       if (context.mounted) {
@@ -386,16 +780,28 @@ class _PatientListViewState extends State<PatientListView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10))),
+                  child: Container(
+                      width: 45,
+                      height: 5,
+                      decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(10))),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   isNutri ? 'Asignar Nutricionista' : 'Asignar Coach / Trainer',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF263238), letterSpacing: -0.5),
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF263238),
+                      letterSpacing: -0.5),
                 ),
                 Text(
                   'Elige un especialista para gestionar este perfil.',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 24),
                 Expanded(
@@ -403,19 +809,25 @@ class _PatientListViewState extends State<PatientListView> {
                     itemCount: filteredStaff.length,
                     itemBuilder: (context, index) {
                       final member = filteredStaff[index];
-                      final bool isCurrentlyAssigned = isNutri 
+                      final bool isCurrentlyAssigned = isNutri
                           ? member['id'] == patient['nutri_id']
                           : member['id'] == patient['coach_id'];
-                      
-                      final Color roleColor = isNutri ? const Color(0xFF1E88E5) : Colors.orange.shade700;
+
+                      final Color roleColor = isNutri
+                          ? const Color(0xFF1E88E5)
+                          : Colors.orange.shade700;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: isCurrentlyAssigned ? roleColor.withOpacity(0.05) : Colors.white,
+                          color: isCurrentlyAssigned
+                              ? roleColor.withOpacity(0.05)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isCurrentlyAssigned ? roleColor : Colors.grey[100]!,
+                            color: isCurrentlyAssigned
+                                ? roleColor
+                                : Colors.grey[100]!,
                             width: isCurrentlyAssigned ? 2 : 1,
                           ),
                         ),
@@ -424,49 +836,64 @@ class _PatientListViewState extends State<PatientListView> {
                           leading: CircleAvatar(
                             radius: 24,
                             backgroundColor: roleColor.withOpacity(0.1),
-                            backgroundImage: member['profile_picture_url'] != null
-                                ? NetworkImage(UrlService.formatImageUrl(member['profile_picture_url']))
-                                : null,
+                            backgroundImage:
+                                member['profile_picture_url'] != null
+                                    ? NetworkImage(UrlService.formatImageUrl(
+                                        member['profile_picture_url']))
+                                    : null,
                             child: member['profile_picture_url'] == null
-                                ? Icon(Icons.person_outline_rounded, color: roleColor)
+                                ? Icon(Icons.person_outline_rounded,
+                                    color: roleColor)
                                 : null,
                           ),
                           title: Text(
                             '${member['first_name']} ${member['last_name_paternal']}',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15),
                           ),
-                          subtitle: Text('${member['pacientes_count'] ?? 0} atletas bajo su cargo', style: const TextStyle(fontSize: 12)),
-                          trailing: isCurrentlyAssigned 
-                            ? Icon(Icons.check_circle_rounded, color: roleColor)
-                            : const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-                          onTap: isCurrentlyAssigned ? null : () async {
-                            try {
-                              await _apiService.assignEspecialista(
-                                patient['id'], 
-                                nutriId: isNutri ? member['id'] : null, 
-                                trainerId: !isNutri ? member['id'] : null,
-                                token: authProvider.token!
-                              );
-                              if (context.mounted) {
-                                Navigator.pop(context); // Cerrar lista
-                                Navigator.pop(context); // Cerrar preview
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('${isNutri ? "Nutricionista" : "Coach"} asignado con éxito'),
-                                    backgroundColor: Colors.green,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                _loadPatients();
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                                );
-                              }
-                            }
-                          },
+                          subtitle: Text(
+                              '${member['pacientes_count'] ?? 0} atletas bajo su cargo',
+                              style: const TextStyle(fontSize: 12)),
+                          trailing: isCurrentlyAssigned
+                              ? Icon(Icons.check_circle_rounded,
+                                  color: roleColor)
+                              : const Icon(Icons.chevron_right_rounded,
+                                  color: Colors.grey),
+                          onTap: isCurrentlyAssigned
+                              ? null
+                              : () async {
+                                  try {
+                                    await _apiService.assignEspecialista(
+                                        patient['id'],
+                                        nutriId: isNutri ? member['id'] : null,
+                                        trainerId:
+                                            !isNutri ? member['id'] : null,
+                                        token: authProvider.token!);
+                                    if (context.mounted) {
+                                      Navigator.pop(context); // Cerrar lista
+                                      Navigator.pop(context); // Cerrar preview
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              '${isNutri ? "Nutricionista" : "Coach"} asignado con éxito'),
+                                          backgroundColor: Colors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                      _loadPatients();
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text('Error: $e'),
+                                            backgroundColor: Colors.red),
+                                      );
+                                    }
+                                  }
+                                },
                         ),
                       );
                     },
@@ -497,7 +924,7 @@ class PatientPreviewModal extends StatelessWidget {
 
   const PatientPreviewModal({
     super.key,
-    required this.patient, 
+    required this.patient,
     required this.apiService,
     required this.onAssignNutri,
     required this.onAssignCoach,
@@ -507,9 +934,10 @@ class PatientPreviewModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final bool isAdmin = authProvider.userRole?.toUpperCase().contains('ADMIN') ?? false;
+    final bool isAdmin =
+        authProvider.userRole?.toUpperCase().contains('ADMIN') ?? false;
     final bool isMale = patient['gender']?.toString().toLowerCase() == 'm';
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: const BoxDecoration(
@@ -521,25 +949,40 @@ class PatientPreviewModal extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
-            child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+            child: Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10))),
           ),
           const SizedBox(height: 24),
           Row(
             children: [
               CircleAvatar(
                 radius: 35,
-                backgroundColor: (isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC)),
-                backgroundImage: patient['profile_picture_url'] != null && patient['profile_picture_url'].toString().isNotEmpty
-                    ? NetworkImage(UrlService.formatImageUrl(patient['profile_picture_url']))
+                backgroundColor: (isMale
+                    ? const Color(0xFFE3F2FD)
+                    : const Color(0xFFFCE4EC)),
+                backgroundImage: patient['profile_picture_url'] != null &&
+                        patient['profile_picture_url'].toString().isNotEmpty
+                    ? NetworkImage(UrlService.formatImageUrl(
+                        patient['profile_picture_url']))
                     : null,
-                child: patient['profile_picture_url'] == null || patient['profile_picture_url'].toString().isEmpty
+                child: patient['profile_picture_url'] == null ||
+                        patient['profile_picture_url'].toString().isEmpty
                     ? Text(
-                        patient['full_name']?.toString().substring(0, 1).toUpperCase() ?? 'U',
+                        patient['full_name']
+                                ?.toString()
+                                .substring(0, 1)
+                                .toUpperCase() ??
+                            'U',
                         style: TextStyle(
-                          fontSize: 32, 
-                          color: (isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)), 
-                          fontWeight: FontWeight.bold
-                        ),
+                            fontSize: 32,
+                            color: (isMale
+                                ? const Color(0xFF1E88E5)
+                                : const Color(0xFFD81B60)),
+                            fontWeight: FontWeight.bold),
                       )
                     : null,
               ),
@@ -550,13 +993,18 @@ class PatientPreviewModal extends StatelessWidget {
                   children: [
                     Text(
                       patient['full_name'],
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF263238), letterSpacing: -0.5),
+                      style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF263238),
+                          letterSpacing: -0.5),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      patient['email'] ?? 'Sin correo', 
-                      style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)
-                    ),
+                    Text(patient['email'] ?? 'Sin correo',
+                        style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -564,8 +1012,12 @@ class PatientPreviewModal extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           const Text(
-            'ANÁLISIS DE ADHERENCIA (IA)', 
-            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 10, color: Color(0xFF1E88E5)),
+            'ANÁLISIS DE ADHERENCIA (IA)',
+            style: TextStyle(
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+                fontSize: 10,
+                color: Color(0xFF1E88E5)),
           ),
           const SizedBox(height: 12),
           Container(
@@ -578,12 +1030,18 @@ class PatientPreviewModal extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.auto_awesome, color: Color(0xFF1E88E5), size: 24),
+                const Icon(Icons.auto_awesome,
+                    color: Color(0xFF1E88E5), size: 24),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     patient['alerta'] ?? 'Analizando actividad reciente...',
-                    style: const TextStyle(fontSize: 14, height: 1.6, fontStyle: FontStyle.italic, fontWeight: FontWeight.w500, color: Color(0xFF475569)),
+                    style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF475569)),
                   ),
                 ),
               ],
@@ -596,16 +1054,20 @@ class PatientPreviewModal extends StatelessWidget {
               height: 56,
               child: ElevatedButton.icon(
                 onPressed: onAssignNutri,
-                icon: const Icon(Icons.restaurant_menu_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.restaurant_menu_rounded,
+                    color: Colors.white, size: 20),
                 label: Text(
-                  patient['nutri_id'] != null ? 'Cambiar Nutricionista' : 'Asignar Nutricionista', 
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
-                ),
+                    patient['nutri_id'] != null
+                        ? 'Cambiar Nutricionista'
+                        : 'Asignar Nutricionista',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E88E5),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ),
@@ -615,16 +1077,20 @@ class PatientPreviewModal extends StatelessWidget {
               height: 56,
               child: ElevatedButton.icon(
                 onPressed: onAssignCoach,
-                icon: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.fitness_center_rounded,
+                    color: Colors.white, size: 20),
                 label: Text(
-                  patient['coach_id'] != null ? 'Cambiar Coach' : 'Asignar Coach / Trainer', 
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
-                ),
+                    patient['coach_id'] != null
+                        ? 'Cambiar Coach'
+                        : 'Asignar Coach / Trainer',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ),
@@ -634,17 +1100,28 @@ class PatientPreviewModal extends StatelessWidget {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => PatientRecordView(patientData: patient)));
+                  final wasDeleted = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PatientRecordView(patientData: patient),
+                    ),
+                  );
+                  if (wasDeleted == true) {
+                    onValidated();
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E88E5),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('Ver Expediente Completo', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                child: const Text('Ver Expediente Completo',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               ),
             ),
           ],

@@ -39,6 +39,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   bool _isAILoading = false;
   bool _isValidated = false;
   String _semanaStatus = 'falta_checkin';
+  bool _shouldRefreshList = false;
 
   @override
   void initState() {
@@ -169,6 +170,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       );
 
       if (mounted) {
+        _shouldRefreshList = true;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Expediente y Guía IA actualizados'), backgroundColor: Colors.green),
         );
@@ -183,9 +185,80 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     }
   }
 
+  Future<void> _deleteClient() async {
+    final patientName = widget.patientData['full_name'] ?? 'este paciente';
+    final clientId   = widget.patientData['id'] as int;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+          SizedBox(width: 10),
+          Text('Eliminar Paciente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Estás a punto de eliminar permanentemente a:', style: TextStyle(color: Colors.grey.shade600)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.red.shade200)),
+              child: Row(children: [
+                const Icon(Icons.person, color: Colors.red),
+                const SizedBox(width: 10),
+                Expanded(child: Text(patientName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            const Text('⚠️ Esta acción es IRREVERSIBLE. Se eliminarán todos sus datos, historial y su cuenta de Firebase.', style: TextStyle(fontSize: 12, color: Colors.red)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: const Text('Sí, ELIMINAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token!;
+      await _apiService.deleteClient(clientId, token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$patientName fue eliminado de la plataforma.'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _shouldRefreshList);
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
@@ -197,13 +270,19 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF263238)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, _shouldRefreshList),
         ),
         actions: [
           if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH'))
             IconButton(
               icon: const Icon(Icons.save_rounded, color: Color(0xFF1E88E5)),
               onPressed: _savePlan,
+            ),
+          if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH'))
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+              tooltip: 'Eliminar paciente',
+              onPressed: _deleteClient,
             ),
         ],
       ),
@@ -241,6 +320,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               const SizedBox(height: 80),
             ],
           ),
+      ),
     );
   }
 
@@ -405,7 +485,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'EVOLUCIÓN SEMANAL', 
+                'EVOLUCIÓN MENSUAL', 
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2, color: Color(0xFF455A64))
               ),
               Container(
@@ -770,17 +850,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     final bool alreadyValidated = _semanaStatus == 'validado';
     final bool needsCheckIn = _semanaStatus == 'falta_checkin';
 
-    if (needsCheckIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ El paciente debe realizar su Check-in antes de poder validar el plan semanal.'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -809,9 +878,19 @@ class _PatientRecordViewState extends State<PatientRecordView> {
 
     if (confirm == true) {
       try {
+        if (needsCheckIn && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Aviso: el check-in mensual está pendiente, pero la validación del plan sí se registrará.'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         await _apiService.validarPlanPaciente(widget.patientData['id'], authProvider.token!);
         if (mounted) {
+          _shouldRefreshList = true;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(alreadyValidated ? 'Validación actualizada' : 'Plan semanal validado exitosamente'),
@@ -850,7 +929,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✨ Guía Semanal IA generada con éxito. ¡Revísala!'),
+            content: const Text('✨ Guía Mensual IA generada con éxito. ¡Revísala!'),
             backgroundColor: Colors.indigo,
           ),
         );
@@ -896,8 +975,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                       const Icon(Icons.auto_awesome_rounded, color: Color(0xFF1E88E5), size: 18),
                       const SizedBox(width: 6),
                       const Text(
-                        'GUÍA ESTRATÉGICA SEMANAL (IA)', 
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
+                        'GUÍA ESTRATÉGICA MENSUAL (IA)', 
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
                       ),
                     ],
                   ),
@@ -966,16 +1045,15 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_semanaStatus != 'falta_checkin') 
-                    IconButton(
-                      icon: Icon(
-                        _semanaStatus == 'validado' ? Icons.check_circle_rounded : Icons.fact_check_rounded,
-                        color: _semanaStatus == 'validado' ? Colors.green : Colors.orange,
-                        size: 28,
-                      ),
-                      tooltip: _semanaStatus == 'validado' ? 'Actualizar Validación' : 'Validar Plan Semanal',
-                      onPressed: _validarPlanSemanal,
+                  IconButton(
+                    icon: Icon(
+                      _semanaStatus == 'validado' ? Icons.check_circle_rounded : Icons.fact_check_rounded,
+                      color: _semanaStatus == 'validado' ? Colors.green : Colors.orange,
+                      size: 28,
                     ),
+                    tooltip: _semanaStatus == 'validado' ? 'Actualizar Validación' : 'Validar Plan Mensual',
+                    onPressed: _validarPlanSemanal,
+                  ),
                   const SizedBox(width: 8),
                   _isAILoading 
                     ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))

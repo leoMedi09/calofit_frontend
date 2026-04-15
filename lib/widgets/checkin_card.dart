@@ -72,7 +72,7 @@ class CheckInCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'Check-in Semanal',
+                              'Check-in Mensual',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

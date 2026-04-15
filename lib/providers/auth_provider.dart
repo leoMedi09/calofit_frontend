@@ -14,6 +14,7 @@ class AuthProvider with ChangeNotifier {
   int? _userId;
   String? _userIdFirebase;
   String? _profilePictureUrl; // ✅ Añadido para el rediseño premium
+  bool _isProfileComplete = true; // 🌟 Nuevo: Control de Onboarding
   bool _showWelcomeMessage = false;
   final ApiService _apiService = ApiService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -27,6 +28,7 @@ class AuthProvider with ChangeNotifier {
   String? get userEmail => _userEmail;
   int? get userId => _userId;
   String? get profilePictureUrl => _profilePictureUrl;
+  bool get isProfileComplete => _isProfileComplete;
   bool get isAuthenticated => _token != null;
   String? get userIdFirebase => _userIdFirebase;
   bool get showWelcomeMessage => _showWelcomeMessage;
@@ -37,46 +39,41 @@ class AuthProvider with ChangeNotifier {
 
   // lib/providers/auth_provider.dart
 
-  Future<void> login(String email, String password, bool rememberMe, {bool isStaff = false}) async {
+  /// Login unificado: intenta Firebase (clientes) y siempre valida en API con `user_type: auto`.
+  /// El backend decide si el correo es Client o User (staff) según la base de datos.
+  Future<void> login(String email, String password, bool rememberMe) async {
     try {
       String firebaseUid = "";
-      debugPrint('🔥 LOGIN START: isStaff=$isStaff, email=$email');
-      
-      // 1️⃣ Si es CLIENTE: Intentar autenticar con Firebase primero
-      if (!isStaff) {
-        debugPrint('🔥 Intentando login Firebase (Modo Cliente)...');
-        try {
-          final UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          firebaseUid = userCredential.user?.uid ?? "";
-          debugPrint('🔥 Firebase UID (Cliente): $firebaseUid');
-        } on FirebaseAuthException catch (e) {
-          debugPrint('⚠️ Error de Firebase: ${e.code}');
-          
-          // FALLBACK ROBUSTO: Si Firebase falla (usuario no encontrado, red, o incluso contraseña incorrecta en Firebase),
-          // permitimos que el Backend sea el juez final. Esto resuelve desincronizaciones.
-          if (e.code == 'user-not-found' || e.code == 'network-request-failed' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-            debugPrint('🔄 Intentando fallback: validando credenciales directamente con el servidor principal...');
-            // Continuamos sin Firebase UID mapeado en esta sesión, el backend nos dará el suyo si es válido
-          } else {
-            // Para errores de seguridad críticos o cuenta bloqueada, sí lanzamos el error
-            rethrow;
-          }
+      debugPrint('🔥 LOGIN UNIFICADO: email=$email');
+
+      // 1️⃣ Firebase: útil para clientes (UID para sincronizar). Staff suele no existir en Firebase → se ignora.
+      try {
+        final UserCredential userCredential =
+            await _firebaseAuth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        firebaseUid = userCredential.user?.uid ?? "";
+        debugPrint('🔥 Firebase UID: $firebaseUid');
+      } on FirebaseAuthException catch (e) {
+        debugPrint('⚠️ Firebase: ${e.code}');
+        if (e.code == 'user-not-found' ||
+            e.code == 'network-request-failed' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
+          debugPrint('🔄 Continuando sin UID; el backend validará credenciales (modo auto).');
+        } else {
+          rethrow;
         }
-      } else {
-        // Para staff, no usamos Firebase
-        debugPrint('👥 Login de Staff: Saltando autenticación de Firebase');
       }
 
-      // 2️⃣ Llamada a tu API FastAPI (backend valida tanto staff como client)
+      // 2️⃣ API: resolución automática de rol
       final request = LoginRequest(
         email: email,
         password: password,
         rememberMe: rememberMe,
-        firebaseUid: firebaseUid, // Vacío para staff
-        userType: isStaff ? "staff" : "client", // ✅ Diferenciación de roles
+        firebaseUid: firebaseUid,
+        userType: 'auto',
       );
       debugPrint('📤 JSON A ENVIAR: ${request.toJson()}');
 
@@ -94,6 +91,7 @@ class AuthProvider with ChangeNotifier {
       _userEmail = response.userEmail;
       _userId = response.userId;
       _profilePictureUrl = response.profilePictureUrl;
+      _isProfileComplete = response.isProfileComplete;
       debugPrint('👤 AuthProvider: profilePictureUrl recibido = $_profilePictureUrl');
       _userIdFirebase = (response.firebaseUid != null && response.firebaseUid!.isNotEmpty) 
           ? response.firebaseUid 
@@ -106,7 +104,7 @@ class AuthProvider with ChangeNotifier {
       _showWelcomeMessage = true;
       notifyListeners();
 
-      debugPrint('✅ Login completado y estado notificado para: $_userName (${isStaff ? "Staff" : "Cliente"})');
+      debugPrint('✅ Login completado: $_userName (tipo=$_userType)');
     } catch (e) {
       debugPrint('❌ Error en AuthProvider.login: $e');
       // Limpiamos datos por seguridad si algo falla a mitad de camino
@@ -129,6 +127,7 @@ class AuthProvider with ChangeNotifier {
     if (_userName != null) await prefs.setString('userName', _userName!);
     if (_userEmail != null) await prefs.setString('userEmail', _userEmail!);
     if (_userId != null) await prefs.setInt('userId', _userId!);
+    await prefs.setBool('isProfileComplete', _isProfileComplete);
     
     if (rememberMe) {
       if (_profilePictureUrl != null) await prefs.setString('profilePictureUrl', _profilePictureUrl!);
@@ -149,6 +148,7 @@ class AuthProvider with ChangeNotifier {
     await prefs.remove('userEmail');
     await prefs.remove('userId');
     await prefs.remove('userIdFirebase');
+    await prefs.remove('isProfileComplete');
   }
 
   Future<void> loadToken() async {
@@ -164,6 +164,7 @@ class AuthProvider with ChangeNotifier {
       _userId = prefs.getInt('userId');
       _profilePictureUrl = prefs.getString('profilePictureUrl');
       _userIdFirebase = prefs.getString('userIdFirebase');
+      _isProfileComplete = prefs.getBool('isProfileComplete') ?? true;
       
       debugPrint('👤 AuthProvider: Sesión cargada. profilePictureUrl = $_profilePictureUrl');
       
@@ -214,6 +215,7 @@ class AuthProvider with ChangeNotifier {
     _userEmail = null;
     _userId = null;
     _userIdFirebase = null;
+    _isProfileComplete = true;
 
     await _removeSession();
     

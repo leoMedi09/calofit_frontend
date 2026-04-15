@@ -111,7 +111,7 @@ class _TeamListViewState extends State<TeamListView> {
 
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 15),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 15),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey[100]!, width: 1)),
@@ -320,6 +320,8 @@ class _TeamListViewState extends State<TeamListView> {
       _showEditStaffDialog(context, member);
     } else if (value == 'status') {
       _showToggleStatusDialog(context, member);
+    } else if (value == 'delete') {
+      _showDeleteStaffDialog(context, member);
     }
   }
 
@@ -350,9 +352,20 @@ class _TeamListViewState extends State<TeamListView> {
         child: Row(
           children: [
             Icon(member.isActive ? Icons.person_off_outlined : Icons.person_add_outlined,
-                size: 20, color: member.isActive ? Colors.red : Colors.green),
+                size: 20, color: member.isActive ? Colors.orange : Colors.green),
             const SizedBox(width: 12),
             Text(member.isActive ? 'Dar de Baja' : 'Reactivar'),
+          ],
+        ),
+      ),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: 'delete',
+        child: Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red),
+            const SizedBox(width: 12),
+            const Text('Eliminar Personal', style: TextStyle(color: Colors.red)),
           ],
         ),
       ),
@@ -366,51 +379,79 @@ class _TeamListViewState extends State<TeamListView> {
     bool isConfirmVisible = false;
     bool isLoading = false;
 
+    InputDecoration buildInputDecoration(String label, IconData icon, bool isObscure, VoidCallback toggleVisibility) {
+      return InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF1E88E5)),
+        suffixIcon: IconButton(
+          icon: Icon(isObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey.shade500, size: 20),
+          onPressed: toggleVisibility,
+          splashRadius: 20,
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+      );
+    }
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text('Nueva Contraseña: ${member.firstName}'),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFF1E88E5).withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.password_rounded, color: Color(0xFF1E88E5)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Nueva Contraseña:\n${member.firstName}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A237E), fontSize: 18, height: 1.1, letterSpacing: -0.3)),
+              ),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Establece las nuevas credenciales para este miembro del equipo.'),
-              const SizedBox(height: 20),
+              const Text('Establece las nuevas credenciales de acceso para este miembro del equipo.', style: TextStyle(fontSize: 13, color: Colors.grey), textAlign: TextAlign.center),
+              const SizedBox(height: 24),
               TextField(
                 controller: passwordController,
                 obscureText: !isPasswordVisible,
-                decoration: InputDecoration(
-                  labelText: 'Nueva Contraseña',
-                  hintText: 'Mínimo 6 caracteres',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    icon: Icon(isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey),
-                    onPressed: () => setDialogState(() => isPasswordVisible = !isPasswordVisible),
-                  ),
-                ),
+                decoration: buildInputDecoration('Nueva Contraseña', Icons.lock_outline_rounded, !isPasswordVisible, () {
+                  setDialogState(() => isPasswordVisible = !isPasswordVisible);
+                }),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextField(
                 controller: confirmPasswordController,
                 obscureText: !isConfirmVisible,
-                decoration: InputDecoration(
-                  labelText: 'Confirmar Contraseña',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.enhanced_encryption_rounded),
-                  suffixIcon: IconButton(
-                    icon: Icon(isConfirmVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey),
-                    onPressed: () => setDialogState(() => isConfirmVisible = !isConfirmVisible),
-                  ),
-                ),
+                decoration: buildInputDecoration('Confirmar Contraseña', Icons.enhanced_encryption_outlined, !isConfirmVisible, () {
+                  setDialogState(() => isConfirmVisible = !isConfirmVisible);
+                }),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: isLoading ? null : () => Navigator.pop(context),
-              child: const Text('Cancelar'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey.shade600,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             ElevatedButton(
               onPressed: isLoading
@@ -425,7 +466,7 @@ class _TeamListViewState extends State<TeamListView> {
                       }
 
                       if (password != confirm) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No coinciden')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Las contraseñas no coinciden')));
                         return;
                       }
 
@@ -435,17 +476,30 @@ class _TeamListViewState extends State<TeamListView> {
                         await _apiService.updateStaffPassword(member.id, password, authProvider.token ?? '');
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Éxito!'), backgroundColor: Colors.green));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada correctamente'), backgroundColor: Colors.green));
                         }
                       } catch (e) {
-                         // handle error
-                      } finally {
-                        if (mounted) setDialogState(() => isLoading = false);
+                        setDialogState(() => isLoading = false);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                       }
                     },
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E88E5), foregroundColor: Colors.white),
-              child: isLoading ? const CircularProgressIndicator() : const Text('Actualizar'),
+                backgroundColor: const Color(0xFF1E88E5), 
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: isLoading 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) 
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Actualizar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.check_circle_rounded, size: 18, color: Colors.white.withOpacity(0.9)),
+                    ],
+                  ),
             ),
           ],
         ),
@@ -454,10 +508,292 @@ class _TeamListViewState extends State<TeamListView> {
   }
 
   void _showEditStaffDialog(BuildContext context, User member) {
-    // Implement standard logic
+    final TextEditingController firstNameController = TextEditingController(text: member.firstName);
+    final TextEditingController lastPaternalController = TextEditingController(text: member.lastNamePaternal);
+    final TextEditingController lastMaternalController = TextEditingController(text: member.lastNameMaternal);
+    final TextEditingController emailController = TextEditingController(text: member.email);
+    
+    // Simplificación de rol para el dropdown
+    String currentRole = 'Nutricionista';
+    if (member.roleName.toLowerCase().contains('admin')) {
+      currentRole = 'Administrador';
+    } else if (member.roleName.toLowerCase().contains('coach') || member.roleName.toLowerCase().contains('train')) {
+      currentRole = 'Entrenador';
+    }
+    
+    String selectedRole = currentRole;
+    bool isLoading = false;
+
+    // Decoración base para inputs premium
+    InputDecoration buildInputDecoration(String label, IconData icon) {
+      return InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF1E88E5)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+      );
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFF1E88E5).withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF1E88E5)),
+              ),
+              const SizedBox(width: 12),
+              const Text('Editar Perfil', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A237E), fontSize: 22, letterSpacing: -0.5)),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Actualiza los datos del personal. Los cambios se reflejarán de inmediato.', style: TextStyle(fontSize: 13, color: Colors.grey), textAlign: TextAlign.center),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: firstNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: buildInputDecoration('Nombres', Icons.person_outline_rounded),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: lastPaternalController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: buildInputDecoration('Ap. Paterno', Icons.badge_outlined),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: lastMaternalController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: buildInputDecoration('Ap. Materno', Icons.badge_outlined),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: buildInputDecoration('Correo Electrónico', Icons.email_outlined),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF1E88E5)),
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A237E), fontSize: 14),
+                    decoration: buildInputDecoration('Rol del Sistema', Icons.admin_panel_settings_outlined),
+                    items: ['Nutricionista', 'Entrenador', 'Administrador'].map((role) {
+                      return DropdownMenuItem(value: role, child: Text(role));
+                    }).toList(),
+                    onChanged: (value) => setDialogState(() => selectedRole = value!),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey.shade600,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (firstNameController.text.trim().isEmpty || emailController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombres y Correo son obligatorios')));
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+                      try {
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        
+                        String mappedRole = 'nutricionista';
+                        if (selectedRole == 'Administrador') mappedRole = 'admin';
+                        if (selectedRole == 'Entrenador') mappedRole = 'entrenador';
+
+                        await _apiService.updateStaff(
+                          member.id, 
+                          {
+                            'first_name': firstNameController.text.trim(),
+                            'last_name_paternal': lastPaternalController.text.trim(),
+                            'last_name_maternal': lastMaternalController.text.trim(),
+                            'email': emailController.text.trim(),
+                            'role_name': mappedRole,
+                          }, 
+                          authProvider.token ?? ''
+                        );
+                        
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil actualizado con éxito'), backgroundColor: Colors.green));
+                          _refreshTeam();
+                        }
+                      } catch (e) {
+                         setDialogState(() => isLoading = false);
+                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E88E5), 
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: isLoading 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) 
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Guardar Cambios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.check_circle_rounded, size: 18, color: Colors.white.withOpacity(0.9)),
+                    ],
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showToggleStatusDialog(BuildContext context, User member) {
-    // Implement standard logic
+    bool isLoading = false;
+    final bool isDisabling = member.isActive;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Icon(isDisabling ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded, 
+                   color: isDisabling ? Colors.orange : Colors.green),
+              const SizedBox(width: 10),
+              Text(isDisabling ? '¿Dar de baja?' : '¿Reactivar?'),
+            ],
+          ),
+          content: Text(isDisabling 
+            ? 'Suspenderá el acceso de ${member.firstName} al sistema. Podrás reactivarlo luego.'
+            : 'Se restaurará el acceso de ${member.firstName} al sistema con su última contraseña o contraseña temporal.'),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      setDialogState(() => isLoading = true);
+                      try {
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        await _apiService.updateStaffStatus(member.id, authProvider.token ?? '');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(isDisabling ? 'Personal dado de baja' : 'Personal reactivado'), 
+                            backgroundColor: isDisabling ? Colors.orange : Colors.green
+                          ));
+                          _refreshTeam();
+                        }
+                      } catch (e) {
+                         setDialogState(() => isLoading = false);
+                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: isDisabling ? Colors.orange : Colors.green, 
+                  foregroundColor: Colors.white),
+              child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(isDisabling ? 'Suspender' : 'Reactivar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteStaffDialog(BuildContext context, User member) {
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_forever_rounded, color: Colors.red),
+              SizedBox(width: 10),
+              Text('Eliminar Personal', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          content: Text('¿Estás seguro de eliminar permanentemente a ${member.firstName} del sistema? Esta acción no se puede deshacer y desvinculará a los pacientes a su cargo.'),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      setDialogState(() => isLoading = true);
+                      try {
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        await _apiService.deleteStaff(member.id, authProvider.token ?? '');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('Personal eliminado permanentemente'), 
+                            backgroundColor: Colors.redAccent
+                          ));
+                          _refreshTeam();
+                        }
+                      } catch (e) {
+                         setDialogState(() => isLoading = false);
+                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.red));
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Eliminar Definitivamente'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

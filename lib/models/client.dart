@@ -13,6 +13,8 @@ class Client {
   final List<String> medicalConditions;
   final String activityLevel;
   final String goal;
+  final String workoutType;     // 🆕 Para ML Random Forest
+  final double sessionDuration;  // 🆕 Para ML Random Forest (en horas)
   final String? profilePictureUrl;
   final int? assignedNutriId;
   final bool isProfileComplete;
@@ -31,6 +33,8 @@ class Client {
     required this.medicalConditions,
     required this.activityLevel,
     required this.goal,
+    this.workoutType = 'Cardio',
+    this.sessionDuration = 1.0,
     this.profilePictureUrl,
     this.assignedNutriId,
     this.isProfileComplete = false,
@@ -72,6 +76,8 @@ class Client {
           : [],
       activityLevel: json['activity_level'] ?? 'Sedentario',
       goal: json['goal'] ?? 'Mantener peso',
+      workoutType: json['workout_type'] ?? 'Cardio',
+      sessionDuration: (json['session_duration'] as num?)?.toDouble() ?? 1.0,
       profilePictureUrl: json['profile_picture_url'] ?? json['profilePictureUrl'],
       assignedNutriId: json['assigned_nutri_id'],
       isProfileComplete: json['is_profile_complete'] ?? false,
@@ -92,6 +98,8 @@ class Client {
       'medical_conditions': medicalConditions,
       'activity_level': activityLevel,
       'goal': goal,
+      'workout_type': workoutType,
+      'session_duration': sessionDuration,
       'profile_picture_url': profilePictureUrl,
       'assigned_nutri_id': assignedNutriId,
       'is_profile_complete': isProfileComplete,

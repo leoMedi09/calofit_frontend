@@ -34,7 +34,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
   }
 
   void _nextPage() {
-    if (_currentStep < 2) {
+    if (_currentStep < 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300), 
         curve: Curves.easeInOut
@@ -53,15 +53,15 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
         auth.token!,
         {
           "weight": _weight,
-          "height": _height,
-          "activity_level": "Moderado", // Podría ser dinámico
+          "height": _height, // Se envía la misma que ya tiene
+          "activity_level": "Moderado", 
         }
       );
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ ¡Check-in exitoso! Tu IA ha sido calibrada.'),
+            content: Text('✅ ¡Check-in exitoso! Tu peso ha sido actualizado.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -82,7 +82,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Calibración Semanal', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Calibración Mensual', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -90,7 +90,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
       body: Column(
         children: [
           LinearProgressIndicator(
-            value: (_currentStep + 1) / 3,
+            value: (_currentStep + 1) / 2,
             backgroundColor: Colors.grey[100],
             valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3F51B5)),
           ),
@@ -100,7 +100,6 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _buildWeightStep(),
-                _buildHeightStep(),
                 _buildSummaryStep(),
               ],
             ),
@@ -120,7 +119,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
                 child: _isSaving 
                   ? const CircularProgressIndicator(color: Colors.white)
                   : Text(
-                      _currentStep == 2 ? 'FINALIZAR CALIBRACIÓN' : 'CONTINUAR',
+                      _currentStep == 1 ? 'FINALIZAR CALIBRACIÓN' : 'CONTINUAR',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                     ),
               ),
@@ -270,8 +269,6 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
             child: Column(
               children: [
                 _buildSummaryRow('Nuevo Peso', '${_weight.toStringAsFixed(1)} kg'),
-                const Divider(height: 24),
-                _buildSummaryRow('Talla', '${_height.toStringAsFixed(0)} cm'),
               ],
             ),
           ),

@@ -748,7 +748,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'MISIÓN SEMANAL',
+                    'MISIÓN MENSUAL',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,

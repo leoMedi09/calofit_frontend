@@ -36,15 +36,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final List<String> _selectedConditions = [];
   String? _activityLevel;
   String? _goal;
+  String? _workoutType;     // 🆕 Para ML
+  double? _sessionDuration; // 🆕 Para ML
   DateTime? _birthDate;
 
-  final List<String> _medicalConditionsOptions = [
-    'Diabetes',
-    'Hipertensión',
-    'Asma',
-    'Enfermedad Cardiovascular',
-    'Ninguna'
+  // Grupos separados para mejor UX
+  final List<String> _medicalOptions = [
+    'Diabetes', 'Hipertensión', 'Asma', 'Enfermedad Cardiovascular', 'Intolerancia a la Lactosa', 'Celíaco',
   ];
+  final List<String> _dietaryOptions = [
+    'Vegano', 'Vegetariano', 'Ninguna',
+  ];
+  // Lista combinada para compatibilidad con el backend
+  List<String> get _medicalConditionsOptions => [..._medicalOptions, ..._dietaryOptions];
 
   @override
   void initState() {
@@ -69,6 +73,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     _activityLevel = widget.client.activityLevel;
     _goal = widget.client.goal;
+    _workoutType = widget.client.workoutType;
+    _sessionDuration = widget.client.sessionDuration;
     _birthDate = widget.client.birthDate;
     _isInitialized = true;
   }
@@ -103,6 +109,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         height: double.tryParse(_heightController.text) ?? current.height,
         activityLevel: _activityLevel ?? current.activityLevel,
         goal: _goal ?? current.goal,
+        workoutType: _workoutType ?? current.workoutType,
+        sessionDuration: _sessionDuration ?? current.sessionDuration,
         medicalConditions: _selectedConditions.contains('Ninguna') ? [] : _selectedConditions,
         profilePictureUrl: current.profilePictureUrl,
         assignedNutriId: current.assignedNutriId,
@@ -339,6 +347,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       },
                       (val) => setState(() => _activityLevel = val)
                     ),
+                    _buildDropdownField(
+                      'Tipo de Entrenamiento',
+                      Icons.fitness_center_rounded,
+                      _workoutType,
+                      {
+                        'Cardio': '🏃 Cardio (Correr, Bicicleta, Natación)',
+                        'Strength': '💪 Fuerza (Pesas, Gym)',
+                        'HIIT': '⚡ HIIT (Alta Intensidad)',
+                        'Yoga': '🧘 Yoga / Flexibilidad',
+                      },
+                      (val) => setState(() => _workoutType = val)
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: DropdownButtonFormField<double>(
+                        value: _sessionDuration,
+                        decoration: InputDecoration(
+                          labelText: 'Duración de Sesión',
+                          prefixIcon: Icon(Icons.timer_rounded, color: Colors.blue.shade300),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: const Color(0xFF1E88E5), width: 2)),
+                        ),
+                        items: {
+                          0.5: '30 minutos',
+                          1.0: '1 hora',
+                          1.5: '1 hora 30 minutos',
+                          2.0: '2 horas o más',
+                        }.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                        onChanged: (v) => setState(() => _sessionDuration = v),
+                      ),
+                    ),
 
                     const SizedBox(height: 20),
                     _buildSectionTitle('Medidas Físicas'),
@@ -350,11 +392,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ],
                     ),
                     
-                    const SizedBox(height: 20),
-                    _buildSectionTitle('Estado de Salud'),
-                    _buildMedicalConditionsChips(),
-
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Condiciones y Restricciones'),
+                    const SizedBox(height: 12),
+                    _buildGroupLabel('Condiciones Médicas', Icons.local_hospital_outlined),
+                    const SizedBox(height: 10),
+                    _buildChipGroup(_medicalOptions),
+                    const SizedBox(height: 24),
+                    _buildGroupLabel('Preferencias Alimenticias', Icons.restaurant_outlined),
+                    const SizedBox(height: 10),
+                    _buildChipGroup(_dietaryOptions),
+                    const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
                       height: 55,
@@ -515,6 +563,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }).toList(),
         onChanged: onChanged,
       ),
+    );
+  }
+
+  Widget _buildGroupLabel(String label, IconData icon) {
+    return Row(children: [
+      Icon(icon, size: 14, color: Colors.blueGrey.shade400),
+      const SizedBox(width: 6),
+      Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade500, letterSpacing: 0.5)),
+    ]);
+  }
+
+  Widget _buildChipGroup(List<String> options) {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: options.map((condition) {
+        final isSelected = _selectedConditions.contains(condition);
+        return FilterChip(
+          label: Text(condition, style: const TextStyle(fontSize: 13)),
+          selected: isSelected,
+          onSelected: (selected) {
+            setState(() {
+              if (condition == 'Ninguna') {
+                _selectedConditions.clear();
+                if (selected) _selectedConditions.add('Ninguna');
+              } else {
+                _selectedConditions.remove('Ninguna');
+                selected ? _selectedConditions.add(condition) : _selectedConditions.remove(condition);
+              }
+            });
+          },
+          selectedColor: Colors.blue.shade100,
+          checkmarkColor: Colors.blue.shade700,
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.blue.shade900 : Colors.grey.shade700,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+          backgroundColor: Colors.grey.shade100,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: isSelected ? Colors.blue.shade300 : Colors.grey.shade300),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        );
+      }).toList(),
     );
   }
 

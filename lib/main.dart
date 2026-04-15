@@ -12,7 +12,65 @@ import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/verify_code_screen.dart';
 
+import 'screens/client/onboarding_profile_screen.dart';
+import 'models/client.dart';
+import 'services/api_service.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// ... (main remains same)
+
+class OnboardingProfileLoader extends StatelessWidget {
+  const OnboardingProfileLoader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final api = ApiService();
+
+    return FutureBuilder<Client>(
+      future: api.getClientProfile(auth.userId!, auth.token!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text('Preparando tu configuración inicial...', 
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  const Text('Error al cargar tu perfil'),
+                  TextButton(
+                    onPressed: () => auth.logout(),
+                    child: const Text('Cerrar sesión y reintentar'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return OnboardingProfileScreen(client: snapshot.data!);
+      },
+    );
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,9 +116,16 @@ class MyApp extends StatelessWidget {
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
             if (!auth.isAuthenticated) return const LoginScreen();
-            return (auth.userType == 'staff' || auth.userType == 'admin') 
-                ? const StaffMainScreen() 
-                : const ClientMainScreen();
+            
+            final isStaff = (auth.userType == 'staff' || auth.userType == 'admin');
+            
+            if (isStaff) return const StaffMainScreen();
+            
+            if (!auth.isProfileComplete) {
+              return const OnboardingProfileLoader();
+            }
+            
+            return const ClientMainScreen();
           },
         ),
         routes: {
@@ -74,4 +139,4 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
-}
+}

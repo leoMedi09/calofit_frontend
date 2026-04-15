@@ -233,7 +233,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
           isExpanded: true,
           items: const [
             DropdownMenuItem(value: 'NUTRI', child: Text('Nutricionista')),
-            DropdownMenuItem(value: 'COACH', child: Text('Entrenador / Coach')), // ✅ Opción añadida
+            DropdownMenuItem(value: 'COACH', child: Text('Entrenador')),
             DropdownMenuItem(value: 'ADMIN', child: Text('Administrador')),
           ],
           onChanged: (value) {

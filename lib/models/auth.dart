@@ -33,6 +33,7 @@ class LoginResponse {
   final int? userId;
   final String? firebaseUid;
   final String? profilePictureUrl; // ✅ Añadido
+  final bool isProfileComplete; // 🌟 Nuevo: Control de Onboarding
 
   LoginResponse({
     this.token,
@@ -43,6 +44,7 @@ class LoginResponse {
     this.userId,
     this.firebaseUid,
     this.profilePictureUrl,
+    this.isProfileComplete = true,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class LoginResponse {
       userEmail: userInfo?['email'] as String?,
       userId: userInfo?['id'] as int?,
       profilePictureUrl: userInfo?['profile_picture_url'] as String?,
+      isProfileComplete: userInfo?['is_profile_complete'] as bool? ?? true,
     );
   }
 }

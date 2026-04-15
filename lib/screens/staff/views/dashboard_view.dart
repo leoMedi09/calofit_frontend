@@ -381,19 +381,7 @@ class _DashboardViewState extends State<DashboardView> {
 
                   const SizedBox(height: 35),
 
-                  // SESIÓN 3: SEGURIDAD Y AUDITORÍA ACCESO RÁPIDO (Solo Admin)
-                  if (_isAdmin(context)) ...[
-                    _buildSectionTitle('Seguridad del Sistema', Icons.security_rounded),
-                    const SizedBox(height: 15),
-                    _buildActionItem(
-                      'Logs de Auditoría',
-                      'Ver las últimas acciones administrativas.',
-                      Icons.history_edu_rounded,
-                      const Color(0xFF7E57C2),
-                      () => _navigateToAuditList(context),
-                    ),
-                    const SizedBox(height: 35),
-                  ],
+
 
                   // SESIÓN 4: INTELIGENCIA ARTIFICIAL
                   _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),

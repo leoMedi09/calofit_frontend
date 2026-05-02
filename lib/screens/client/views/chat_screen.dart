@@ -28,6 +28,15 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   final ApiService _apiService = ApiService();
   final FlutterTts _flutterTts = FlutterTts();
   final stt.SpeechToText _speech = stt.SpeechToText();
+
+  /// Reconocimiento listo (initialize OK).
+  bool _speechReady = false;
+  /// Idioma instalado en el teléfono para dictado (es_MX, es_ES, …).
+  String _speechLocaleId = 'es_ES';
+  /// Evita callbacks viejos tras detener manualmente.
+  int _speechSession = 0;
+  /// Un solo envío por dictado (manual stop vs finalResult).
+  bool _speechSubmitHandled = false;
   
   bool _isTyping = false;
   bool _isListening = false;
@@ -36,6 +45,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   String? _speakingMessageId; 
   Client? _clientProfile; 
   String? _latestFuzzyHint;
+  bool _showHelpBanner = true;
+
+  /// Si el usuario ya envió mensajes en esta sesión, no reemplazar la lista al terminar
+  /// la carga asíncrona del historial (evita "borrar" el chat por condición de carrera).
+  bool _chatSessionDirty = false;
 
   // 🔄 ONE-STREAM: Una sola lista de mensajes (ahora persistente)
   List<Map<String, dynamic>> _messages = [
@@ -57,18 +71,77 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _initTts();
+    _initSpeech();
     _focusNode.addListener(_onFocusChange);
     _loadClientProfile();
     _loadChatHistory();
+  }
+
+  Future<void> _initSpeech() async {
+    final ok = await _speech.initialize(
+      onStatus: (status) {
+        debugPrint('Speech onStatus: $status');
+        // Algunos dispositivos dejan el estado "notListening/done" sin pasar por onResult.finalResult.
+        // Esto evita que el UI se quede "escuchando" y que el TTS parezca apagado.
+        final s = status.toLowerCase();
+        if (mounted && (s.contains('notlistening') || s.contains('done'))) {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (e) {
+        debugPrint('Speech onError: $e');
+        if (mounted) {
+          setState(() => _isListening = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Voz: ${e.errorMsg}')),
+          );
+        }
+      },
+    );
+    if (!ok) {
+      debugPrint('Speech initialize failed (permiso o servicio no disponible)');
+    }
+    if (ok) {
+      try {
+        final locales = await _speech.locales();
+        _speechLocaleId = _pickSpanishLocaleId(locales);
+      } catch (_) {
+        _speechLocaleId = 'es_ES';
+      }
+    }
+    _speechReady = ok;
+    if (mounted) setState(() {});
+  }
+
+  String _pickSpanishLocaleId(List<stt.LocaleName> locales) {
+    final ids = locales.map((e) => e.localeId).toSet();
+    const prefs = ['es_MX', 'es_ES', 'es_US', 'es_CO', 'es_AR', 'es_PE'];
+    for (final p in prefs) {
+      if (ids.contains(p)) return p;
+    }
+    for (final l in locales) {
+      if (l.localeId.startsWith('es')) return l.localeId;
+    }
+    return locales.isNotEmpty ? locales.first.localeId : 'es_ES';
+  }
+
+  String _chatHistoryStorageKey(AuthProvider auth) {
+    if (auth.userId != null) return 'chat_history_${auth.userId}';
+    final e = auth.userEmail?.trim().toLowerCase();
+    if (e != null && e.isNotEmpty) {
+      final safe = e.replaceAll(RegExp(r'[^a-z0-9@._-]'), '_');
+      return 'chat_history_email_$safe';
+    }
+    return 'chat_history_default';
   }
 
   // ═══ PART A: Historial Persistente del Chat ═══
   Future<void> _loadChatHistory() async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final userId = auth.userId ?? 'default';
+      final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString('chat_history_$userId');
+      final saved = prefs.getString(key);
       if (saved != null) {
         final List decoded = jsonDecode(saved);
         final List<Map<String, dynamic>> loaded = [];
@@ -96,6 +169,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           }
         }
         if (loaded.isNotEmpty && mounted) {
+          if (_chatSessionDirty) {
+            return;
+          }
           setState(() => _messages = loaded);
           _scrollToBottom();
         }
@@ -108,7 +184,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Future<void> _saveChatHistory() async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final userId = auth.userId ?? 'default';
+      final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
 
       // Serializar los últimos 50 mensajes
@@ -139,7 +215,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         };
       }).toList();
 
-      await prefs.setString('chat_history_$userId', jsonEncode(serialized));
+      await prefs.setString(key, jsonEncode(serialized));
     } catch (e) {
       debugPrint('Error guardando historial: $e');
     }
@@ -162,10 +238,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
     if (confirm == true) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final userId = auth.userId ?? 'default';
+      final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('chat_history_$userId');
+      await prefs.remove(key);
       setState(() {
+        _chatSessionDirty = false;
         _messages = [
           {
             'role': 'assistant',
@@ -232,36 +309,77 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _listen() async {
-    if (!_isListening) {
-      bool available = await _speech.initialize(
-        onStatus: (status) => print('Micro status: $status'),
-        onError: (errorNotification) => print('Micro error: $errorNotification'),
-      );
-      
-      if (available) {
-        setState(() => _isListening = true);
-        _speech.listen(
-          localeId: "es_MX", // Forzar español latino
-          onResult: (val) {
-            setState(() {
-              _inputController.text = val.recognizedWords;
-              if (val.finalResult) {
-                _isListening = false;
-                Future.delayed(const Duration(milliseconds: 500), () {
-                   _handleUnifiedSubmit();
-                });
-              }
-            });
-          },
-        );
-      } else {
+    if (!_speechReady) {
+      await _initSpeech();
+      if (!_speechReady) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permiso de micrófono denegado. Actívalo en ajustes.')),
+          const SnackBar(
+            content: Text(
+              'No se pudo usar el micrófono. Revisa permisos en Ajustes → Apps → CaloFit → Permisos.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!_isListening) {
+      final session = ++_speechSession;
+      _speechSubmitHandled = false;
+      // Evitar conflicto audio focus: al escuchar, detenemos TTS (pero NO activamos mute).
+      try {
+        await _flutterTts.stop();
+      } catch (_) {}
+      if (mounted) setState(() => _speakingMessageId = null);
+      setState(() => _isListening = true);
+      await _speech.listen(
+        onResult: (val) {
+          if (!mounted || session != _speechSession) return;
+          setState(() {
+            _inputController.text = val.recognizedWords;
+          });
+          if (val.finalResult) {
+            final text = val.recognizedWords.trim();
+            if (_speechSubmitHandled) return;
+            _speechSubmitHandled = true;
+            setState(() => _isListening = false);
+            _speech.stop();
+            if (text.isNotEmpty) {
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (!mounted) return;
+                _handleUnifiedSubmit(quickMessage: text);
+              });
+            }
+          }
+        },
+        localeId: _speechLocaleId,
+        listenFor: const Duration(seconds: 60),
+        pauseFor: const Duration(seconds: 4),
+        listenOptions: stt.SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: true,
+          listenMode: stt.ListenMode.dictation,
+        ),
+      );
+    } else {
+      _speechSession++;
+      final text = _inputController.text.trim();
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      if (text.isNotEmpty && !_speechSubmitHandled) {
+        _speechSubmitHandled = true;
+        _handleUnifiedSubmit(quickMessage: text);
+      } else if (text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se captó texto. Habla cerca del mic o toca otra vez y dicta más fuerte.'),
+            duration: Duration(seconds: 3),
+          ),
         );
       }
-    } else {
-      setState(() => _isListening = false);
-      _speech.stop();
     }
   }
 
@@ -270,7 +388,13 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final text = quickMessage ?? _inputController.text.trim();
     if (text.isEmpty) return;
 
-    if (quickMessage == null) _inputController.clear();
+    _chatSessionDirty = true;
+
+    // Limpiamos el panel de escritura si enviamos texto normal 
+    // o si el micrófono había rellenado este mismo texto en el panel.
+    if (quickMessage == null || quickMessage == _inputController.text.trim()) {
+      _inputController.clear();
+    }
 
     // ═══ CALOFIT_REGISTER: Registro consistente desde card ═══
     if (text.startsWith('CALOFIT_REGISTER:')) {
@@ -313,6 +437,42 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       return;
     }
 
+    // ═══ CALOFIT_WORKOUT: Flujo guiado (series/reps/peso) ═══
+    if (text.startsWith('CALOFIT_WORKOUT:')) {
+      final consultaId = text.replaceFirst('CALOFIT_WORKOUT:', '');
+      setState(() => _isTyping = true);
+      _scrollToBottom();
+
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
+      if (token == null) return;
+
+      try {
+        final result = await _apiService.iniciarWorkoutConId(consultaId, token);
+        final responseObj = AssistantResponse.fromJson(result);
+
+        setState(() {
+          _isTyping = false;
+          _messages.add({
+            'role': 'assistant',
+            'response': responseObj,
+            'type': 'assistant_v3',
+          });
+        });
+
+        if (!_isMuted) _speak(responseObj.respuestaEstructurada.textoConversacional, "wk_${_messages.length}");
+        _saveChatHistory();
+        _scrollToBottom();
+      } catch (e) {
+        setState(() {
+          _isTyping = false;
+          _messages.add({'role': 'assistant', 'content': 'Error iniciando registro de entrenamiento: $e', 'type': 'error'});
+        });
+        _saveChatHistory();
+      }
+      return;
+    }
+
     setState(() {
       _messages.add({'role': 'user', 'content': text, 'type': 'text'});
       _isTyping = true;
@@ -341,8 +501,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       if (isLogIntent) {
         // 👉 RUTA REGISTRO (/log-inteligente)
         final result = await _apiService.registrarPorVoz(text, token);
-        
-        if (result['balance_actualizado'] != null) {
+        final bool ok = result['success'] != false;
+
+        if (ok && result['balance_actualizado'] != null) {
           balance.updateFromAssistant(result['balance_actualizado']);
           // Actualización silenciosa de listas para la pantalla de Balance
           balance.fetchFullBalance(token).catchError((e) => print("Silent refresh failed: $e"));
@@ -350,16 +511,25 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
         setState(() {
           _isTyping = false;
-          // Agregamos una tarjeta especial de registro
-          _messages.add({
-            'role': 'assistant',
-            'content': result['mensaje'] ?? 'Registrado.',
-            'type': 'registro_exitoso', // Esto renderizará la Card Visual
-            'badge': result['tipo_detectado'],
-            'data': result['datos'] // Pasar macros para mostrar en la card
-          });
-          
-          if (!_isMuted) _speak(result['mensaje'], "reg_${_messages.length}");
+          if (!ok) {
+            _messages.add({
+              'role': 'assistant',
+              'content': result['mensaje'] ?? 'No pude registrar. Intenta con más detalle.',
+              'type': 'error',
+            });
+            if (!_isMuted) {
+              _speak(result['mensaje']?.toString() ?? '', "reg_err_${_messages.length}");
+            }
+          } else {
+            _messages.add({
+              'role': 'assistant',
+              'content': result['mensaje'] ?? 'Registrado.',
+              'type': 'registro_exitoso', // Card visual solo si el backend confirma success
+              'badge': result['tipo_detectado'],
+              'data': result['datos'],
+            });
+            if (!_isMuted) _speak(result['mensaje'] ?? '', "reg_${_messages.length}");
+          }
         });
         _saveChatHistory();
 
@@ -426,19 +596,26 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5), // Color de fondo más moderno (Gris azulado suave)
       appBar: _buildUnifiedAppBar(),
-      body: Column(
-        children: [
-          
-          Expanded(child: _buildMessageList()),
-          
-          if (_isTyping) _buildTypingIndicator(),
-          if (!_isTyping) _buildQuickActions(),
-          _buildInputArea(),
-          _buildStickyStatusBar(),
-        ],
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          children: [
+            if (_showHelpBanner) _buildHelpBanner(),
+            Expanded(child: _buildMessageList()),
+            
+            if (_isTyping) _buildTypingIndicator(),
+            // En landscape priorizamos el input y evitamos overflows por altura reducida.
+            if (!_isTyping && !isLandscape) _buildQuickActions(),
+            if (_isListening) _buildListeningBanner(),
+            _buildInputArea(),
+            if (!isLandscape) _buildStickyStatusBar(),
+          ],
+        ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
     );
@@ -809,6 +986,42 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
   }
 
+  Widget _buildListeningBanner() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      child: Material(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.red.shade700,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Escuchando… Habla ahora. Lo que digas aparece arriba; toca el mic otra vez para enviar.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.3,
+                    color: Colors.red.shade900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickActions() {
     return Container(
       height: 44,
@@ -818,7 +1031,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           _quickChip("🍽️ ¿Qué como ahora?", "Dime qué puedo comer en este momento según mi plan."),
-          _quickChip("🏋️ Mi Rutina", "Dime qué rutina de ejercicios me toca hoy."),
+          _quickChip(
+            "🏋️ ¿Qué ejercicio hago hoy?",
+            "Dime qué ejercicios puedo hacer hoy según mi plan.",
+          ),
           _quickChip("🍎 Registrar Comida", "He comido ", autofill: true),
           _quickChip("🏃 Registrar Ejercicio", "Hoy entrené ", autofill: true),
           _quickChip("📊 Mi Balance", "¿Cómo va mi progreso y macros de hoy?"),
@@ -847,6 +1063,108 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
   }
 
+  Future<void> _openManualLogDialog() async {
+    final nombreCtrl = TextEditingController();
+    final kcalCtrl = TextEditingController();
+    final pCtrl = TextEditingController();
+    final cCtrl = TextEditingController();
+    final gCtrl = TextEditingController();
+    final porcionCtrl = TextEditingController(text: "100");
+    final categoriaCtrl = TextEditingController(text: "manual");
+    final unidadCtrl = TextEditingController();
+    final gramosUnidadCtrl = TextEditingController();
+
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Registro manual (etiqueta)"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: "Nombre (ej: Gaseosa)")),
+                TextField(controller: kcalCtrl, decoration: const InputDecoration(labelText: "Calorías (por porción)"), keyboardType: TextInputType.number),
+                Row(children: [
+                  Expanded(child: TextField(controller: pCtrl, decoration: const InputDecoration(labelText: "P (g)"), keyboardType: TextInputType.number)),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: cCtrl, decoration: const InputDecoration(labelText: "C (g)"), keyboardType: TextInputType.number)),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: gCtrl, decoration: const InputDecoration(labelText: "G (g)"), keyboardType: TextInputType.number)),
+                ]),
+                TextField(controller: porcionCtrl, decoration: const InputDecoration(labelText: "Gramos por porción (ej: 500)"), keyboardType: TextInputType.number),
+                TextField(controller: categoriaCtrl, decoration: const InputDecoration(labelText: "Categoría (ej: bebida/snack)")),
+                Row(children: [
+                  Expanded(child: TextField(controller: unidadCtrl, decoration: const InputDecoration(labelText: "Unidad opcional (botella/vaso)"))),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: gramosUnidadCtrl, decoration: const InputDecoration(labelText: "g por unidad"), keyboardType: TextInputType.number)),
+                ]),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancelar")),
+            ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Registrar")),
+          ],
+        );
+      },
+    );
+
+    if (res != true) return;
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final balance = Provider.of<BalanceProvider>(context, listen: false);
+    final token = auth.token;
+    if (token == null) return;
+
+    double _d(String s) => double.tryParse(s.trim().replaceAll(",", ".")) ?? 0.0;
+
+    setState(() => _isTyping = true);
+    try {
+      final result = await _apiService.registrarManualAlimento(
+        nombre: nombreCtrl.text.trim(),
+        calorias: _d(kcalCtrl.text),
+        proteinasG: _d(pCtrl.text),
+        carbohidratosG: _d(cCtrl.text),
+        grasasG: _d(gCtrl.text),
+        porcionG: _d(porcionCtrl.text),
+        categoria: categoriaCtrl.text.trim().isEmpty ? "manual" : categoriaCtrl.text.trim(),
+        unidad: unidadCtrl.text.trim().isEmpty ? null : unidadCtrl.text.trim(),
+        gramosPorUnidad: gramosUnidadCtrl.text.trim().isEmpty ? null : _d(gramosUnidadCtrl.text),
+        token: token,
+      );
+
+      final bool ok = result['success'] != false;
+      if (ok && result['balance_actualizado'] != null) {
+        balance.updateFromAssistant(result['balance_actualizado']);
+        balance.fetchFullBalance(token).catchError((e) => print("Silent refresh failed: $e"));
+      }
+
+      setState(() {
+        _isTyping = false;
+        if (!ok) {
+          _messages.add({'role': 'assistant', 'content': result['mensaje'] ?? 'No pude registrar manual.', 'type': 'error'});
+        } else {
+          _messages.add({
+            'role': 'assistant',
+            'content': result['mensaje'] ?? 'Registrado.',
+            'type': 'registro_exitoso',
+            'badge': result['tipo_detectado'],
+            'data': result['datos'],
+          });
+        }
+      });
+      _saveChatHistory();
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _isTyping = false;
+        _messages.add({'role': 'assistant', 'content': 'Error en registro manual: $e', 'type': 'error'});
+      });
+      _saveChatHistory();
+    }
+  }
+
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12), // Reducido el padding inferior para conectar con el status bar
@@ -868,6 +1186,18 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               ),
               child: Icon(_isListening ? Icons.mic : Icons.mic_none_rounded, 
                 color: _isListening ? Colors.red : Colors.grey.shade700),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _openManualLogDialog,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.edit_note_rounded, color: Colors.grey.shade700),
             ),
           ),
           const SizedBox(width: 10),
@@ -911,5 +1241,33 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     if (q.contains('media')) return Colors.orange;
     if (q.contains('baja')) return Colors.red;
     return Colors.grey;
+  }
+  Widget _buildHelpBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lightbulb_outline, color: Colors.blue.shade700, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '💡 Tip: Usa el micrófono o escribe "Comí un pan con pollo" para registrar tus comidas, o pregúntame "¿Qué me recomiendas cenar?".',
+              style: TextStyle(color: Colors.blue.shade900, fontSize: 12, height: 1.3),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _showHelpBanner = false),
+            child: Icon(Icons.close, color: Colors.blue.shade300, size: 18),
+          )
+        ],
+      ),
+    );
   }
 }

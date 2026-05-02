@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/assistant_response.dart';
+import 'assistant_text_helpers.dart';
 
 class RecipeCard extends StatelessWidget {
   final Section section;
@@ -8,6 +9,37 @@ class RecipeCard extends StatelessWidget {
 
   const RecipeCard({Key? key, required this.section, this.onAdd, this.onSave})
       : super(key: key);
+
+  static String _fmtMacroGrams(double v) {
+    if (v.isNaN || v.isInfinite) return '0';
+    if (v == v.roundToDouble()) return v.round().toString();
+    return v.toStringAsFixed(1);
+  }
+
+  /// Si el backend envía [MacrosNormalizados] con algún valor > 0, chips/panel desde números (más estable que parsear el string).
+  Map<String, String> _macrosMapForSection(Section section) {
+    final n = section.macrosNormalizados;
+    if (n != null && n.hasUsableMacros) {
+      final m = <String, String>{};
+      if (n.kcal > 0) m['Cal'] = '${_fmtMacroGrams(n.kcal)}kcal';
+      if (n.proteinasG > 0) m['P'] = '${_fmtMacroGrams(n.proteinasG)}g';
+      if (n.carbohidratosG > 0) m['C'] = '${_fmtMacroGrams(n.carbohidratosG)}g';
+      if (n.grasasG > 0) m['G'] = '${_fmtMacroGrams(n.grasasG)}g';
+      if (m.isNotEmpty) return m;
+    }
+    return _parseMacros(section.macros);
+  }
+
+  /// Quita emojis/símbolos del rótulo antes de mapear (el LLM a veces envía `🥚 P: 21g` y `lk.startsWith('p')` fallaba).
+  static String _macroKeyLettersOnly(String raw) {
+    return raw
+        .replaceAll(
+          RegExp(r'[^a-zA-ZñÑáéíóúüÁÉÍÓÚÜ0-9\s\-\.]'),
+          ' ',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
 
   /// Parsea "P: 9.4g | C: 18.4g | G: 15.2g | Cal: 350kcal" → Map
   Map<String, String> _parseMacros(String macros) {
@@ -27,12 +59,32 @@ class RecipeCard extends StatelessWidget {
       final parts = pair.trim().split(':');
       if (parts.length >= 2) {
         String key = parts[0].trim();
-        // Mapeo flexible de llaves (P, C, G, Cal)
-        if (key.toLowerCase().startsWith('p')) key = 'P';
-        else if (key.toLowerCase().contains('cal')) key = 'Cal'; // Cal antes que C
-        else if (key.toLowerCase().startsWith('c')) key = 'C';
-        else if (key.toLowerCase().startsWith('g')) key = 'G';
-        else continue;
+        final lk = _macroKeyLettersOnly(key).toLowerCase();
+        // Mapeo flexible: abreviaturas y palabras completas (español). "Cal" antes que "C" suelto.
+        if (lk.contains('kcal') ||
+            lk.contains('calor') ||
+            lk.contains('energ') ||
+            lk == 'cal' ||
+            lk.startsWith('cal ')) {
+          key = 'Cal';
+        } else if (lk.contains('prote')) {
+          key = 'P';
+        } else if (lk.contains('carb') || lk == 'carbos') {
+          key = 'C';
+        } else if (lk.contains('grasa') ||
+            lk == 'lipidos' ||
+            lk == 'lípidos' ||
+            lk == 'grasas') {
+          key = 'G';
+        } else if (lk.startsWith('p') && lk.length <= 2) {
+          key = 'P';
+        } else if (lk.startsWith('c') && lk.length <= 2) {
+          key = 'C';
+        } else if (lk.startsWith('g') && lk.length <= 2) {
+          key = 'G';
+        } else {
+          continue;
+        }
         
         // El valor es el resto, volviendo a poner la coma si se prefiere (o dejar el punto)
         String val = parts.sublist(1).join(':').trim();
@@ -46,8 +98,12 @@ class RecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final macrosMap = _parseMacros(section.macros);
+    final macrosMap = _macrosMapForSection(section);
     final hasMacros = macrosMap.isNotEmpty;
+    final hasSubtitle = hasMacros ||
+        section.macros.isNotEmpty ||
+        onAdd != null ||
+        onSave != null;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
@@ -64,6 +120,7 @@ class RecipeCard extends StatelessWidget {
         ],
       ),
       child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -71,31 +128,6 @@ class RecipeCard extends StatelessWidget {
           child: const Icon(Icons.restaurant_menu,
               color: Colors.orange, size: 20),
         ),
-        trailing: (onAdd != null || onSave != null)
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (onAdd != null)
-                    IconButton(
-                      icon: const Icon(Icons.add_task, color: Colors.teal),
-                      onPressed: onAdd,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      tooltip: 'Registrar',
-                    ),
-                  if (onSave != null) ...[
-                    const SizedBox(width: 12),
-                    IconButton(
-                      icon: const Icon(Icons.bookmark_add, color: Colors.blue),
-                      onPressed: onSave,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      tooltip: 'Guardar',
-                    ),
-                  ],
-                ],
-              )
-            : null,
         title: Text(
           section.nombre.replaceAll('**', '').trim().toUpperCase(),
           style: const TextStyle(
@@ -103,22 +135,71 @@ class RecipeCard extends StatelessWidget {
           maxLines: 4,
           overflow: TextOverflow.ellipsis,
         ),
-        // Chips de macros visibles SIN expandir
-        subtitle: hasMacros
+        subtitle: hasSubtitle
             ? Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: _MacroChipsRow(macrosMap: macrosMap),
+                padding: const EdgeInsets.only(top: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (hasMacros) _MacroChipsRow(macrosMap: macrosMap),
+                    if (!hasMacros && section.macros.isNotEmpty)
+                      Text(section.macros,
+                          style: TextStyle(
+                              color: Colors.orange.shade800,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis),
+                    if (onAdd != null || onSave != null) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (onAdd != null)
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(Icons.add_task,
+                                  size: 18, color: Colors.teal),
+                              label: Text('Registrar',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.teal.shade800)),
+                              onPressed: onAdd,
+                            ),
+                          if (onSave != null)
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(Icons.bookmark_add,
+                                  size: 18, color: Colors.blue),
+                              label: const Text('Guardar',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
+                              onPressed: onSave,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               )
-            : section.macros.isNotEmpty
-                ? Text(section.macros,
-                    style: TextStyle(
-                        color: Colors.orange.shade800,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis)
-                : null,
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            : null,
+        childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Panel detallado de macros al expandir
@@ -127,17 +208,31 @@ class RecipeCard extends StatelessWidget {
             const SizedBox(height: 16),
           ],
 
-          _sectionHeader('INGREDIENTES', Icons.shopping_basket),
-          const SizedBox(height: 8),
-          ...section.ingredientes
-              .map((i) => _itemRow(i, Icons.check_circle_outline, Colors.orange)),
-          const Divider(height: 32),
-          _sectionHeader('PREPARACIÓN', Icons.list),
-          const SizedBox(height: 8),
-          ...section.preparacion.asMap().entries
-              .map((e) => _stepRow(e.key + 1, e.value, Colors.orange)),
-
-
+          if (section.ingredientes.isNotEmpty) ...[
+            _sectionHeader('INGREDIENTES', Icons.shopping_basket),
+            const SizedBox(height: 8),
+            ..._ingredientListWidgets(section.ingredientes),
+          ],
+          if (section.ingredientes.isNotEmpty && section.preparacion.isNotEmpty)
+            const Divider(height: 32),
+          if (section.preparacion.isNotEmpty) ...[
+            _sectionHeader('PREPARACIÓN', Icons.list),
+            const SizedBox(height: 8),
+            ..._preparacionListWidgets(section.preparacion),
+          ],
+          if (section.ingredientes.isEmpty && section.preparacion.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'No se recibió el detalle de ingredientes o pasos en esta respuesta.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                  height: 1.35,
+                ),
+              ),
+            ),
 
           if (section.nota.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -172,6 +267,137 @@ class RecipeCard extends StatelessWidget {
     );
   }
 
+  List<Widget> _ingredientListWidgets(List<String> ingredientes) {
+    final accent = Colors.orange;
+    final w = <Widget>[];
+    for (final raw in expandItemLines(ingredientes)) {
+      if (isAssistantSubheader(raw)) {
+        w.add(assistantSubheaderLine(
+          stripMarkdownLight(raw),
+          accent,
+          isFirst: w.isEmpty,
+        ));
+      } else {
+        w.add(_ingredientLine(stripMarkdownLight(raw), accent));
+      }
+    }
+    return w;
+  }
+
+  /// Widget especializado para una línea de ingrediente.
+  /// Parsea el string del backend y muestra:
+  ///   • nombre principal (con gramos o medida)   [kcal badge]
+  ///     ~Xg (si viene de medida doméstica)
+  ///
+  /// Formatos que maneja:
+  ///   "200g pechuga de pollo (330 kcal)"
+  ///   "1 cucharada (~15g) aceite de oliva (132.6 kcal)"
+  ///   "150g platano maduro (133.5 kcal)"
+  Widget _ingredientLine(String text, Color accent) {
+    // Extraer kcal del último paréntesis: "(132.6 kcal)" o "(~15g | 132.6 kcal)"
+    final reKcal = RegExp(
+        r'\((?:~[\d.]+g\s*\|\s*)?([\d.]+)\s*kcal\)\s*$',
+        caseSensitive: false);
+    final mKcal = reKcal.firstMatch(text);
+    String kcalStr = '';
+    String nameRaw = text;
+    if (mKcal != null) {
+      kcalStr = mKcal.group(1) ?? '';
+      nameRaw = text.substring(0, mKcal.start).trim();
+    }
+
+    // Extraer equivalencia en gramos: "(~15g)" o "(~15g |"
+    final reGram = RegExp(r'\((~[\d.]+g)\)', caseSensitive: false);
+    final mGram = reGram.firstMatch(nameRaw);
+    String gramEquiv = '';
+    if (mGram != null) {
+      gramEquiv = mGram.group(1) ?? '';
+      nameRaw = nameRaw.replaceFirst(reGram, '').trim();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Text('•',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: accent.withValues(alpha: 0.6))),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(nameRaw,
+                    style:
+                        const TextStyle(fontSize: 13, height: 1.35)),
+                if (gramEquiv.isNotEmpty)
+                  Text(gramEquiv,
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                          height: 1.3)),
+              ],
+            ),
+          ),
+          if (kcalStr.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$kcalStr kcal',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _preparacionListWidgets(List<String> pasos) {
+    final accent = Colors.orange;
+    final flat = expandItemLines(pasos);
+    final substantive =
+        flat.where((r) => !isAssistantSubheader(r)).toList();
+    final singleStep = substantive.length == 1;
+
+    final w = <Widget>[];
+    var stepIndex = 0;
+    for (final raw in flat) {
+      if (isAssistantSubheader(raw)) {
+        w.add(assistantSubheaderLine(
+          stripMarkdownLight(raw),
+          accent,
+          isFirst: w.isEmpty,
+        ));
+      } else {
+        stepIndex++;
+        final line = stripMarkdownLight(raw);
+        if (singleStep) {
+          w.add(assistantBulletLine(line, accent));
+        } else {
+          w.add(_stepRow(stepIndex, line, accent));
+        }
+      }
+    }
+    return w;
+  }
+
   Widget _sectionHeader(String title, IconData icon) {
     return Row(children: [
       Icon(icon, size: 14, color: Colors.grey.shade600),
@@ -183,17 +409,6 @@ class RecipeCard extends StatelessWidget {
               color: Colors.grey.shade700,
               letterSpacing: 1.1)),
     ]);
-  }
-
-  Widget _itemRow(String text, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(children: [
-        Icon(icon, size: 14, color: color.withOpacity(0.5)),
-        const SizedBox(width: 12),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
-      ]),
-    );
   }
 
   Widget _stepRow(int index, String text, Color color) {

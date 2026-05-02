@@ -114,6 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         medicalConditions: _selectedConditions.contains('Ninguna') ? [] : _selectedConditions,
         profilePictureUrl: current.profilePictureUrl,
         assignedNutriId: current.assignedNutriId,
+        isProfileComplete: current.isProfileComplete, // ✅ CRÍTICO: conservar el valor real
       );
 
       await _apiService.updateClient(
@@ -294,6 +295,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _buildMLBadge(),
                   ],
                 ),
               ),
@@ -537,6 +540,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       padding: const EdgeInsets.only(bottom: 16.0),
       child: DropdownButtonFormField<String>(
         value: safeValue,
+        isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: Colors.blue.shade300),
@@ -558,9 +562,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         items: itemsMap.entries.map((entry) {
           return DropdownMenuItem<String>(
             value: entry.key,
-            child: Text(entry.value, overflow: TextOverflow.ellipsis),
+            child: Text(entry.value, overflow: TextOverflow.ellipsis, maxLines: 1),
           );
         }).toList(),
+        selectedItemBuilder: (context) => itemsMap.entries
+            .map(
+              (e) => Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  e.value,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            )
+            .toList(),
         onChanged: onChanged,
       ),
     );
@@ -743,6 +759,79 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
+    );
+  }
+
+  Widget _buildMLBadge() {
+    // Calculamos dinámicamente el perfil base a la actividad para que sea visual.
+    // (En un escenario real ideal, este valor vendría de widget.client.mlProfile)
+    String perfilML;
+    if (_activityLevel == 'Activo' || _activityLevel == 'Muy activo') {
+      perfilML = 'PERFIL_A';
+    } else if (_activityLevel == 'Moderado') {
+      perfilML = 'PERFIL_B';
+    } else {
+      perfilML = 'PERFIL_C';
+    }
+
+    Color bgColor;
+    Color textColor;
+    Color borderColor;
+    String label;
+    IconData icon;
+
+    switch (perfilML) {
+      case 'PERFIL_A':
+        bgColor = Colors.amber.shade50;
+        textColor = Colors.orange.shade900;
+        borderColor = Colors.amber.shade200;
+        label = 'Atleta Disciplinado';
+        icon = Icons.emoji_events_rounded;
+        break;
+      case 'PERFIL_B':
+        bgColor = Colors.blue.shade50;
+        textColor = Colors.blue.shade900;
+        borderColor = Colors.blue.shade200;
+        label = 'En Desarrollo';
+        icon = Icons.trending_up_rounded;
+        break;
+      default: // PERFIL_C
+        bgColor = Colors.green.shade50;
+        textColor = Colors.green.shade900;
+        borderColor = Colors.green.shade200;
+        label = 'Iniciando el Camino';
+        icon = Icons.directions_walk_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: borderColor.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: textColor, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            'Perfil IA: $label',
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

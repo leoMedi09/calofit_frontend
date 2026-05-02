@@ -617,6 +617,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
 
     return DropdownButtonFormField<String>(
       value: safeValue,
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: _navyLight, size: 20),
@@ -626,7 +627,26 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
       ),
-      items: itemsMap.entries.map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value, overflow: TextOverflow.ellipsis))).toList(),
+      items: itemsMap.entries
+          .map(
+            (entry) => DropdownMenuItem(
+              value: entry.key,
+              child: Text(entry.value, overflow: TextOverflow.ellipsis, maxLines: 1),
+            ),
+          )
+          .toList(),
+      selectedItemBuilder: (context) => itemsMap.entries
+          .map(
+            (e) => Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                e.value,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          )
+          .toList(),
       onChanged: onChanged,
     );
   }

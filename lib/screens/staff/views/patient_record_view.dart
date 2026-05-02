@@ -32,6 +32,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   late TextEditingController _strategicFocusController;
   late TextEditingController _recInputController;
   late TextEditingController _forInputController;
+  late TextEditingController _weeklyNoteController;  // 🆕 Mensaje semanal del Nutri
   
   List<String> _recommendedList = [];
   List<String> _forbiddenList = [];
@@ -53,6 +54,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     _strategicFocusController = TextEditingController();
     _recInputController = TextEditingController();
     _forInputController = TextEditingController();
+    _weeklyNoteController = TextEditingController();
     _loadData();
   }
 
@@ -66,6 +68,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     _strategicFocusController.dispose();
     _recInputController.dispose();
     _forInputController.dispose();
+    _weeklyNoteController.dispose();
     super.dispose();
   }
 
@@ -82,6 +85,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       setState(() {
         _fullData = progressData;
         _strategicFocusController.text = progressData['ai_strategic_focus'] ?? '';
+        _weeklyNoteController.text = progressData['nutri_weekly_note'] ?? '';  // 🆕 Cargar nota semanal
         
         _recommendedList = List<String>.from(progressData['recommended_foods'] ?? []);
         _forbiddenList = List<String>.from(progressData['forbidden_foods'] ?? []);
@@ -165,6 +169,9 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           "recommended_foods": _recommendedList,
           "forbidden_foods": _forbiddenList,
           "medical_conditions": _medicalConditionsList,
+          "nutri_weekly_note": _weeklyNoteController.text.trim().isEmpty
+              ? null
+              : _weeklyNoteController.text.trim(),  // 🆕 Enviar nota semanal
         },
         token
       );
@@ -1108,6 +1115,18 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             isNumber: false,
             maxLines: 5,
             hint: 'Misión: Priorizar saciedad y control glucémico...'
+          ),
+
+          const SizedBox(height: 16),
+          
+          _buildEditField(
+            'Mensaje / Meta Semanal para el Cliente', 
+            _weeklyNoteController, 
+            Icons.chat_bubble_outline_rounded, 
+            '', 
+            isNumber: false,
+            maxLines: 4,
+            hint: 'Ej: ¡Vamos con todo esta semana! Recuerda tomar mucha agua.'
           ),
           
           const SizedBox(height: 24),

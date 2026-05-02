@@ -11,10 +11,10 @@ import '../config/api_config.dart';
 class ApiService {
   static bool _needsLogout = false;
   
-  // Getter para verificar si hay que hacer logout
+  // Estado global de sesion expirada.
   static bool get needsLogout => _needsLogout;
   
-  // Método para resetear el flag después de procesar el logout
+  // Limpia el flag despues de procesar logout en UI.
   static void resetLogoutFlag() {
     _needsLogout = false;
   }
@@ -26,10 +26,10 @@ class ApiService {
     receiveTimeout: ApiConfig.receiveTimeout,
   ))..interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) {
-      // ✅ Asegurar que siempre usamos la última IP configurada (evita caché de Hot Reload)
+      // Evita cache de baseUrl durante hot reload.
       options.baseUrl = ApiConfig.baseUrl; 
       
-      // 🔍 Log de debugging para ver las peticiones
+      // Logging de peticiones.
       ApiConfig.printCurrentConfig();
       print('📤 ${options.method} ${options.baseUrl}${options.path}');
       return handler.next(options);
@@ -39,10 +39,7 @@ class ApiService {
       final path = e.requestOptions.path;
       print('❌ Error en petición [${statusCode ?? 'SIN CÓDIGO'}]: ${e.message}');
       
-      // 🚨 MANEJO DE TOKEN EXPIRADO / NO AUTORIZADO
-      // SOLO activar logout si:
-      // 1. El código es 401 o 403
-      // 2. La petición TENÍA un token (no es login/registro)
+      // Token invalido/expirado: solo para requests autenticadas.
       if (statusCode == 401 || statusCode == 403) {
         final hasAuthHeader = e.requestOptions.headers.containsKey('Authorization');
         final isAuthEndpoint = path.contains('/auth/login') || 
@@ -50,7 +47,7 @@ class ApiService {
                                path.contains('/clientes/registrar') ||
                                path.contains('/forgot-password');
         
-        // Solo marcar logout si es una petición autenticada que falló
+        // No cerrar sesion por errores de endpoints publicos.
         if (hasAuthHeader && !isAuthEndpoint) {
           print('🔐 Token inválido o expirado en petición autenticada. Cerrando sesión...');
           _needsLogout = true;
@@ -63,16 +60,15 @@ class ApiService {
     },
   ));
 
-  // Autenticación
-  // En ApiService.dart modifica el login para ver qué estás enviando
+  // Autenticacion
   Future<LoginResponse> login(LoginRequest request) async {
     try {
-      print('📤 Enviando datos de login: ${request.toJson()}'); // Verifica esto en consola
+      print('📤 Enviando datos de login: ${request.toJson()}');
       final response = await _dio.post('/auth/login', data: request.toJson());
-      print('📥 Respuesta del servidor: ${response.data}'); // ✅ LOG CRÍTICO PARA DEPURACIÓN
+      print('📥 Respuesta del servidor: ${response.data}');
       return LoginResponse.fromJson(response.data);
     } on DioException catch (e) {
-      print('❌ Error en login: ${e.response?.data}'); // Esto te dirá el error real del servidor
+      print('❌ Error en login: ${e.response?.data}');
       throw Exception(e.response?.data['detail'] ?? 'Error en login');
     }
   }
@@ -585,6 +581,41 @@ class ApiService {
     }
   }
 
+  // ============ REGISTRO MANUAL (ETIQUETA / MULTIMODAL) ============
+  Future<Map<String, dynamic>> registrarManualAlimento({
+    required String nombre,
+    required double calorias,
+    required double proteinasG,
+    required double carbohidratosG,
+    required double grasasG,
+    required double porcionG,
+    String categoria = "manual",
+    String? unidad,
+    double? gramosPorUnidad,
+    required String token,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/asistente/log-manual',
+        data: {
+          'nombre': nombre,
+          'calorias': calorias,
+          'proteinas_g': proteinasG,
+          'carbohidratos_g': carbohidratosG,
+          'grasas_g': grasasG,
+          'porcion_g': porcionG,
+          'categoria': categoria,
+          'unidad': unidad,
+          'gramos_por_unidad': gramosPorUnidad,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      throw Exception('Error en registro manual: $e');
+    }
+  }
+
   /// ✅ Confirma registro usando consulta_id (valores exactos de la card)
   Future<Map<String, dynamic>> confirmarRegistroConId(String consultaId, String token) async {
     try {
@@ -596,6 +627,22 @@ class ApiService {
     } catch (e) {
       print('❌ Error en confirmar registro: $e');
       throw Exception('Error al confirmar registro: $e');
+    }
+  }
+
+  /// 🏋️ Inicia flujo guiado de fuerza (series/reps/peso) desde una card de ejercicio
+  Future<Map<String, dynamic>> iniciarWorkoutConId(String consultaId, String token) async {
+    try {
+      print('🏋️ Iniciando workout con consulta_id: $consultaId');
+      final response = await _dio.post(
+        '/asistente/iniciar-workout',
+        data: {'consulta_id': consultaId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      print('❌ Error iniciando workout: $e');
+      throw Exception('Error al iniciar workout: $e');
     }
   }
 
@@ -659,9 +706,13 @@ class ApiService {
       debugPrint('Payload: ${jsonEncode(payload)}');
       debugPrint('--- 🤖 IA REQUEST END ---');
 
+      // El backend puede tardar (prompt + Groq hasta ~GROQ_TIMEOUT_SEC); evitar corte prematuro del cliente.
       final response = await _dio.post('/asistente/consultar',
           data: payload,
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
+          options: Options(
+            headers: {'Authorization': 'Bearer $token'},
+            receiveTimeout: const Duration(seconds: 210),
+          ));
 
       // 🔍 LOG DE RESPUESTA (v1.1)
       debugPrint('--- 📬 IA RESPONSE START ---');

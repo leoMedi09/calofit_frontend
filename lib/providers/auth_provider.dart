@@ -13,8 +13,8 @@ class AuthProvider with ChangeNotifier {
   String? _userEmail;
   int? _userId;
   String? _userIdFirebase;
-  String? _profilePictureUrl; // ✅ Añadido para el rediseño premium
-  bool _isProfileComplete = true; // 🌟 Nuevo: Control de Onboarding
+  String? _profilePictureUrl;
+  bool _isProfileComplete = true;
   bool _showWelcomeMessage = false;
   final ApiService _apiService = ApiService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -37,16 +37,16 @@ class AuthProvider with ChangeNotifier {
     _showWelcomeMessage = false;
   }
 
-  // lib/providers/auth_provider.dart
-
-  /// Login unificado: intenta Firebase (clientes) y siempre valida en API con `user_type: auto`.
-  /// El backend decide si el correo es Client o User (staff) según la base de datos.
+  /// Login unificado:
+  /// - Intenta Firebase para obtener UID si aplica.
+  /// - Valida siempre contra la API con `user_type: auto`.
+  /// El backend decide si el correo es cliente o staff.
   Future<void> login(String email, String password, bool rememberMe) async {
     try {
       String firebaseUid = "";
       debugPrint('🔥 LOGIN UNIFICADO: email=$email');
 
-      // 1️⃣ Firebase: útil para clientes (UID para sincronizar). Staff suele no existir en Firebase → se ignora.
+      // 1) Firebase para UID cuando exista usuario.
       try {
         final UserCredential userCredential =
             await _firebaseAuth.signInWithEmailAndPassword(
@@ -67,7 +67,7 @@ class AuthProvider with ChangeNotifier {
         }
       }
 
-      // 2️⃣ API: resolución automática de rol
+      // 2) API: resolucion automatica de rol.
       final request = LoginRequest(
         email: email,
         password: password,
@@ -79,7 +79,7 @@ class AuthProvider with ChangeNotifier {
 
       final response = await _apiService.login(request);
 
-      // ⚠️ VALIDACIÓN CRÍTICA: Si el token llega nulo por error de mapeo, detenemos el proceso
+      // Validacion defensiva del token.
       if (response.token == null) {
         throw Exception('Error: El servidor no devolvió un token de acceso.');
       }

@@ -2,16 +2,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
-  // 🔧 Configuración centralizada de URLs por plataforma
+  // Configuración centralizada de URLs por plataforma
   
   static String get baseUrl {
     if (kIsWeb) {
       // Para Flutter Web
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
-      // 📱 Para dispositivo físico Android usa tu IP local (ej: 192.168.1.X)
-      // 💻 Para BlueStacks/Emulador usa siempre 10.0.2.2:
-      return 'http://10.0.2.2:8000'; 
+      // Para dispositivo físico Android usa la IP de tu red Wi-Fi:
+      return 'http://192.168.15.10:8000'; 
     } else if (Platform.isIOS) {
       // Para iOS Simulator
       return 'http://localhost:8000';

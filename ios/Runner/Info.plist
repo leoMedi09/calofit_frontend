@@ -49,5 +49,11 @@
 	<string>CaloFit utiliza reconocimiento de voz para transcribir tus comandos nutricionales.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>youtube</string>
+	</array>
 </dict>
 </plist>

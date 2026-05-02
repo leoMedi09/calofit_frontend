@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/assistant_response.dart';
+import '../utils/assistant_message_format.dart';
 import 'calorie_progress_card.dart';
 import 'recipe_card.dart';
 import 'workout_card.dart';
@@ -12,12 +13,26 @@ class AssistantMessageBubble extends StatelessWidget {
 
   const AssistantMessageBubble({Key? key, required this.response, this.onAction, this.onSave}) : super(key: key);
 
+  /// Alinea badge/colores con tarjetas de comida: el backend a veces envía INFO
+  /// con `secciones` de tipo comida; el front fuerza RECIPE para que no "salte" el tema.
+  static String _displayIntent(AssistantResponse r) {
+    final base = (r.intencion ?? 'INFO').toUpperCase();
+    final tp = (r.tipoPregunta ?? '').toUpperCase();
+    if (tp.contains('RECOMENDAR_NUTRICION') && base == 'INFO') {
+      return 'RECIPE';
+    }
+    if (base == 'INFO' && r.respuestaEstructurada.secciones.any((s) => s.tipo == 'comida')) {
+      return 'RECIPE';
+    }
+    return base;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool hasAlert = response.alertaSalud == true;
     
     // v70.8: Temática basada en Intención
-    final String intent = response.intencion ?? 'INFO';
+    final String intent = _displayIntent(response);
     final Map<String, dynamic> theme = _getIntentTheme(intent, hasAlert);
     final Color primaryColor = theme['color'];
     final IconData icon = theme['icon'];
@@ -48,7 +63,9 @@ class AssistantMessageBubble extends StatelessWidget {
 
                 // 2. El texto de la IA (Burbuja estilizada)
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: intent == 'RECIPE'
+                      ? const EdgeInsets.fromLTRB(18, 18, 18, 20)
+                      : const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: theme['bgColor'],
                     borderRadius: const BorderRadius.only(
@@ -116,10 +133,35 @@ class AssistantMessageBubble extends StatelessWidget {
                             fontSize: 15,
                             height: 1.5,
                           ),
+                          pPadding: const EdgeInsets.only(bottom: 6),
                           strong: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: primaryColor,
                           ),
+                          h2: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                            height: 1.35,
+                          ),
+                          h2Padding: const EdgeInsets.only(top: 12, bottom: 8),
+                          h3: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: theme['textColor'],
+                            height: 1.35,
+                          ),
+                          h3Padding: const EdgeInsets.only(top: 10, bottom: 6),
+                          blockSpacing: 12,
+                          listIndent: 26,
+                          listBullet: TextStyle(
+                            color: primaryColor.withValues(alpha: 0.88),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            height: 1.45,
+                          ),
+                          listBulletPadding:
+                              const EdgeInsets.only(right: 10, top: 2),
                           // Estilo mejorado para tablas
                           tableHead: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                           tableBorder: TableBorder.all(color: Colors.grey.shade300, width: 1),
@@ -140,7 +182,9 @@ class AssistantMessageBubble extends StatelessWidget {
                   ),
                 ),
 
-                // 3. Renderizar Secciones Especiales (Directas y apiladas como pidió el usuario)
+                // 3. Tarjetas de comida / ejercicio (separadas del Markdown para lectura clara)
+                if (response.respuestaEstructurada.secciones.isNotEmpty)
+                  const SizedBox(height: 10),
                 ...response.respuestaEstructurada.secciones.map((sec) {
                   if (sec.tipo == 'comida') {
                     return RecipeCard(
@@ -158,7 +202,7 @@ class AssistantMessageBubble extends StatelessWidget {
                       section: sec,
                       onAdd: onAction != null
                           ? () => onAction!(sec.consultaId != null
-                              ? "CALOFIT_REGISTER:${sec.consultaId}"
+                              ? "CALOFIT_WORKOUT:${sec.consultaId}"
                               : "Hice ${sec.nombre}")
                           : null,
                       onSave: onSave != null ? () => onSave!(sec) : null,
@@ -189,11 +233,35 @@ class AssistantMessageBubble extends StatelessWidget {
     );
   }
 
+  /// Si en un mismo renglón viene "texto ## Subtítulo", parte en dos bloques válidos para Markdown.
+  static String _splitEmbeddedMarkdownHeadings(String line) {
+    final trimmedLeft = line.trimLeft();
+    if (trimmedLeft.startsWith('#')) return line;
+    if (!line.contains(RegExp(r'#{2,}\s'))) return line;
+    final parts = line.split(RegExp(r'\s+(?=#{1,6}\s)'));
+    if (parts.length < 2) return line;
+    return parts
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .join('\n\n');
+  }
+
   String _cleanResponseText(String text, List<Section> sections) {
     try {
       // 1. Eliminar etiquetas CALOFIT blindadas (apertura Y cierre)
       // v64: Regex más específico para no matar (X kcal) o (Macros: ...)
       String cleaned = text.replaceAll(RegExp(r'\[/?CALOFIT_(?:HEADER|LIST|ACTION|FOOTER|STATS|INTENT)(?:[:\s].*?)?\]'), '');
+
+      // Marcadores tipo [Icon] que a veces envía el modelo
+      cleaned = cleaned.replaceAll(RegExp(r'\[(?:Icon|icon|emoji)[^\]]*\]\s*'), '');
+      // "##" en medio de la línea → el motor Markdown no lo trata como encabezado
+      cleaned = cleaned
+          .split('\n')
+          .map(_splitEmbeddedMarkdownHeadings)
+          .join('\n');
+
+      // Viñetas • en un solo párrafo → lista Markdown (-) con saltos de línea
+      cleaned = expandInlineBulletsForMarkdown(cleaned);
 
       // 2. Transformar Tablas Markdown en Listas Legibles (Verticales)
       if (RegExp(r'\|[\s-:]+\|').hasMatch(cleaned)) {
@@ -234,16 +302,24 @@ class AssistantMessageBubble extends StatelessWidget {
 
         String lineLower = line.toLowerCase();
         String lineClean = lineLower.replaceAll('**', '').replaceAll('*', '').replaceAll('-', '').trim();
-        
+
+        // No tratar como "título duplicado" las líneas con cantidades (evita borrar ingredientes
+        // que mencionan parte del nombre del plato, p. ej. "80g arroz integral").
+        final isFoodQuantityLine = RegExp(r'\d+\s*g\b', caseSensitive: false).hasMatch(line) ||
+            RegExp(r'\d+\s*kcal', caseSensitive: false).hasMatch(line) ||
+            RegExp(r'\d+\s*(?:ml|l)\b', caseSensitive: false).hasMatch(line);
+
         bool isRepeatedName = sectionNames.any((name) {
           if (name.isEmpty) return false;
           if (lineClean == name) return true;
           if (lineClean.contains(name) && lineClean.length <= name.length + 5) return true;
-          if (name.length > 10 && lineClean.contains(name.substring(0, 10)) && lineClean.length < 50) return true;
+          if (name.length > 10 && lineClean.contains(name.substring(0, 10)) && lineClean.length < 50) {
+            return true;
+          }
           return false;
         });
-        
-        if (!isRepeatedName) {
+
+        if (isFoodQuantityLine || !isRepeatedName) {
           finalLines.add(line);
         }
       }

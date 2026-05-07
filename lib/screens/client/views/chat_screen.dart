@@ -12,6 +12,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../models/assistant_response.dart';
 import '../../../widgets/chat_bubble.dart';
 import '../../../providers/balance_provider.dart';
+import '../widgets/smart_meal_registry_sheet.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -1190,7 +1191,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: _openManualLogDialog,
+            onTap: () => SmartMealRegistrySheet.show(context),
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(

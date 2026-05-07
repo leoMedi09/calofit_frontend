@@ -562,6 +562,26 @@ class ApiService {
     }
   }
 
+  // ============ SMART MEAL REGISTRY (CARRITO) ============
+
+  /// 🛒 Parsea una cadena de ingredientes usando IA y devuelve los macros calculados
+  Future<Map<String, dynamic>> parseIngredients(String texto, String token) async {
+    try {
+      print('🛒 Parseando ingredientes: "$texto"');
+      final response = await _dio.post('/api/v1/nutrition/parse_ingredients',
+          data: {'texto': texto},
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return response.data;
+    } on DioException catch (e) {
+      final msg = e.response?.data != null ? e.response!.data.toString() : e.message;
+      print('❌ Error parseando ingredientes: $msg');
+      throw Exception('Error: $msg');
+    } catch (e) {
+      print('❌ Error parseando ingredientes: $e');
+      throw Exception('Error: $e');
+    }
+  }
+
   // ============ REGISTRO INTELIGENTE POR VOZ/TEXTO (NLP) ============
 
   /// 🎤 Registra alimentos o ejercicios usando lenguaje natural

@@ -4,6 +4,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 import '../../../models/user.dart';
+import 'staff_registration_form.dart';
 
 class TeamListView extends StatefulWidget {
   const TeamListView({super.key});
@@ -80,33 +81,62 @@ class _TeamListViewState extends State<TeamListView> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: () async => _refreshTeam(),
-        child: Column(
-          children: [
-            _buildSearchBar(),
-            _buildRoleFilters(),
-            Expanded(
-              child: _allMembers.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredMembers.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                          itemCount: _filteredMembers.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildMemberCard(_filteredMembers[index]),
-                            );
-                          },
-                        ),
-            ),
-          ],
+    final authProvider = Provider.of<AuthProvider>(context);
+    final String role = authProvider.userRole?.toLowerCase() ?? '';
+    final bool isAdmin = role.contains('admin');
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async => _refreshTeam(),
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              _buildRoleFilters(),
+              Expanded(
+                child: _allMembers.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : _filteredMembers.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+                            itemCount: _filteredMembers.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _buildMemberCard(_filteredMembers[index]),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
         ),
       ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => _showAddStaffModal(context),
+              backgroundColor: const Color(0xFF1E88E5),
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: const Text('Nuevo Personal', style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          : null,
     );
+  }
+
+  void _showAddStaffModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: const StaffRegistrationForm(),
+      ),
+    ).then((_) => _refreshTeam());
   }
 
   Widget _buildSearchBar() {
@@ -147,11 +177,11 @@ class _TeamListViewState extends State<TeamListView> {
         children: [
           _buildFilterChip('Todos', 'all', Icons.group_rounded),
           const SizedBox(width: 10),
-          _buildFilterChip('Nutris', 'nutritionist', Icons.restaurant_menu_rounded),
+          _buildFilterChip('Nutricionistas', 'nutritionist', Icons.restaurant_menu_rounded),
           const SizedBox(width: 10),
-          _buildFilterChip('Coaches', 'coach', Icons.fitness_center_rounded),
+          _buildFilterChip('Entrenadores', 'coach', Icons.fitness_center_rounded),
           const SizedBox(width: 10),
-          _buildFilterChip('Admins', 'admin', Icons.admin_panel_settings_rounded),
+          _buildFilterChip('Administradores', 'admin', Icons.admin_panel_settings_rounded),
         ],
       ),
     );
@@ -264,7 +294,9 @@ class _TeamListViewState extends State<TeamListView> {
                 Text(member.email,
                     style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -279,8 +311,7 @@ class _TeamListViewState extends State<TeamListView> {
                         ],
                       ),
                     ),
-                    if (member.pacientesCount != null && member.pacientesCount! > 0) ...[
-                      const SizedBox(width: 8),
+                    if (member.pacientesCount != null && member.pacientesCount! > 0)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration:
@@ -295,7 +326,6 @@ class _TeamListViewState extends State<TeamListView> {
                           ],
                         ),
                       ),
-                    ],
                   ],
                 ),
               ],

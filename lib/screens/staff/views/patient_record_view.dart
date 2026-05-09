@@ -32,8 +32,10 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   late TextEditingController _strategicFocusController;
   late TextEditingController _recInputController;
   late TextEditingController _forInputController;
-  late TextEditingController _weeklyNoteController;  // 🆕 Mensaje semanal del Nutri
-  
+  late TextEditingController _weeklyNoteController;
+  late TextEditingController _coachNotesController;
+  bool _isSavingCoachNote = false;
+
   List<String> _recommendedList = [];
   List<String> _forbiddenList = [];
   List<String> _medicalConditionsList = [];
@@ -55,6 +57,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     _recInputController = TextEditingController();
     _forInputController = TextEditingController();
     _weeklyNoteController = TextEditingController();
+    _coachNotesController = TextEditingController();
     _loadData();
   }
 
@@ -69,6 +72,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     _recInputController.dispose();
     _forInputController.dispose();
     _weeklyNoteController.dispose();
+    _coachNotesController.dispose();
     super.dispose();
   }
 
@@ -85,7 +89,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       setState(() {
         _fullData = progressData;
         _strategicFocusController.text = progressData['ai_strategic_focus'] ?? '';
-        _weeklyNoteController.text = progressData['nutri_weekly_note'] ?? '';  // 🆕 Cargar nota semanal
+        _weeklyNoteController.text = progressData['nutri_weekly_note'] ?? '';
+        _coachNotesController.text = progressData['coach_notes'] ?? '';
         
         _recommendedList = List<String>.from(progressData['recommended_foods'] ?? []);
         _forbiddenList = List<String>.from(progressData['forbidden_foods'] ?? []);
@@ -133,6 +138,35 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         );
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _saveCoachNote() async {
+    setState(() => _isSavingCoachNote = true);
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token!;
+      await _apiService.saveCoachNote(
+        widget.patientData['id'],
+        _coachNotesController.text.trim(),
+        token,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Nota guardada correctamente'),
+          backgroundColor: Color(0xFF1E88E5),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al guardar: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingCoachNote = false);
     }
   }
 
@@ -821,29 +855,72 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             children: [
               Icon(Icons.assignment_ind_rounded, color: Colors.blue, size: 20),
               SizedBox(width: 8),
-              Text('NOTAS DEL ENTRENADOR', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1, color: Color(0xFF263238))),
+              Text(
+                'NOTAS DEL ENTRENADOR',
+                style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                    color: Color(0xFF263238)),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           TextField(
+            controller: _coachNotesController,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: 'Ej: "Hoy lo noté bajo de energía en pierna", "Revisar su ingesta pre-entreno"...',
+              hintText:
+                  'Ej: "Hoy lo noté bajo de energía en pierna", "Revisar su ingesta pre-entreno"...',
               hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               filled: true,
-              fillColor: Colors.blue.shade50.withOpacity(0.3),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              fillColor: Colors.blue.shade50.withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF1E88E5), width: 2)),
             ),
           ),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.info_outline, size: 14, color: Colors.blueGrey),
-              SizedBox(width: 6),
-              Expanded(
+              const Icon(Icons.info_outline, size: 14, color: Colors.blueGrey),
+              const SizedBox(width: 6),
+              const Expanded(
                 child: Text(
-                  'Estas notas son enviadas al nutricionista para ajustar el plan del atleta.',
-                  style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic),
+                  'Visible solo para el staff del gimnasio.',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blueGrey,
+                      fontStyle: FontStyle.italic),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 36,
+                child: FilledButton.icon(
+                  onPressed: _isSavingCoachNote ? null : _saveCoachNote,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E88E5),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  icon: _isSavingCoachNote
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.save_rounded, size: 16),
+                  label: Text(
+                    _isSavingCoachNote ? 'Guardando...' : 'Guardar',
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],

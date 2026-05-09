@@ -190,11 +190,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
     );
   }
 
-  void _copyToClipboard(String text) {
-    if (text.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: text));
-    _showSnackbar('Copiado al portapapeles', isError: false);
-  }
 
   Widget _buildTextField(
       TextEditingController controller, String label, IconData icon,
@@ -215,42 +210,17 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
         prefixIcon: Icon(icon, color: const Color(0xFF1A237E), size: 20),
-        suffixIcon: (isPasswordField || isEmail)
-            ? Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isMainPassword || isEmail) ...[
-                      IconButton(
-                        tooltip: isEmail ? 'Sugerir correo' : 'Generar clave',
-                        icon: const Icon(Icons.auto_fix_high_rounded,
-                            color: Color(0xFF1E88E5), size: 18),
-                        onPressed:
-                            isEmail ? _generateEmail : _generateRandomPassword,
-                      ),
-                    ],
-                    if (isPasswordField) ...[
-                      IconButton(
-                        tooltip: 'Copiar',
-                        icon: const Icon(Icons.copy_all_rounded,
-                            color: Colors.grey, size: 18),
-                        onPressed: () => _copyToClipboard(controller.text),
-                      ),
-                      IconButton(
-                        tooltip: 'Ver',
-                        icon: Icon(
-                            _persistedObscure
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: Colors.grey,
-                            size: 18),
-                        onPressed: () => setState(
-                            () => _persistedObscure = !_persistedObscure),
-                      ),
-                    ],
-                  ],
-                ),
+        suffixIcon: isPasswordField
+            ? IconButton(
+                tooltip: 'Ver',
+                icon: Icon(
+                    _persistedObscure
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: Colors.grey,
+                    size: 18),
+                onPressed: () => setState(
+                    () => _persistedObscure = !_persistedObscure),
               )
             : null,
         filled: true,
@@ -299,52 +269,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
         ),
       ),
     );
-  }
-
-  void _generateRandomPassword() {
-    const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = math.Random();
-    final password = String.fromCharCodes(Iterable.generate(
-        8, (_) => chars.codeUnitAt(random.nextInt(chars.length))));
-    setState(() {
-      _passwordController.text = password;
-      _confirmPasswordController.text = password;
-    });
-    _showSnackbar('Contraseña generada: $password', isError: false);
-  }
-
-  void _generateEmail() {
-    String name = _firstNameController.text.trim().toLowerCase();
-    String pLastName = _paternalController.text.trim().toLowerCase();
-    String mLastName = _maternalController.text.trim().toLowerCase();
-
-    if (name.isEmpty || pLastName.isEmpty) {
-      _showSnackbar('Ingresa al menos nombre y apellido paterno',
-          isError: true);
-      return;
-    }
-
-    // Función interna para limpiar acentos y caracteres especiales
-    String sanitize(String input) {
-      const accents = 'áéíóúüñ';
-      const without = 'aeiouun';
-      String output = input.split(' ')[0]; // Solo la primera palabra
-      for (int i = 0; i < accents.length; i++) {
-        output = output.replaceAll(accents[i], without[i]);
-      }
-      return output.replaceAll(RegExp(r'[^a-z]'), ''); // Solo letras a-z
-    }
-
-    final sName = sanitize(name);
-    final sPLastName = sanitize(pLastName);
-    final sMLastInitial = mLastName.isNotEmpty ? sanitize(mLastName)[0] : '';
-
-    // Formato: nombre.apellidopm@calofit.com (ej: juan.perezm@)
-    final email = '$sName.$sPLastName$sMLastInitial@calofit.com';
-
-    setState(() => _emailController.text = email);
-    _showSnackbar('Correo generado con apellidos vinculados', isError: false);
   }
 
   Future<void> _registerStaff() async {

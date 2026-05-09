@@ -174,7 +174,62 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     }
   }
 
+  bool _validateCurrentStep() {
+    switch (_currentPage) {
+      case 0:
+        if (_firstNameCtrl.text.trim().isEmpty) {
+          _showValidationError('Por favor ingresa tu nombre.');
+          return false;
+        }
+        if (_lastNamePatCtrl.text.trim().isEmpty) {
+          _showValidationError('Por favor ingresa tu apellido paterno.');
+          return false;
+        }
+        if (_lastNameMatCtrl.text.trim().isEmpty) {
+          _showValidationError('Por favor ingresa tu apellido materno.');
+          return false;
+        }
+        if (_birthDate == null) {
+          _showValidationError('Por favor selecciona tu fecha de nacimiento.');
+          return false;
+        }
+        return true;
+      case 1:
+        final weight = double.tryParse(_weightCtrl.text);
+        if (weight == null || weight <= 0 || weight > 300) {
+          _showValidationError('Ingresa un peso válido (ej: 70).');
+          return false;
+        }
+        final height = double.tryParse(_heightCtrl.text);
+        if (height == null || height <= 0 || height > 250) {
+          _showValidationError('Ingresa una altura válida en cm (ej: 170).');
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  void _showValidationError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w600))),
+        ]),
+        backgroundColor: Colors.orange.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _nextPage() {
+    if (!_validateCurrentStep()) return;
     if (_currentPage < 3) {
       _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
       setState(() => _currentPage++);
@@ -236,8 +291,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
               
               Color getBgColor() {
                 if (isActive) return Colors.white;
-                if (isDone) return Colors.greenAccent.withOpacity(0.25);
-                return Colors.white.withOpacity(0.15);
+                if (isDone) return Colors.greenAccent.withValues(alpha: 0.25);
+                return Colors.white.withValues(alpha: 0.15);
               }
               
               Color getTextColor() {
@@ -280,7 +335,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                           width: 8,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: isDone ? Colors.greenAccent.withOpacity(0.6) : Colors.white24,
+                            color: isDone ? Colors.greenAccent.withValues(alpha: 0.6) : Colors.white24,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -462,7 +517,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                         val ? _selectedConditions.add(condition) : _selectedConditions.remove(condition);
                       }
                     }),
-                    selectedColor: _navyLight.withOpacity(0.15),
+                    selectedColor: _navyLight.withValues(alpha: 0.15),
                     checkmarkColor: _navy,
                     labelStyle: TextStyle(color: isSelected ? _navy : Colors.grey.shade700, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
                     backgroundColor: Colors.white,
@@ -538,7 +593,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   Widget _buildBottomButton() {
     return Container(
       padding: EdgeInsets.only(left: 24, right: 24, bottom: MediaQuery.of(context).padding.bottom + 20, top: 16),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, -8))]),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -8))]),
       child: SizedBox(
         width: double.infinity,
         height: 56,
@@ -548,7 +603,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             backgroundColor: _navy,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             elevation: 6,
-            shadowColor: _navy.withOpacity(0.4),
+            shadowColor: _navy.withValues(alpha: 0.4),
           ),
           child: _isLoading
               ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
@@ -564,7 +619,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
 
   Widget _sectionTitle(String title, IconData icon) {
     return Row(children: [
-      Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: _navy.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+      Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: _navy.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
         child: Icon(icon, color: _navy, size: 18)),
       const SizedBox(width: 10),
       Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF37474F))),

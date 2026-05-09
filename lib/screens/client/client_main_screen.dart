@@ -31,6 +31,9 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   // ✅ Estado de Check-in
   bool _checkInNeeded = false;
   int _precisionScore = 100;
+  int _daysUntilCheckin = 0;
+  bool _nutriUpdatesPending = false;
+  String? _lastUpdateDate;
   double _baselineWeight = 70.0;
   double _baselineHeight = 170.0;
   bool _dialogShown = false; // ✅ Para mostrar el popup solo una vez al entrar
@@ -166,6 +169,9 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
         setState(() {
           _checkInNeeded = checkInStatus['needed'] ?? false;
           _precisionScore = checkInStatus['precision_score'] ?? 100;
+          _daysUntilCheckin = checkInStatus['days_until_checkin'] ?? 0;
+          _nutriUpdatesPending = checkInStatus['nutri_updates_pending'] ?? false;
+          _lastUpdateDate = checkInStatus['last_update_date'];
         });
       } catch (checkInErr) {
         debugPrint('Error cargando status de check-in: $checkInErr');
@@ -338,7 +344,59 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                             }
                           },
                         ),
-                      const SizedBox(height: 10),
+                      
+                      // ✨ NUEVO: Alertas rápidas horizontales
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            if (_daysUntilCheckin > 0 && !_checkInNeeded)
+                              Container(
+                                margin: const EdgeInsets.only(right: 12, bottom: 16, top: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.timer_outlined, size: 16, color: Colors.blue.shade700),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Faltan $_daysUntilCheckin días para tu control', 
+                                      style: TextStyle(color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_nutriUpdatesPending)
+                              Container(
+                                margin: const EdgeInsets.only(right: 12, bottom: 16, top: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.green.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.update_rounded, size: 16, color: Colors.green.shade700),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _lastUpdateDate != null 
+                                          ? '¡Novedades de tu Nutricionista! (Actualizado el $_lastUpdateDate)' 
+                                          : '¡Novedades de tu Nutricionista!', 
+                                      style: TextStyle(color: Colors.green.shade800, fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 4),
 
                       _buildProgressHero(dailySummary),
                       if (dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ...[

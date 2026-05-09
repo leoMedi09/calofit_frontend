@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
-import 'team_management_view.dart';
-import 'audit_view.dart';
+import '../../../services/api_service.dart';
 
 class StaffProfileView extends StatefulWidget {
   final bool showBackButton;
@@ -13,25 +12,73 @@ class StaffProfileView extends StatefulWidget {
 }
 
 class _StaffProfileViewState extends State<StaffProfileView> {
-  // Colores Originales (Azul Calofit)
-  static const Color vNavy = Color(0xFF1E88E5); // Azul Primario
-  static const Color vNavyDark = Color(0xFF1565C0); // Azul Secundario
+  static const Color vNavy = Color(0xFF1E88E5);
+  static const Color vNavyDark = Color(0xFF1565C0);
+
+  final ApiService _apiService = ApiService();
+  Map<String, dynamic>? _profileData;
+  bool _loadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.token == null) return;
+    try {
+      final data = await _apiService.getStaffProfile(auth.token!);
+      if (mounted) setState(() { _profileData = data; _loadingProfile = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingProfile = false);
+    }
+  }
+
+  String _roleLabel(String? role) {
+    switch ((role ?? '').toUpperCase()) {
+      case 'NUTRI': return 'Nutricionista';
+      case 'COACH': return 'Entrenador';
+      case 'ADMIN': return 'Administrador';
+      default: return role ?? 'Staff';
+    }
+  }
+
+  String _roleTag(String? role) {
+    switch ((role ?? '').toUpperCase()) {
+      case 'NUTRI': return 'NUTRICIÓN';
+      case 'COACH': return 'ENTRENAMIENTO';
+      case 'ADMIN': return 'ADMINISTRACIÓN';
+      default: return 'STAFF';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final String initials = (authProvider.userName ?? '?').substring(0, 1).toUpperCase();
+    final auth = Provider.of<AuthProvider>(context);
+
+    final identidad = _profileData?['identidad'] as Map<String, dynamic>?;
+    final String firstName = identidad?['nombres'] ?? auth.userName ?? '';
+    final String lastPaternal = identidad?['apellido_paterno'] ?? '';
+    final String lastMaternal = identidad?['apellido_materno'] ?? '';
+    final String fullName = [firstName, lastPaternal, lastMaternal]
+        .where((s) => s.isNotEmpty)
+        .join(' ')
+        .trim();
+    final String displayName = fullName.isNotEmpty ? fullName : (auth.userName ?? 'Usuario');
+    final String email = identidad?['email'] ?? auth.userEmail ?? '';
+    final String role = auth.userRole ?? '';
+    final String initials = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F8),
       body: CustomScrollView(
         slivers: [
-          // Header con Gradiente y Perfil
           SliverToBoxAdapter(
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Fondo Gradiente
                 Container(
                   height: 340,
                   decoration: const BoxDecoration(
@@ -46,25 +93,22 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                     ),
                   ),
                 ),
-                // Botón Atrás
                 if (widget.showBackButton)
                   Positioned(
                     top: 50,
                     left: 20,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white, size: 22),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                
-                // Contenido del Perfil
                 Positioned(
                   top: 70,
                   left: 24,
                   right: 24,
                   child: Column(
                     children: [
-                      // Avatar Simplificado (Solo Iniciales)
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
@@ -75,43 +119,44 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                           radius: 60,
                           backgroundColor: Colors.grey.shade100,
                           child: Text(
-                            initials, 
+                            initials,
                             style: const TextStyle(
-                              fontSize: 44, 
-                              fontWeight: FontWeight.w900, 
+                              fontSize: 44,
+                              fontWeight: FontWeight.w900,
                               color: vNavy,
-                              letterSpacing: -1.0
-                            )
+                              letterSpacing: -1.0,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        authProvider.userName ?? 'Usuario',
+                        displayName,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 28, 
-                          fontWeight: FontWeight.w900, 
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
                           color: Colors.white,
-                          letterSpacing: -0.5
+                          letterSpacing: -0.5,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        (authProvider.userRole ?? 'Perfil').toUpperCase(),
+                        _roleLabel(role).toUpperCase(),
                         style: TextStyle(
-                          fontSize: 14, 
-                          fontWeight: FontWeight.w600, 
-                          color: Colors.white.withOpacity(0.9),
-                          letterSpacing: 2.0
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.85),
+                          letterSpacing: 2.5,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // Chips de especialidad
+                      const SizedBox(height: 14),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildTag('EXPERT'),
+                          _buildTag('WORLD LIGHT'),
                           const SizedBox(width: 8),
-                          _buildTag('STAFF'),
+                          _buildTag(_roleTag(role)),
                           const SizedBox(width: 8),
                           _buildTag('VERIFIED'),
                         ],
@@ -123,43 +168,53 @@ class _StaffProfileViewState extends State<StaffProfileView> {
             ),
           ),
 
-          // Espaciador para el contenido posicionado
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
 
-          // Secciones de información
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                _buildSectionTitle('Información Personal'),
+                const SizedBox(height: 12),
+                _loadingProfile
+                    ? const Center(child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(),
+                      ))
+                    : _buildInfoCard([
+                        _buildProfileTile(Icons.person_rounded, 'Nombres', firstName.isNotEmpty ? firstName : '—'),
+                        _buildProfileTile(Icons.badge_rounded, 'Apellido Paterno', lastPaternal.isNotEmpty ? lastPaternal : '—'),
+                        _buildProfileTile(Icons.badge_outlined, 'Apellido Materno', lastMaternal.isNotEmpty ? lastMaternal : '—'),
+                      ]),
+
+                const SizedBox(height: 24),
                 _buildSectionTitle('Información de Contacto'),
                 const SizedBox(height: 12),
                 _buildInfoCard([
-                  _buildProfileTile(Icons.email_rounded, 'Correo Electrónico', authProvider.userEmail ?? ''),
-                  _buildProfileTile(Icons.phone_rounded, 'Teléfono', '+51 987 654 321'),
-                  _buildProfileTile(Icons.work_rounded, 'Departamento', 'Wellness & Nutrition'),
+                  _buildProfileTile(Icons.email_rounded, 'Correo Electrónico', email.isNotEmpty ? email : '—'),
+                  _buildProfileTile(Icons.work_rounded, 'Rol del Sistema', _roleLabel(role)),
                 ]),
-                const SizedBox(height: 24),
 
+                const SizedBox(height: 32),
 
-                const SizedBox(height: 24),
-                
-                // Botón Cerrar Sesión
                 Container(
                   width: double.infinity,
                   height: 60,
                   margin: const EdgeInsets.only(bottom: 40),
                   child: ElevatedButton(
-                    onPressed: () => _showLogoutDialog(context, authProvider),
+                    onPressed: () => _showLogoutDialog(context, auth),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Color(0xFFFFEBEE), width: 1),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
                     child: const Text(
                       'CERRAR SESIÓN',
-                      style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, letterSpacing: 1.2),
                     ),
                   ),
                 ),
@@ -177,8 +232,8 @@ class _StaffProfileViewState extends State<StaffProfileView> {
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 16, 
-          fontWeight: FontWeight.w800, 
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
           color: vNavy,
         ),
       ),
@@ -195,7 +250,8 @@ class _StaffProfileViewState extends State<StaffProfileView> {
       ),
       child: Text(
         label,
-        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -228,24 +284,20 @@ class _StaffProfileViewState extends State<StaffProfileView> {
         ),
         child: Icon(icon, color: vNavy, size: 22),
       ),
-      title: Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
-    );
-  }
-
-  Widget _buildActionTile(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F4FF),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Icon(icon, color: vNavy, size: 22),
+      title: Text(title,
+          style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w600)),
+      subtitle: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(subtitle,
+            style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87)),
       ),
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
     );
   }
 
@@ -253,26 +305,36 @@ class _StaffProfileViewState extends State<StaffProfileView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text('¿Cerrar Sesión?', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Se cerrará tu sesión administrativa y volverás a la pantalla de acceso.'),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text('¿Cerrar Sesión?',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+            'Se cerrará tu sesión y volverás a la pantalla de acceso.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCELAR', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            child: Text('CANCELAR',
+                style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () async {
               await authProvider.logout();
               if (context.mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/login', (route) => false);
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
             ),
-            child: const Text('SALIR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('SALIR',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

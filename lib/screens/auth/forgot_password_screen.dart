@@ -13,6 +13,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _apiService = ApiService();
   bool _isLoading = false;
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -25,7 +30,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-
   Future<void> _sendRecoveryCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) return;
@@ -37,16 +41,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-
-      if (response['message'] == "Código enviado exitosamente") {
+      if (response['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Código enviado. Revisa tu correo.'),
             backgroundColor: Colors.green,
           ),
         );
-
-
         Navigator.pushNamed(
           context,
           '/verify-code',
@@ -65,29 +66,81 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recuperar Acceso')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.lock_reset, size: 80, color: Colors.blueAccent),
-            const SizedBox(height: 20),
-            const Text('Ingresa tu correo electrónico', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 30),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-              onPressed: _sendRecoveryCode,
-              child: const Text('ENVIAR CÓDIGO'),
-            ),
-          ],
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Recuperar Acceso',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              Center(
+                child: Icon(Icons.lock_reset_rounded,
+                    size: 72, color: Colors.blue[700]),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                '¿Olvidaste tu contraseña?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.grey[900],
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Ingresa tu correo electrónico registrado y te enviaremos un código de 6 dígitos para restablecerla.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 14, color: Colors.grey[600], height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Correo Electrónico',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+              ),
+              const SizedBox(height: 28),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SizedBox(
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: _sendRecoveryCode,
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text(
+                          'ENVIAR CÓDIGO',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2),
+                        ),
+                      ),
+                    ),
+            ],
+          ),
         ),
       ),
     );

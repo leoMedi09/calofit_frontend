@@ -140,21 +140,21 @@ class _TeamManagementViewState extends State<TeamManagementView> {
                     : Row(
                         children: [
                           Expanded(child: _buildRoleCard(
-                            'Nutris', 
+                            'Nutricionistas', 
                             _members.where((m) => m.roleName.toLowerCase().contains('nutri')).length.toString(), 
                             Icons.restaurant_menu, 
                             const Color(0xFFFF5252)
                           )),
                           const SizedBox(width: 12),
                           Expanded(child: _buildRoleCard(
-                            'Coaches', 
+                            'Entrenadores', 
                             _members.where((m) => m.roleName.toLowerCase().contains('coach') || m.roleName.toLowerCase().contains('train')).length.toString(), 
                             Icons.fitness_center, 
                             const Color(0xFFFFA000)
                           )),
                           const SizedBox(width: 12),
                           Expanded(child: _buildRoleCard(
-                            'Admins', 
+                            'Administradores', 
                             _members.where((m) => m.roleName.toLowerCase().contains('admin')).length.toString(), 
                             Icons.admin_panel_settings, 
                             primaryBlue

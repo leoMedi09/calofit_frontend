@@ -110,7 +110,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
         'item': BottomNavigationBarItem(
           icon: Icon(userRole.contains('COACH') ? Icons.fitness_center_outlined : Icons.assignment_ind_outlined), 
           activeIcon: Icon(userRole.contains('COACH') ? Icons.fitness_center_rounded : Icons.assignment_ind_rounded),
-          label: userRole.contains('COACH') ? 'Mis Atletas' : 'Pacientes'
+          label: userRole.contains('COACH') ? 'Mis Atletas' : 'Clientes'
         ),
       },
       'assistant': {

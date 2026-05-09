@@ -143,9 +143,7 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
       children: [
         Expanded(child: _buildStatItem('ATLETAS', _stats['total_pacientes']?.toString() ?? '0', Icons.groups_rounded, Colors.blue)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatItem('METAS', '85%', Icons.emoji_events_rounded, Colors.amber.shade700)), // Simulado para Coach
-        const SizedBox(width: 12),
-        Expanded(child: _buildStatItem('ALERTAS', _stats['alertas_criticas']?.toString() ?? '0', Icons.warning_amber_rounded, Colors.red)),
+        Expanded(child: _buildStatItem('VALIDACIONES', _stats['validaciones_pendientes']?.toString() ?? '0', Icons.fact_check_rounded, Colors.orange)),
       ],
     );
   }

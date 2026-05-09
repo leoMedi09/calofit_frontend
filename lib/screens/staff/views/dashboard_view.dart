@@ -37,6 +37,7 @@ class _DashboardViewState extends State<DashboardView> {
   double _adherenciaMedia = 0.0;
   List<double> _tendenciaAdherencia = [];
   List<Map<String, dynamic>> _recentAlerts = [];
+  bool _showAllAlerts = false;
   
   String _currentAIInsight = 'Generando informe estratégico...';
   Timer? _refreshTimer;
@@ -554,16 +555,6 @@ class _DashboardViewState extends State<DashboardView> {
                 Colors.orange,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                'Alertas',
-                '$_countAlertasCriticas',
-                'Críticas',
-                Icons.crisis_alert_rounded,
-                Colors.red,
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 25),
@@ -735,7 +726,7 @@ class _DashboardViewState extends State<DashboardView> {
           children: [
             Expanded(
               child: _buildRoleCard(
-                'Nutris', 
+                'Nutricionistas', 
                 _countNutri.toString(), 
                 Icons.restaurant_menu_rounded, 
                 const Color(0xFFE57373)
@@ -744,7 +735,7 @@ class _DashboardViewState extends State<DashboardView> {
             const SizedBox(width: 15),
             Expanded(
               child: _buildRoleCard(
-                'Coaches', 
+                'Entrenadores', 
                 _countCoach.toString(), 
                 Icons.bolt_rounded, 
                 const Color(0xFFFFB74D)
@@ -986,9 +977,9 @@ class _DashboardViewState extends State<DashboardView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildHeroIndicator('Admins', _countAdmin.toString()),
-                        _buildHeroIndicator('Nutris', _countNutri.toString()),
-                        _buildHeroIndicator('Trainers', _countCoach.toString()), // ✅ Indicador añadido
+                        _buildHeroIndicator('Administrador', _countAdmin.toString()),
+                        _buildHeroIndicator('Nutricionista', _countNutri.toString()),
+                        _buildHeroIndicator('Entrenador', _countCoach.toString()),
                       ],
                     ),
                   ],
@@ -1004,11 +995,25 @@ class _DashboardViewState extends State<DashboardView> {
         _buildSectionTitle('Operaciones del Sistema', Icons.bolt_rounded),
         const SizedBox(height: 15),
         _buildActionItem(
-          'Registrar Nuevo Personal',
-          'Añade y configura accesos iniciales.',
-          Icons.person_add_alt_1_rounded,
+          'Gestión de Equipo',
+          'Añadir personal nuevo y gestionar roles.',
+          Icons.group_add_rounded,
           const Color(0xFF1E88E5),
-          () => _openRegistrationForm(context),
+          () {
+            // Cambiar pestaña a "Equipo"
+            widget.onNavigate?.call(1);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionItem(
+          'Gestión de Clientes',
+          'Inscribir pacientes y asignarlos al personal.',
+          Icons.person_add_alt_1_rounded,
+          const Color(0xFF43A047), // Verde
+          () {
+            // Cambiar pestaña a "Pacientes"
+            widget.onNavigate?.call(2);
+          },
         ),
       ],
     );
@@ -1240,118 +1245,241 @@ class _DashboardViewState extends State<DashboardView> {
 
 
   Widget _buildHealthAlertsSection() {
+    // ── Estado vacío ────────────────────────────────────────────────────────
     if (_recentAlerts.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.green.shade100, width: 1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.green.shade100),
         ),
         child: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 20),
             const SizedBox(width: 12),
-            const Text(
-              'No hay alertas pendientes. ¡Todo en orden!',
-              style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A531B), fontSize: 13),
+            const Expanded(
+              child: Text(
+                'Sin alertas pendientes. ¡Todo en orden!',
+                style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A531B), fontSize: 13),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return Column(
-      children: _recentAlerts.map((alert) => Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-        decoration: BoxDecoration(
-          color: alert['urgency'] == 'Alta' ? Colors.red.shade50 : Colors.orange.shade50,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: alert['urgency'] == 'Alta' ? Colors.red.shade100 : Colors.orange.shade100, 
-            width: 1.2
+    // ── Métricas del resumen ─────────────────────────────────────────────────
+    final int totalAlerts = _recentAlerts.length;
+    final int alta  = _recentAlerts.where((a) => a['urgency'] == 'Alta').length;
+    final int media = _recentAlerts.where((a) => a['urgency'] == 'Media').length;
+    final int baja  = _recentAlerts.where((a) => a['urgency'] == 'Baja').length;
+
+    const int previewCount = 3;
+    final List<Map<String, dynamic>> visible = _showAllAlerts
+        ? _recentAlerts
+        : _recentAlerts.take(previewCount).toList();
+    final int hidden = totalAlerts - previewCount;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: (alert['urgency'] == 'Alta' ? Colors.red : Colors.orange).withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 4)
+        ],
+      ),
+      child: Column(
+        children: [
+          // ── Fila resumen ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: alta > 0 ? Colors.red.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.notification_important_rounded,
+                    size: 18,
+                    color: alta > 0 ? Colors.red.shade600 : Colors.orange.shade700,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '$totalAlerts ${totalAlerts == 1 ? 'alerta activa' : 'alertas activas'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+                // Chips de urgencia
+                if (alta > 0)  _urgencyChip('Alta', alta, Colors.red),
+                if (media > 0) _urgencyChip('Media', media, Colors.orange),
+                if (baja > 0)  _urgencyChip('Baja', baja, const Color(0xFFF59E0B)),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: alert['urgency'] == 'Alta' ? Colors.red.shade100 : Colors.orange.shade100, 
-                shape: BoxShape.circle
-              ),
-              child: Icon(
-                alert['urgency'] == 'Alta' ? Icons.warning_amber_rounded : Icons.info_outline_rounded, 
-                color: alert['urgency'] == 'Alta' ? Colors.red : Colors.orange.shade800, 
-                size: 22
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+
+          Divider(height: 1, color: Colors.grey.shade100),
+
+          // ── Alertas compactas ───────────────────────────────────────────
+          ...visible.asMap().entries.map((entry) {
+            final alert = entry.value;
+            final bool isLast = entry.key == visible.length - 1 && (!_showAllAlerts || hidden <= 0);
+            final Color accent = alert['urgency'] == 'Alta'
+                ? Colors.red.shade600
+                : alert['urgency'] == 'Media'
+                    ? Colors.orange.shade700
+                    : const Color(0xFFF59E0B);
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          alert['paciente'] ?? 'Paciente', 
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800, 
-                            fontSize: 14, 
-                            letterSpacing: -0.2, 
-                            color: Color(0xFF1A1A1A)
-                          ),
-                          softWrap: true,
+                      // Indicador de color lateral
+                      Container(
+                        width: 3,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
+                      // Ícono pequeño
+                      Icon(
+                        alert['urgency'] == 'Alta'
+                            ? Icons.warning_amber_rounded
+                            : Icons.info_outline_rounded,
+                        color: accent,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      // Texto
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              alert['paciente'] ?? 'Paciente',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              alert['problema'] ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                height: 1.3,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Badge urgencia
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: alert['urgency'] == 'Alta' ? Colors.red : Colors.orange,
-                          borderRadius: BorderRadius.circular(10),
+                          color: accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           alert['urgency'] ?? 'Baja',
-                          style: const TextStyle(
-                            color: Colors.white, 
-                            fontSize: 10, 
-                            fontWeight: FontWeight.w900, 
-                            letterSpacing: 0.5
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    alert['problema'] ?? '', 
-                    style: TextStyle(
-                      color: alert['urgency'] == 'Alta' ? Colors.red.shade900 : Colors.orange.shade900, 
-                      fontSize: 13, 
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.1,
+                ),
+                if (!isLast) Divider(height: 1, indent: 16, endIndent: 16, color: Colors.grey.shade100),
+              ],
+            );
+          }),
+
+          // ── Botón expandir / contraer ───────────────────────────────────
+          if (totalAlerts > previewCount)
+            InkWell(
+              onTap: () => setState(() => _showAllAlerts = !_showAllAlerts),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _showAllAlerts
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: Colors.grey.shade500,
                     ),
-                    softWrap: true,
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      _showAllAlerts
+                          ? 'Mostrar menos'
+                          : 'Ver $hidden alerta${hidden > 1 ? 's' : ''} más',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _urgencyChip(String label, int count, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$count $label',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: color,
         ),
-      )).toList(),
+      ),
     );
   }
 

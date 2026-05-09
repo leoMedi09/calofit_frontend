@@ -119,8 +119,6 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
   }
 
   Widget _buildClientList() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       physics:
@@ -132,25 +130,14 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
             double.tryParse(client['adherencia']?.toString() ?? '0') ?? 0;
         final bool isMale = client['gender']?.toString().toLowerCase() == 'm';
 
-        // 🏃‍♂️ Verificamos si este atleta está asignado específicamente a este coach
-        // Nota: En una fase final, deberíamos tener un 'coach_id' en el cliente.
-        // Por ahora lo simulamos o comparamos con nutri_id si se usa el mismo campo.
-        final bool isAssignedToMe = client['coach_id'] == authProvider.userId;
-
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isAssignedToMe
-                  ? const Color(0xFF1E88E5).withOpacity(0.3)
-                  : Colors.transparent,
-              width: 1.5,
-            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -161,78 +148,44 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
             child: InkWell(
               onTap: () => _showClientDetails(client),
               borderRadius: BorderRadius.circular(24),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        _buildProfileAvatar(client, isMale),
-                        const SizedBox(width: 16),
-                        // Información simplificada (Nombre + Email) como pidió el usuario
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                client['full_name'] ?? 'Sin nombre',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                    color: Color(0xFF263238)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                client['email'] ?? 'Sin correo electrónico',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    _buildProfileAvatar(client, isMale),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            client['full_name'] ?? 'Sin nombre',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: Color(0xFF263238)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_ios_rounded,
-                            color: Colors.grey, size: 14),
-                      ],
-                    ),
-                  ),
-                  if (isAssignedToMe)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E88E5), // ✅ Azul Corporativo
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.star_rounded,
-                                color: Colors.white, size: 10),
-                            SizedBox(width: 4),
-                            Text(
-                              'A TU CARGO',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w900),
+                          const SizedBox(height: 2),
+                          Text(
+                            client['email'] ?? 'Sin correo electrónico',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                ],
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_ios_rounded,
+                        color: Colors.grey, size: 14),
+                  ],
+                ),
               ),
             ),
           ),

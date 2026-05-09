@@ -191,23 +191,52 @@ class ApiService {
   // Clientes
   
   // ✅ Crear Cliente Express (Nutricionista)
-  Future<Map<String, dynamic>> createExpressClient(String email, String dni, String token) async {
+  Future<Map<String, dynamic>> createExpressClient(
+    String email,
+    String dni,
+    String token, {
+    int? assignedCoachId,
+  }) async {
     try {
-      print('📤 Creando cliente express...');
+      final body = <String, dynamic>{
+        'email': email.trim(),
+        'dni': dni.trim(),
+        if (assignedCoachId != null) 'assigned_coach_id': assignedCoachId,
+      };
       final response = await _dio.post(
         '/nutricionista/clientes/express',
-        data: {'email': email.trim(), 'dni': dni.trim()},
+        data: body,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      print('✅ Cliente express creado: ${response.data}');
       return response.data;
     } on DioException catch (e) {
-      print('❌ Error creando cliente express: ${e.response?.data}');
       final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception('Error creando cliente express: $e');
     }
+  }
+
+  // ✅ Lista de entrenadores activos (para asignar al crear paciente)
+  Future<List<Map<String, dynamic>>> getCoachesList(String token) async {
+    try {
+      final response = await _dio.get(
+        '/nutricionista/coaches',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ✅ Guardar nota del entrenador en el expediente del cliente
+  Future<void> saveCoachNote(int clientId, String note, String token) async {
+    await _dio.put(
+      '/nutricionista/cliente/$clientId/nota-entrenador',
+      data: {'nota': note},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
   }
 
   Future<List<Client>> getClients(String token) async {
@@ -438,10 +467,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     try {
-      // Usamos Query Parameters conforme a la definición: /forgot-password/request?email=...
       final response = await _dio.post(
-        '/clientes/forgot-password/request',
-        queryParameters: {'email': email},
+        '/auth/forgot-password',
+        data: {'email': email},
       );
       print('✅ Código solicitado: ${response.data}');
       return response.data;
@@ -451,26 +479,35 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> validateResetCode(String email, String code, String newPassword) async {
+  Future<Map<String, dynamic>> verifyResetCode(String email, String code) async {
     try {
       final response = await _dio.post(
-        '/clientes/forgot-password/verify',
-        queryParameters: {
+        '/auth/verify-reset-code',
+        data: {
           'email': email,
-          'code': code,
+          'reset_code': code,
+          'new_password': '', // No se usa en este paso
+        },
+      );
+      return {'success': true, 'message': response.data['message']};
+    } on DioException catch (e) {
+      return {'success': false, 'message': e.response?.data['detail'] ?? 'Error al validar el código'};
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String email, String code, String newPassword) async {
+    try {
+      final response = await _dio.post(
+        '/auth/reset-password',
+        data: {
+          'email': email,
+          'reset_code': code,
           'new_password': newPassword,
         },
       );
-      // Si llegamos aquí, el statusCode es 200
-      return {
-        'success': true,
-        'message': response.data['message']
-      };
+      return {'success': true, 'message': response.data['message']};
     } on DioException catch (e) {
-      return {
-        'success': false,
-        'message': e.response?.data['detail'] ?? 'Error al validar el código'
-      };
+      return {'success': false, 'message': e.response?.data['detail'] ?? 'Error al actualizar contraseña'};
     }
   }
 

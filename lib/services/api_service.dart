@@ -619,6 +619,30 @@ class ApiService {
     }
   }
 
+  // ============ ROUTINE BUILDER ============
+
+  Future<Map<String, dynamic>> calcularEjercicioManual(String texto, String token) async {
+    try {
+      final response = await _dio.post('/asistente/calcular-ejercicio',
+          data: {'texto': texto},
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return response.data;
+    } catch (e) {
+      throw Exception('Error al calcular ejercicio: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> registrarRutinaManual(List<Map<String, dynamic>> ejercicios, String token) async {
+    try {
+      final response = await _dio.post('/asistente/log-rutina-manual',
+          data: {'ejercicios': ejercicios},
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return response.data;
+    } catch (e) {
+      throw Exception('Error al registrar rutina manual: $e');
+    }
+  }
+
   // ============ REGISTRO INTELIGENTE POR VOZ/TEXTO (NLP) ============
 
   /// 🎤 Registra alimentos o ejercicios usando lenguaje natural

@@ -13,6 +13,7 @@ import '../../../models/assistant_response.dart';
 import '../../../widgets/chat_bubble.dart';
 import '../../../providers/balance_provider.dart';
 import '../widgets/smart_meal_registry_sheet.dart';
+import '../widgets/routine_builder_sheet.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -1195,10 +1196,22 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: Colors.orange.shade50,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.edit_note_rounded, color: Colors.grey.shade700),
+              child: Icon(Icons.restaurant_menu_rounded, color: Colors.orange.shade400),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => RoutineBuilderSheet.show(context),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.fitness_center_rounded, color: Colors.green.shade500),
             ),
           ),
           const SizedBox(width: 10),

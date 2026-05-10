@@ -32,14 +32,14 @@ bool isAssistantSubheader(String raw) {
   if (RegExp(r'^Opción\s*\d+', caseSensitive: false).hasMatch(s)) return true;
   if (RegExp(
     r'^(Ingredientes|Preparación|Preparacion|Instrucciones|Instrucción|Modo|Nota|'
-    r'Equipo|Músculo|Musculo|Series|Repeticiones|Volumen|Material|Técnica|Tecnica)\s*:',
+    r'Equipo|Músculo|Musculo|Series|Repeticiones|Volumen|Material|Técnica|Tecnica|Tip|Consejo).*:',
     caseSensitive: false,
   ).hasMatch(s)) {
     return true;
   }
   if (RegExp(
           r'^(Ingredientes|Preparación|Preparacion|Instrucciones|'
-          r'Equipo|Músculo|Musculo|Series|Técnica|Tecnica)\s*$',
+          r'Equipo|Músculo|Musculo|Series|Técnica|Tecnica|Tip|Consejo)\s*$',
           caseSensitive: false)
       .hasMatch(s)) {
     return true;

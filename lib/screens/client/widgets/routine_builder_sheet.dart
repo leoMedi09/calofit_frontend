@@ -4,51 +4,50 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
-class SmartMealRegistrySheet extends StatefulWidget {
-  const SmartMealRegistrySheet({Key? key}) : super(key: key);
+class RoutineBuilderSheet extends StatefulWidget {
+  const RoutineBuilderSheet({Key? key}) : super(key: key);
 
   static void show(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const SmartMealRegistrySheet(),
+      builder: (context) => const RoutineBuilderSheet(),
     );
   }
 
   @override
-  State<SmartMealRegistrySheet> createState() => _SmartMealRegistrySheetState();
+  State<RoutineBuilderSheet> createState() => _RoutineBuilderSheetState();
 }
 
-class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
-  final TextEditingController _qtyController = TextEditingController();
+class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
+  final TextEditingController _durationController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
   bool _isLoading = false;
   String? _errorMessage;
-  static final List<Map<String, dynamic>> _ingredients = [];
+  static final List<Map<String, dynamic>> _exercises = [];
 
-  Future<void> _addIngredient() async {
-    final qtyStrRaw = _qtyController.text.trim();
+  Future<void> _addExercise() async {
+    final durationStrRaw = _durationController.text.trim();
     final name = _nameController.text.trim();
     
     setState(() => _errorMessage = null);
 
-    if (qtyStrRaw.isEmpty || name.isEmpty) {
-      setState(() => _errorMessage = 'Ingresa cantidad y alimento');
+    if (durationStrRaw.isEmpty || name.isEmpty) {
+      setState(() => _errorMessage = 'Ingresa minutos y ejercicio');
       return;
     }
     
-    // Limpiar caracteres no numéricos por si acaso (ej. si ponen "200g" en vez de "200")
-    final cleanQtyStr = qtyStrRaw.replaceAll(RegExp(r'[^0-9.]'), '');
-    final qty = double.tryParse(cleanQtyStr);
+    final cleanDurationStr = durationStrRaw.replaceAll(RegExp(r'[^0-9.]'), '');
+    final duration = double.tryParse(cleanDurationStr);
     
-    if (qty == null || qty <= 0) {
-      setState(() => _errorMessage = 'La cantidad no es válida');
+    if (duration == null || duration <= 0) {
+      setState(() => _errorMessage = 'La duración no es válida');
       return;
     }
 
-    final text = '${cleanQtyStr}g de $name';
+    final text = '${cleanDurationStr} min de $name';
 
     setState(() => _isLoading = true);
     try {
@@ -56,22 +55,21 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       if (auth.token == null) return;
       
       final apiService = ApiService();
-      final result = await apiService.parseIngredients(text, auth.token!);
+      // Temporalmente usamos el parse de alimentos adaptado o un endpoint nuevo
+      // Por ahora creamos la UI, luego el endpoint /asistente/calcular-ejercicio
+      final result = await apiService.calcularEjercicioManual(text, auth.token!);
       
-      if (result['ingredientes'] != null) {
+      if (result['ejercicio'] != null) {
         setState(() {
-          for (var item in result['ingredientes']) {
-            _ingredients.add({
-              'name': item['nombre'],
-              'quantity': '${item['gramos_totales']}g (${item['cantidad']} ${item['unidad']})',
-              'kcal': item['calorias'],
-              'p': item['proteinas_g'],
-              'c': item['carbohidratos_g'],
-              'g': item['grasas_g'],
-            });
-          }
+          final ex = result['ejercicio'];
+          _exercises.add({
+            'name': ex['nombre'],
+            'duration': '${ex['duracion']} min',
+            'kcal': ex['calorias'],
+            'met': ex['met'],
+          });
         });
-        _qtyController.clear();
+        _durationController.clear();
         _nameController.clear();
       } else {
         setState(() => _errorMessage = 'No se encontró información.');
@@ -87,15 +85,16 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
   @override
   void dispose() {
-    _qtyController.dispose();
+    _durationController.dispose();
     _nameController.dispose();
     super.dispose();
   }
 
-  double get totalKcal => _ingredients.fold(0.0, (sum, item) => sum + (item['kcal'] as num).toDouble());
-  double get totalP => _ingredients.fold(0.0, (sum, item) => sum + (item['p'] as num).toDouble());
-  double get totalC => _ingredients.fold(0.0, (sum, item) => sum + (item['c'] as num).toDouble());
-  double get totalG => _ingredients.fold(0.0, (sum, item) => sum + (item['g'] as num).toDouble());
+  double get totalKcal => _exercises.fold(0.0, (sum, item) => sum + (item['kcal'] as num).toDouble());
+  double get totalMinutes => _exercises.fold(0.0, (sum, item) {
+    final minStr = item['duration'].toString().replaceAll(' min', '');
+    return sum + (double.tryParse(minStr) ?? 0.0);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +123,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   _buildHeader(),
                   _buildInputSection(),
                   const Divider(height: 1, color: Color(0xFFF0F2F5)),
-                  _buildIngredientList(),
+                  _buildExerciseList(),
                   _buildStickyFooter(),
                 ],
               ),
@@ -150,7 +149,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
           ),
           const SizedBox(height: 16),
           const Text(
-            "Registro Inteligente",
+            "Constructor de Rutinas",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -159,7 +158,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            "Añade alimentos o recetas en lenguaje natural",
+            "Añade ejercicios y arma tu entrenamiento",
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey.shade600,
@@ -187,13 +186,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: TextField(
-                  controller: _qtyController,
+                  controller: _durationController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
-                    hintText: '200',
+                    hintText: '15',
                     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                     border: InputBorder.none,
-                    suffixText: 'g',
+                    suffixText: 'min',
                     suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
                   ),
                 ),
@@ -210,10 +209,10 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   child: TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
-                      hintText: 'arroz...',
+                      hintText: 'Press banca...',
                       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.restaurant_menu_rounded, color: Colors.grey.shade400, size: 20),
+                      prefixIcon: Icon(Icons.fitness_center_rounded, color: Colors.grey.shade400, size: 20),
                       prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     ),
                   ),
@@ -221,16 +220,16 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: _isLoading ? null : _addIngredient,
+                onTap: _isLoading ? null : _addExercise,
                 child: Container(
                   height: 50,
                   width: 50,
                   decoration: BoxDecoration(
-                    color: _isLoading ? Colors.grey : const Color(0xFF2563EB),
+                    color: _isLoading ? Colors.grey : const Color(0xFF10B981), // Verde estilo fitness
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: _isLoading ? [] : [
                       BoxShadow(
-                        color: const Color(0xFF2563EB).withOpacity(0.3),
+                        color: const Color(0xFF10B981).withOpacity(0.3),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )
@@ -256,15 +255,15 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     );
   }
 
-  Widget _buildIngredientList() {
-    if (_ingredients.isEmpty) {
+  Widget _buildExerciseList() {
+    if (_exercises.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(40.0),
         child: Column(
           children: [
-            Icon(Icons.shopping_basket_outlined, size: 60, color: Colors.grey.shade300),
+            Icon(Icons.directions_run_rounded, size: 60, color: Colors.grey.shade300),
             const SizedBox(height: 16),
-            Text("Tu plato está vacío", style: TextStyle(color: Colors.grey.shade500)),
+            Text("Tu rutina está vacía", style: TextStyle(color: Colors.grey.shade500)),
           ],
         ),
       );
@@ -274,10 +273,10 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      itemCount: _ingredients.length,
+      itemCount: _exercises.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final item = _ingredients[index];
+        final item = _exercises[index];
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -297,10 +296,10 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: Colors.green.shade50,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.emoji_food_beverage_rounded, color: Colors.orange.shade400, size: 20),
+                child: Icon(Icons.fitness_center_rounded, color: Colors.green.shade400, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -313,17 +312,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item['quantity'],
+                      item['duration'],
                       style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _macroBadge("P: ${item['p']}g", Colors.red.shade400),
-                        const SizedBox(width: 6),
-                        _macroBadge("C: ${item['c']}g", Colors.orange.shade400),
-                        const SizedBox(width: 6),
-                        _macroBadge("G: ${item['g']}g", Colors.blue.shade400),
+                        _macroBadge("MET: ${item['met']}", Colors.blue.shade400),
                       ],
                     ),
                   ],
@@ -333,14 +328,14 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    "${item['kcal']} kcal",
+                    "${item['kcal'].toStringAsFixed(1)} kcal",
                     style: TextStyle(fontWeight: FontWeight.w800, color: Colors.orange.shade700, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                   GestureDetector(
                     onTap: () {
                       setState(() {
-                        _ingredients.removeAt(index);
+                        _exercises.removeAt(index);
                       });
                     },
                     child: Container(
@@ -396,14 +391,14 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  "Total Acumulado",
+                  "Total Estimado",
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
                 ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      totalKcal.toStringAsFixed(0),
+                      totalKcal.toStringAsFixed(1),
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87),
                     ),
                     const Padding(
@@ -418,9 +413,8 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _totalMacroColumn("Proteínas", "${totalP.toStringAsFixed(1)}g", Colors.red.shade400),
-                _totalMacroColumn("Carbohidratos", "${totalC.toStringAsFixed(1)}g", Colors.orange.shade400),
-                _totalMacroColumn("Grasas", "${totalG.toStringAsFixed(1)}g", Colors.blue.shade400),
+                _totalMacroColumn("Ejercicios", "${_exercises.length}", Colors.purple.shade400),
+                _totalMacroColumn("Duración", "${totalMinutes.toStringAsFixed(0)} min", Colors.blue.shade400),
               ],
             ),
             const SizedBox(height: 20),
@@ -428,14 +422,15 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _exercises.isEmpty ? null : _saveRoutine,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: const Color(0xFF10B981),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
+                  disabledBackgroundColor: Colors.grey.shade300,
                 ),
                 child: const Text(
-                  "Guardar Registro",
+                  "Registrar Rutina",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
@@ -444,6 +439,43 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         ),
       ),
     );
+  }
+  
+  Future<void> _saveRoutine() async {
+    setState(() => _isLoading = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.token == null) return;
+      
+      final apiService = ApiService();
+      final result = await apiService.registrarRutinaManual(_exercises, auth.token!);
+      
+      if (result['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Rutina registrada con éxito'), backgroundColor: Colors.green),
+          );
+          setState(() {
+            _exercises.clear();
+          });
+          Navigator.pop(context);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['mensaje'] ?? 'Error al registrar')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Widget _totalMacroColumn(String label, String value, Color color) {

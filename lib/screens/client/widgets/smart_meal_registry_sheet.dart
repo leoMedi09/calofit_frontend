@@ -396,73 +396,84 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, -5))],
       ),
       child: SafeArea(
         top: false,
         child: Column(
           children: [
-            // Totales
-            if (_ingredients.isNotEmpty) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Total', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(totalKcal.toStringAsFixed(0),
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black87)),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 2, left: 3),
-                        child: Text('kcal', style: TextStyle(fontSize: 13, color: Colors.black45)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _macroCol('Prot', '${totalP.toStringAsFixed(1)}g', Colors.red.shade400),
-                  _macroCol('Carb', '${totalC.toStringAsFixed(1)}g', Colors.orange.shade400),
-                  _macroCol('Gras', '${totalG.toStringAsFixed(1)}g', Colors.blue.shade400),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-            // Botón confirmar
+            // ── Fila 1: Total Estimado + kcal (siempre visible) ───────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Total Estimado',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      totalKcal.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 3, left: 3),
+                      child: Text(' kcal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black45)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // ── Fila 2: Contador Alimentos + Macros (siempre visible) ─────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _counterCol('Alimentos', '${_ingredients.length}', Colors.orange.shade500),
+                _counterCol('Prot', '${totalP.toStringAsFixed(1)}g', Colors.red.shade400),
+                _counterCol('Carb', '${totalC.toStringAsFixed(1)}g', Colors.amber.shade600),
+                _counterCol('Gras', '${totalG.toStringAsFixed(1)}g', Colors.blue.shade400),
+              ],
+            ),
+            const SizedBox(height: 18),
+            // ── Botón guardar ─────────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 54,
               child: ElevatedButton(
-                onPressed: _ingredients.isEmpty ? null : _confirmar,
+                onPressed: _ingredients.isEmpty || _isLoading ? null : _confirmar,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   disabledBackgroundColor: Colors.grey.shade200,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isPreFilled ? Icons.check_circle_outline_rounded : Icons.save_outlined,
-                      color: _ingredients.isEmpty ? Colors.grey : Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _isPreFilled ? 'Confirmar Registro' : 'Guardar Registro',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: _ingredients.isEmpty ? Colors.grey : Colors.white,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _isPreFilled ? Icons.check_circle_outline_rounded : Icons.save_outlined,
+                            color: _ingredients.isEmpty ? Colors.grey.shade400 : Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isPreFilled ? 'Confirmar Registro' : 'Guardar Registro',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: _ingredients.isEmpty ? Colors.grey.shade400 : Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],
@@ -471,13 +482,21 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     );
   }
 
-  Widget _macroCol(String label, String value, Color color) {
+  /// Columna de contador — mismo estilo que Constructor de Rutinas
+  Widget _counterCol(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
+
 }

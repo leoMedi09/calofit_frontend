@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/client.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/balance_provider.dart';
 import '../../../services/api_service.dart';
 import 'chat_screen.dart';
 import 'mi_balance_screen.dart';
@@ -124,6 +125,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       authProvider.updateUserName(_firstNameController.text.trim());
+
+      // Refresh the daily plan so BalanceCard shows recalculated macros
+      if (mounted) {
+        await Provider.of<BalanceProvider>(context, listen: false)
+            .fetchFullBalance(authProvider.token!);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -34,14 +34,14 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   late TextEditingController _forInputController;
   late TextEditingController _weeklyNoteController;
   late TextEditingController _coachNotesController;
-  bool _isSavingCoachNote = false;
 
   List<String> _recommendedList = [];
   List<String> _forbiddenList = [];
   List<String> _medicalConditionsList = [];
   bool _isAILoading = false;
   bool _isValidated = false;
-  String _semanaStatus = 'falta_checkin';
+  String _planStatus = 'pendiente';
+  String? _planValidatedAt;
   bool _shouldRefreshList = false;
 
   @override
@@ -96,7 +96,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         _forbiddenList = List<String>.from(progressData['forbidden_foods'] ?? []);
         _medicalConditionsList = List<String>.from(progressData['medical_conditions'] ?? []);
         _isValidated = progressData['is_validated'] == true;
-        _semanaStatus = progressData['semana_status'] ?? 'falta_checkin';
+        _planStatus = progressData['semana_status'] ?? 'pendiente';
+        _planValidatedAt = progressData['plan_validated_at']?.toString();
       });
 
       try {
@@ -138,35 +139,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         );
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  Future<void> _saveCoachNote() async {
-    setState(() => _isSavingCoachNote = true);
-    try {
-      final token = Provider.of<AuthProvider>(context, listen: false).token!;
-      await _apiService.saveCoachNote(
-        widget.patientData['id'],
-        _coachNotesController.text.trim(),
-        token,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Nota guardada correctamente'),
-          backgroundColor: Color(0xFF1E88E5),
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error al guardar: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _isSavingCoachNote = false);
     }
   }
 
@@ -314,17 +286,44 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           onPressed: () => Navigator.pop(context, _shouldRefreshList),
         ),
         actions: [
-          if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH'))
-            IconButton(
-              icon: const Icon(Icons.save_rounded, color: Color(0xFF1E88E5)),
-              onPressed: _savePlan,
+          if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH')) ...[
+            Tooltip(
+              message: _planStatus == 'validado'
+                  ? 'Guarda cambios en kcal/macros y guía estratégica'
+                  : 'Guarda y valida el plan nutricional del paciente',
+              child: TextButton.icon(
+                onPressed: _savePlan,
+                icon: Icon(
+                  _planStatus == 'validado'
+                      ? Icons.save_outlined
+                      : Icons.check_circle_outline_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  _planStatus == 'validado' ? 'Guardar Plan' : 'Guardar y Validar',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: _planStatus == 'validado'
+                      ? const Color(0xFF1E88E5)
+                      : const Color(0xFF2E7D32),
+                ),
+              ),
             ),
-          if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH'))
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-              tooltip: 'Eliminar paciente',
-              onPressed: _deleteClient,
+            Tooltip(
+              message: 'Da de baja al paciente.\nElimina todos sus datos permanentemente.',
+              child: TextButton.icon(
+                onPressed: _deleteClient,
+                icon: const Icon(Icons.person_remove_outlined, size: 18),
+                label: const Text(
+                  'Dar de baja',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+              ),
             ),
+            const SizedBox(width: 4),
+          ],
         ],
       ),
       body: _isLoading 
@@ -344,6 +343,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
 
               // 🛡️ Guía Estratégica (Solo para Nutris/Admins)
               if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH')) ...[
+                _buildValidationCard(),
+                const SizedBox(height: 24),
                 _buildStrategicGuideSection(),
                 const SizedBox(height: 24),
                 _buildAIInsightsSection(),
@@ -363,6 +364,19 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
       ),
     );
+  }
+
+  static const _goalLabels = {
+    'perder peso':  'Perder peso (Agresivo)',
+    'perder_leve':  'Perder peso (Definición)',
+    'mantener peso':'Mantener peso',
+    'ganar_leve':   'Ganar masa (Limpio)',
+    'ganar masa':   'Ganar masa (Volumen)',
+  };
+
+  String _formatGoal(String? raw) {
+    final key = (raw ?? '').toLowerCase().trim();
+    return _goalLabels[key] ?? raw ?? 'Sin objetivo definido';
   }
 
   Widget _buildHeaderCard() {
@@ -403,7 +417,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF263238)),
                     ),
                     Text(
-                      widget.patientData['goal'] ?? 'Sin objetivo definido',
+                      _formatGoal(widget.patientData['goal']?.toString()),
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                   ],
@@ -706,20 +720,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               Expanded(child: _buildEditField('Grasas', _fatsController, null, 'g', isNumber: true, readOnly: isCoach)),
             ],
           ),
-          const SizedBox(height: 24),
-          Text(isCoach ? 'NOTAS DEL NUTRICIONISTA' : 'NOTAS CLÍNICAS', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.grey)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _obsController,
-            maxLines: 4,
-            readOnly: isCoach,
-            decoration: InputDecoration(
-              hintText: 'Añade observaciones sobre el paciente...',
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            ),
-          ),
         ],
       ),
     );
@@ -869,59 +869,25 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           TextField(
             controller: _coachNotesController,
             maxLines: 4,
+            readOnly: true,
             decoration: InputDecoration(
-              hintText:
-                  'Ej: "Hoy lo noté bajo de energía en pierna", "Revisar su ingesta pre-entreno"...',
+              hintText: 'El entrenador aún no ha registrado notas.',
               hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               filled: true,
-              fillColor: Colors.blue.shade50.withValues(alpha: 0.3),
+              fillColor: const Color(0xFFF1F5F9),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF1E88E5), width: 2)),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.info_outline, size: 14, color: Colors.blueGrey),
+              const Icon(Icons.lock_outline_rounded, size: 13, color: Colors.blueGrey),
               const SizedBox(width: 6),
-              const Expanded(
-                child: Text(
-                  'Visible solo para el staff del gimnasio.',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.blueGrey,
-                      fontStyle: FontStyle.italic),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                height: 36,
-                child: FilledButton.icon(
-                  onPressed: _isSavingCoachNote ? null : _saveCoachNote,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E88E5),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  icon: _isSavingCoachNote
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.save_rounded, size: 16),
-                  label: Text(
-                    _isSavingCoachNote ? 'Guardando...' : 'Guardar',
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
-                ),
+              const Text(
+                'Solo editable por el entrenador.',
+                style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic),
               ),
             ],
           ),
@@ -930,69 +896,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     );
   }
 
-  Future<void> _validarPlanSemanal() async {
-    final bool alreadyValidated = _semanaStatus == 'validado';
-    final bool needsCheckIn = _semanaStatus == 'falta_checkin';
-
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(alreadyValidated ? 'Actualizar Validación' : 'Confirmar Validación'),
-        content: Text(alreadyValidated 
-          ? '¿Deseas actualizar la validación del plan semanal de este paciente?'
-          : '¿Estás seguro de que deseas validar el plan nutricional semanal para este paciente?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        if (needsCheckIn && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Aviso: el check-in mensual está pendiente, pero la validación del plan sí se registrará.'),
-              backgroundColor: Colors.orange,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        await _apiService.validarPlanPaciente(widget.patientData['id'], authProvider.token!);
-        if (mounted) {
-          _shouldRefreshList = true;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(alreadyValidated ? 'Validación actualizada' : 'Plan semanal validado exitosamente'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          _loadData(); // Recargar estado
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
-  }
 
   Future<void> _askAICopilot() async {
     setState(() => _isAILoading = true);
@@ -1026,6 +929,74 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         );
       }
     }
+  }
+
+  Widget _buildValidationCard() {
+    final bool isValidado = _planStatus == 'validado';
+    String dateStr = '';
+    if (_planValidatedAt != null) {
+      try {
+        final dt = DateTime.parse(_planValidatedAt!);
+        dateStr = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      } catch (_) {}
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isValidado ? Colors.green.withOpacity(0.35) : Colors.orange.withOpacity(0.45),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isValidado ? Colors.green : Colors.orange).withOpacity(0.07),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (isValidado ? Colors.green : Colors.orange).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isValidado ? Icons.verified_rounded : Icons.pending_actions_rounded,
+              color: isValidado ? Colors.green.shade700 : Colors.orange.shade800,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isValidado ? 'Plan validado ✅' : 'Falta validar el plan',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: isValidado ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isValidado
+                    ? (dateStr.isNotEmpty ? 'Última validación: $dateStr' : 'Plan aprobado')
+                    : 'El plan nutricional aún no ha sido validado',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStrategicGuideSection() {
@@ -1064,81 +1035,11 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                       ),
                     ],
                   ),
-                  if (_semanaStatus == 'validado')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.green.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.verified, color: Colors.green, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'PLAN VALIDADO ✅',
-                            style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_semanaStatus == 'pendiente')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.pending_actions_rounded, color: Colors.orange, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'PENDIENTE VALIDAR',
-                            style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_semanaStatus == 'falta_checkin')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.timer_off_rounded, color: Colors.red, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'FALTA CHECK-IN',
-                            style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      _semanaStatus == 'validado' ? Icons.check_circle_rounded : Icons.fact_check_rounded,
-                      color: _semanaStatus == 'validado' ? Colors.green : Colors.orange,
-                      size: 28,
-                    ),
-                    tooltip: _semanaStatus == 'validado' ? 'Actualizar Validación' : 'Validar Plan Mensual',
-                    onPressed: _validarPlanSemanal,
-                  ),
-                  const SizedBox(width: 8),
                   _isAILoading 
                     ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
                     : GestureDetector(
@@ -1195,16 +1096,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
 
           const SizedBox(height: 16),
-          
-          _buildEditField(
-            'Mensaje / Meta Semanal para el Cliente', 
-            _weeklyNoteController, 
-            Icons.chat_bubble_outline_rounded, 
-            '', 
-            isNumber: false,
-            maxLines: 4,
-            hint: 'Ej: ¡Vamos con todo esta semana! Recuerda tomar mucha agua.'
-          ),
           
           const SizedBox(height: 24),
           _buildReadOnlyMedicalConditions(),

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import 'chat_screen.dart';
-import '../../../models/suggestion.dart';
 import '../../../providers/balance_provider.dart';
 import 'edit_profile_screen.dart';
 
@@ -48,7 +47,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         // Asegúrate que el controller no haga forward si el widget muere
         if (mounted) _animController.forward(from: 0);
       });
-      balance.fetchSuggestions(auth.token!);
+      balance.fetchFavoritos(auth.token!);
     }
   }
 
@@ -246,33 +245,30 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     return RefreshIndicator(
       onRefresh: _loadBalance,
       color: const Color(0xFF1E88E5),
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
+      child: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
           // ── PREMIUM HEADER ──
           SliverToBoxAdapter(
             child: _buildHeroHeader(consumidas, quemadas, objetivo, restantes),
           ),
-
           // ── MACRO PILLS ──
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: _buildMacroPills(proteinas, carbohidratos, grasas, metaP, metaC, metaG),
             ),
           ),
-
-          // ── TABS ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+        ],
+        body: Column(
+          children: [
+            // ── TABS (sticky) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
+                  border: Border.all(color: Colors.grey.shade100),
                 ),
                 child: TabBar(
                   controller: _tabController,
@@ -285,29 +281,27 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                   tabs: const [
                     Tab(text: 'Comidas'),
                     Tab(text: 'Ejercicios'),
-                    Tab(text: 'Recetario'),
+                    Tab(text: 'Favoritos'),
                   ],
                 ),
               ),
             ),
-          ),
-
-          // ── CONTENT ──
-          SliverFillRemaining(
-            hasScrollBody: true,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildAlimentosList(alimentos),
-                  _buildEjerciciosList(ejercicios),
-                  _buildRecetarioList(balance, auth),
-                ],
+            // ── CONTENT ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildAlimentosList(alimentos),
+                    _buildEjerciciosList(ejercicios),
+                    _buildFavoritosList(balance, auth),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -316,7 +310,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final progreso = objetivo > 0 ? (consumidas / objetivo).clamp(0.0, 1.5) : 0.0;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 34, 20, 16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -331,13 +325,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
             bottomLeft: Radius.circular(35),
             bottomRight: Radius.circular(35),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1565C0).withOpacity(0.4),
-              blurRadius: 30,
-              offset: const Offset(0, 15),
-            ),
-          ],
         ),
       child: SafeArea(
         bottom: false,
@@ -446,7 +433,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                               restantes.toStringAsFixed(0),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 32,
+                                fontSize: 26,
                                 fontWeight: FontWeight.w900,
                                 height: 1.1,
                                 letterSpacing: -1,
@@ -472,11 +459,11 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        height: 12,
+                        height: 8,
                         decoration: BoxDecoration(
                           boxShadow: [
                             BoxShadow(
@@ -500,7 +487,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               },
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
             // ── Stats row
             Row(
@@ -526,7 +513,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
         ),
         Text(
           label,
@@ -588,18 +575,11 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final double progress = meta > 0 ? (value / meta).clamp(0.0, 1.0) : 0.0;
     
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        border: Border.all(color: color.withOpacity(0.05), width: 1.5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withOpacity(0.12), width: 1),
       ),
       child: Column(
         children: [
@@ -609,13 +589,13 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 16),
+            child: Icon(icon, color: color, size: 14),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Text(
             '${value.toStringAsFixed(0)}g',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.w900,
               color: color,
               letterSpacing: -0.5,
@@ -630,14 +610,14 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               color: Colors.blueGrey.shade300,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor: color.withOpacity(0.1),
               valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 5,
+              minHeight: 3,
             ),
           ),
         ],
@@ -713,32 +693,87 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     );
   }
 
-  // ============ RECETARIO UI ============
+  // ============ FAVORITOS UI ============
 
-  Widget _buildRecetarioList(BalanceProvider provider, AuthProvider auth) {
+  Widget _buildFavoritosList(BalanceProvider balance, AuthProvider auth) {
     return Consumer<BalanceProvider>(
-      builder: (context, balanceProvider, _) {
-        if (balanceProvider.isSuggestionsLoading && balanceProvider.suggestions.isEmpty) {
+      builder: (context, provider, _) {
+        if (provider.isFavoritosLoading && provider.favoritos.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final suggestions = balanceProvider.suggestions;
+        final favs = provider.favoritos;
 
-        if (suggestions.isEmpty) {
+        if (favs.isEmpty) {
           return _buildEmptyTabState(
-            'Tu recetario está vacío.\nGuarda recetas o rutinas desde el chat con la IA.',
-            Icons.bookmark_border,
+            'Sin favoritos aún.\nToca la estrella en cualquier comida registrada para guardarla aquí.',
+            Icons.star_border_rounded,
           );
         }
 
         return RefreshIndicator(
-          onRefresh: () => balanceProvider.fetchSuggestions(auth.token!),
+          onRefresh: () => provider.fetchFavoritos(auth.token!),
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: suggestions.length,
+            padding: const EdgeInsets.only(top: 8),
+            itemCount: favs.length,
             itemBuilder: (context, index) {
-              final suggestion = suggestions[index];
-              return _buildSuggestionCard(suggestion, balanceProvider, auth);
+              final fav = favs[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.amber.shade200, width: 1),
+                  boxShadow: [
+                    BoxShadow(color: Colors.amber.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 3)),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46, height: 46,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [Colors.amber.shade300, Colors.amber.shade600]),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.star_rounded, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fav['nombre'] ?? '',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                _buildMiniChip(Icons.local_fire_department_rounded, '${fav['macros']?['calorias']?.toStringAsFixed(0) ?? 0}', Colors.orange),
+                                const SizedBox(width: 6),
+                                _buildMiniChip(null, 'P: ${fav['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFEF5350)),
+                                const SizedBox(width: 6),
+                                _buildMiniChip(null, 'C: ${fav['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFFFA726)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
+                        tooltip: 'Quitar de favoritos',
+                        onPressed: () async {
+                          await provider.toggleFavorito(fav['id'] as int, auth.token!);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
             },
           ),
         );
@@ -746,270 +781,11 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildSuggestionCard(Suggestion item, BalanceProvider provider, AuthProvider auth) {
-    final bool isComida = item.tipo == 'comida';
-    final color = isComida ? Colors.orange : Colors.blue;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(color: color.withOpacity(0.05), width: 1.5),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showSuggestionDetail(item),
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isComida 
-                        ? [Colors.orange.shade400, Colors.orange.shade700]
-                        : [Colors.blue.shade400, Colors.blue.shade700],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isComida ? Icons.restaurant_menu_rounded : Icons.fitness_center_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.nombre,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Color(0xFF1E293B),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.macros,
-                        style: TextStyle(
-                          color: Colors.blueGrey.shade400,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: InkWell(
-                    onTap: () => _confirmarEliminarSugerencia(item, provider, auth),
-                    child: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showSuggestionDetail(Suggestion item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.all(24),
-            children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.nombre,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E88E5)),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: item.tipo == 'comida' ? Colors.orange.shade50 : Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      item.tipo.toUpperCase(),
-                      style: TextStyle(
-                        color: item.tipo == 'comida' ? Colors.orange.shade800 : Colors.blue.shade800,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                item.macros,
-                style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const Divider(height: 40),
-              
-              if (item.ingredientes.isNotEmpty) ...[
-                const Text(
-                  'Ingredientes / Equipo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                ...item.ingredientes.map((ing) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.check_circle_outline, size: 20, color: Colors.green),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(ing, style: const TextStyle(fontSize: 16))),
-                    ],
-                  ),
-                )),
-                const SizedBox(height: 24),
-              ],
-              
-              if (item.preparacion.isNotEmpty) ...[
-                const Text(
-                  'Instrucciones / Pasos',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                ...item.preparacion.asMap().entries.map((entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: const Color(0xFF1E88E5),
-                        child: Text('${entry.key + 1}', style: const TextStyle(fontSize: 12, color: Colors.white)),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 16))),
-                    ],
-                  ),
-                )),
-              ],
-              
-              if (item.nota.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Nota IA:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                      const SizedBox(height: 4),
-                      Text(item.nota, style: const TextStyle(fontStyle: FontStyle.italic)),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _confirmarEliminarSugerencia(Suggestion item, BalanceProvider provider, AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¿Eliminar del recetario?'),
-        content: Text('¿Estás seguro de que quieres eliminar "${item.nombre}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await provider.deleteSuggestion(item.id, auth.token!);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Eliminado correctamente')),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Error al eliminar')),
-                );
-              }
-            },
-            child: const Text('ELIMINAR', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAlimentoCard(Map<String, dynamic> alimento, int index) {
     final nombre = alimento['nombre'] ?? '';
     final hora = alimento['hora_registro'] ?? '';
-    final freq = alimento['frecuencia_total'] ?? 1;
     final punt = (alimento['puntuacion'] ?? 0.0).toDouble();
+    final esFavorito = alimento['es_favorito'] == true;
     final horaCorta = hora.length >= 5 ? hora.substring(0, 5) : hora;
 
     return AnimatedBuilder(
@@ -1058,15 +834,14 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    Row(
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 5,
+                      runSpacing: 3,
                       children: [
-                        _buildMiniChip(Icons.local_fire_department_rounded, '${alimento['macros']?['calorias']?.toStringAsFixed(0) ?? 0}', Colors.orange),
-                        const SizedBox(width: 6),
+                        _buildMiniChip(Icons.local_fire_department_rounded, '${alimento['macros']?['calorias']?.toStringAsFixed(0) ?? 0} kcal', Colors.orange),
                         _buildMiniChip(null, 'P: ${alimento['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFEF5350)),
-                        const SizedBox(width: 6),
                         _buildMiniChip(null, 'C: ${alimento['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFFFA726)),
-                        const SizedBox(width: 6),
                         _buildMiniChip(null, 'G: ${alimento['macros']?['grasas']?.toStringAsFixed(1) ?? 0}g', const Color(0xFF42A5F5)),
                       ],
                     ),
@@ -1076,20 +851,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                         Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                        if (freq > 1) ...[
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'x$freq',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade700),
-                            ),
-                          ),
-                        ],
                         if (punt > 0) ...[
                           const SizedBox(width: 10),
                           Container(
@@ -1116,6 +877,33 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                   ],
                 ),
               ),
+              Consumer2<BalanceProvider, AuthProvider>(
+                builder: (context, balProv, authProv, _) => Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      await balProv.toggleFavorito(alimento['id'] as int, authProv.token!);
+                      if (context.mounted) {
+                        await balProv.fetchFullBalance(authProv.token!);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: esFavorito ? Colors.amber.shade50 : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        esFavorito ? Icons.star_rounded : Icons.star_border_rounded,
+                        color: esFavorito ? Colors.amber.shade600 : Colors.grey.shade400,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
               Material(
                 color: Colors.transparent,
                 child: InkWell(

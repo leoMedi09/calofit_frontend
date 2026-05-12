@@ -578,6 +578,24 @@ class ApiService {
     }
   }
 
+  // ============ FAVORITOS ============
+
+  Future<bool> toggleFavorito(int registroId, String token) async {
+    final response = await _dio.post(
+      '/balance/favorito/$registroId',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data['es_favorito'] as bool;
+  }
+
+  Future<List<dynamic>> listarFavoritos(String token) async {
+    final response = await _dio.get(
+      '/balance/favoritos',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data as List<dynamic>;
+  }
+
   // ============ DETALLE DE ALIMENTOS CON IA ============
 
   /// 🍎 Obtiene información nutricional completa de un alimento usando Groq IA

@@ -126,10 +126,12 @@ class _PatientListViewState extends State<PatientListView> {
 
     if (!context.mounted) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     final emailController = TextEditingController();
     final dniController = TextEditingController();
     bool isSubmitting = false;
     int? selectedCoachId;
+    String? errorMsg;
 
     showModalBottomSheet(
       context: context,
@@ -412,6 +414,28 @@ class _PatientListViewState extends State<PatientListView> {
                     ),
                   const SizedBox(height: 24),
 
+                  // Error inline
+                  if (errorMsg != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded,
+                              size: 16, color: Colors.orange),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMsg!,
+                              style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Botón crear
                   SizedBox(
                     width: double.infinity,
@@ -424,34 +448,22 @@ class _PatientListViewState extends State<PatientListView> {
                               final dni = dniController.text.trim();
 
                               if (email.isEmpty || dni.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Por favor llena DNI y Correo'),
-                                        backgroundColor: Colors.orange));
+                                setModalState(() => errorMsg = 'Por favor llena DNI y Correo');
                                 return;
                               }
                               final emailRegex =
                                   RegExp(r'^[^@]+@[^@]+\.[^@]+$');
                               if (!emailRegex.hasMatch(email)) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Ingresa un correo electrónico válido'),
-                                        backgroundColor: Colors.orange));
+                                setModalState(() => errorMsg = 'Ingresa un correo electrónico válido');
                                 return;
                               }
                               if (dni.length != 8 ||
                                   !RegExp(r'^\d{8}$').hasMatch(dni)) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'El DNI debe tener exactamente 8 dígitos'),
-                                        backgroundColor: Colors.orange));
+                                setModalState(() => errorMsg = 'El DNI debe tener exactamente 8 dígitos');
                                 return;
                               }
 
-                              setModalState(() => isSubmitting = true);
+                              setModalState(() { isSubmitting = true; errorMsg = null; });
                               try {
                                 await _apiService.createExpressClient(
                                   email,
@@ -459,27 +471,18 @@ class _PatientListViewState extends State<PatientListView> {
                                   authProvider.token!,
                                   assignedCoachId: selectedCoachId,
                                 );
-                                if (context.mounted) {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(const SnackBar(
-                                    content:
-                                        Text('¡Cliente registrado exitosamente!'),
-                                    backgroundColor: Color(0xFF2E7D32),
-                                    behavior: SnackBarBehavior.floating,
-                                  ));
-                                  _loadPatients();
-                                }
+                                if (context.mounted) Navigator.pop(context);
+                                messenger.showSnackBar(const SnackBar(
+                                  content: Text('¡Cliente registrado exitosamente!'),
+                                  backgroundColor: Color(0xFF2E7D32),
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                                _loadPatients();
                               } catch (e) {
-                                setModalState(() => isSubmitting = false);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(SnackBar(
-                                    content: Text(e.toString()),
-                                    backgroundColor: const Color(0xFFC62828),
-                                    behavior: SnackBarBehavior.floating,
-                                  ));
-                                }
+                                setModalState(() {
+                                  isSubmitting = false;
+                                  errorMsg = e.toString().replaceAll('Exception: ', '');
+                                });
                               }
                             },
                       style: ElevatedButton.styleFrom(

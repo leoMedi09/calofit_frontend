@@ -392,7 +392,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
     _chatSessionDirty = true;
 
-    // Limpiamos el panel de escritura si enviamos texto normal 
+    // Capture providers before any async gap.
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final balance = Provider.of<BalanceProvider>(context, listen: false);
+
+    // Limpiamos el panel de escritura si enviamos texto normal
     // o si el micrófono había rellenado este mismo texto en el panel.
     if (quickMessage == null || quickMessage == _inputController.text.trim()) {
       _inputController.clear();
@@ -401,13 +405,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     // ═══ CALOFIT_REGISTER: Registro consistente desde card ═══
     if (text.startsWith('CALOFIT_REGISTER:')) {
       final consultaId = text.replaceFirst('CALOFIT_REGISTER:', '');
-      setState(() => _isTyping = true);
-      _scrollToBottom();
-
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final balance = Provider.of<BalanceProvider>(context, listen: false);
       final token = auth.token;
       if (token == null) return;
+      setState(() => _isTyping = true);
+      _scrollToBottom();
 
       try {
         final result = await _apiService.confirmarRegistroConId(consultaId, token);
@@ -442,12 +443,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     // ═══ CALOFIT_WORKOUT: Flujo guiado (series/reps/peso) ═══
     if (text.startsWith('CALOFIT_WORKOUT:')) {
       final consultaId = text.replaceFirst('CALOFIT_WORKOUT:', '');
-      setState(() => _isTyping = true);
-      _scrollToBottom();
-
-      final auth = Provider.of<AuthProvider>(context, listen: false);
       final token = auth.token;
       if (token == null) return;
+      setState(() => _isTyping = true);
+      _scrollToBottom();
 
       try {
         final result = await _apiService.iniciarWorkoutConId(consultaId, token);
@@ -481,10 +480,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     });
     _scrollToBottom();
 
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final balance = Provider.of<BalanceProvider>(context, listen: false);
     final token = auth.token;
-
     if (token == null) return;
 
     // Detectar Intención Simple (Heurística del lado del cliente para rapidez)
@@ -1192,7 +1188,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: () => SmartMealRegistrySheet.show(context),
+            onTap: () => SmartMealRegistrySheet.show(
+              context,
+              onRegister: (msg) => _handleUnifiedSubmit(quickMessage: msg),
+            ),
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(

@@ -901,10 +901,10 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
     final carbohidratosMeta = plan?.carbohidratosObjetivoG.toInt() ?? 0;
     final grasasMeta = plan?.grasasObjetivoG.toInt() ?? 0;
     
-    // Valores consumidos
-    final proteinasConsumido = dailySummary.proteinas.toInt();
-    final carbosConsumido = dailySummary.carbohidratos.toInt();
-    final grasasConsumido = dailySummary.grasas.toInt();
+    // Valores consumidos — round() para consistencia con Mi Balance
+    final proteinasConsumido = dailySummary.proteinas.round();
+    final carbosConsumido = dailySummary.carbohidratos.round();
+    final grasasConsumido = dailySummary.grasas.round();
     
     return Column(
       children: [

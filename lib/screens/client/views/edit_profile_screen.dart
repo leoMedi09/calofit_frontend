@@ -28,18 +28,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = false;
   bool _isInitialized = false;
 
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNamePaternalController;
-  late TextEditingController _lastNameMaternalController;
   late TextEditingController _weightController;
   late TextEditingController _heightController;
 
   final List<String> _selectedConditions = [];
   String? _activityLevel;
   String? _goal;
-  String? _workoutType;     // 🆕 Para ML
-  double? _sessionDuration; // 🆕 Para ML
-  DateTime? _birthDate;
+  String? _workoutType;
+  double? _sessionDuration;
 
   // Grupos separados para mejor UX
   final List<String> _medicalOptions = [
@@ -58,11 +54,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _initControllers() {
-    _firstNameController = TextEditingController(text: widget.client.firstName);
-    _lastNamePaternalController = TextEditingController(text: widget.client.lastNamePaternal);
-    _lastNameMaternalController = TextEditingController(text: widget.client.lastNameMaternal);
-    _weightController = TextEditingController(text: widget.client.weight.toStringAsFixed(1));
-    _heightController = TextEditingController(text: widget.client.height.toStringAsFixed(0));
+    _weightController  = TextEditingController(text: widget.client.weight.toStringAsFixed(1));
+    _heightController  = TextEditingController(text: widget.client.height.toStringAsFixed(0));
 
     _selectedConditions.clear();
     _selectedConditions.addAll(widget.client.medicalConditions);
@@ -76,15 +69,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _goal = widget.client.goal;
     _workoutType = widget.client.workoutType;
     _sessionDuration = widget.client.sessionDuration;
-    _birthDate = widget.client.birthDate;
     _isInitialized = true;
   }
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNamePaternalController.dispose();
-    _lastNameMaternalController.dispose();
     _weightController.dispose();
     _heightController.dispose();
     super.dispose();
@@ -99,13 +88,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final current = widget.client;
       final updatedClient = Client(
         id: current.id,
-        firstName: _firstNameController.text.trim(),
-        lastNamePaternal: _lastNamePaternalController.text.trim(),
-        lastNameMaternal: _lastNameMaternalController.text.trim(),
+        firstName: current.firstName,
+        lastNamePaternal: current.lastNamePaternal,
+        lastNameMaternal: current.lastNameMaternal,
         email: current.email,
         flutterUid: current.flutterUid,
         gender: current.gender,
-        birthDate: _birthDate ?? current.birthDate,
+        birthDate: current.birthDate,
         weight: double.tryParse(_weightController.text) ?? current.weight,
         height: double.tryParse(_heightController.text) ?? current.height,
         activityLevel: _activityLevel ?? current.activityLevel,
@@ -115,7 +104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         medicalConditions: _selectedConditions.contains('Ninguna') ? [] : _selectedConditions,
         profilePictureUrl: current.profilePictureUrl,
         assignedNutriId: current.assignedNutriId,
-        isProfileComplete: current.isProfileComplete, // ✅ CRÍTICO: conservar el valor real
+        isProfileComplete: current.isProfileComplete,
       );
 
       await _apiService.updateClient(
@@ -123,8 +112,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         updatedClient,
         authProvider.token!,
       );
-
-      authProvider.updateUserName(_firstNameController.text.trim());
 
       // Refresh the daily plan so BalanceCard shows recalculated macros
       if (mounted) {
@@ -317,10 +304,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle('Datos Personales'),
-                    _buildTextField(_firstNameController, 'Nombre', Icons.person_outline),
-                    _buildTextField(_lastNamePaternalController, 'Apellido Paterno', Icons.person_outline),
-                    _buildTextField(_lastNameMaternalController, 'Apellido Materno', Icons.person_outline),
+                    _buildSectionTitle('Información Personal'),
+                    _buildReadOnlyField('Nombre', widget.client.firstName, Icons.person_outline),
+                    _buildReadOnlyField('Apellido Paterno', widget.client.lastNamePaternal, Icons.person_outline),
+                    _buildReadOnlyField('Apellido Materno', widget.client.lastNameMaternal, Icons.person_outline),
                     Row(
                       children: [
                         Expanded(child: _buildReadOnlyField('Género', widget.client.gender == 'M' ? 'Masculino' : 'Femenino', Icons.people_alt_outlined)),
@@ -632,117 +619,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildMedicalConditionsChips() {
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: [
-        ..._medicalConditionsOptions.map((condition) {
-          final isSelected = _selectedConditions.contains(condition);
-          return FilterChip(
-            label: Text(condition),
-            selected: isSelected,
-            onSelected: (selected) {
-              setState(() {
-                if (condition == 'Ninguna') {
-                  _selectedConditions.clear();
-                  if (selected) _selectedConditions.add('Ninguna');
-                } else {
-                  _selectedConditions.remove('Ninguna');
-                  selected ? _selectedConditions.add(condition) : _selectedConditions.remove(condition);
-                }
-              });
-            },
-            selectedColor: Colors.blue.shade100,
-            checkmarkColor: Colors.blue.shade700,
-            labelStyle: TextStyle(
-              color: isSelected ? Colors.blue.shade900 : Colors.grey.shade700,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-            backgroundColor: Colors.grey.shade100,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: isSelected ? Colors.blue.shade300 : Colors.grey.shade300,
-              ),
-            ),
-          );
-        }),
-        ActionChip(
-          label: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, size: 16, color: Colors.white),
-              SizedBox(width: 4),
-              Text('Otra', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          backgroundColor: const Color(0xFF1E88E5),
-          onPressed: _showAddConditionDialog,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: const BorderSide(color: Color(0xFF1565C0)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAddConditionDialog() {
-    final TextEditingController newConditionController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.medical_services_outlined, color: Color(0xFF1E88E5)),
-              SizedBox(width: 10),
-              Text('Nueva Condición', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: TextField(
-            controller: newConditionController,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              hintText: 'Ej. Hipotiroidismo',
-              filled: true,
-              fillColor: Colors.grey.shade50,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final condition = newConditionController.text.trim();
-                if (condition.isNotEmpty && !_medicalConditionsOptions.contains(condition)) {
-                  setState(() {
-                    _medicalConditionsOptions.insert(_medicalConditionsOptions.length - 1, condition); // Before 'Ninguna'
-                    _selectedConditions.remove('Ninguna');
-                    _selectedConditions.add(condition);
-                  });
-                }
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E88E5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Guardar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
     );
   }
 

@@ -1,18 +1,31 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
 class SmartMealRegistrySheet extends StatefulWidget {
-  const SmartMealRegistrySheet({Key? key}) : super(key: key);
+  final void Function(String mensaje)? onRegister;
+  final List<Map<String, dynamic>>? initialIngredients;
 
-  static void show(BuildContext context) {
+  const SmartMealRegistrySheet({
+    super.key,
+    this.onRegister,
+    this.initialIngredients,
+  });
+
+  static void show(
+    BuildContext context, {
+    void Function(String)? onRegister,
+    List<Map<String, dynamic>>? initialIngredients,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const SmartMealRegistrySheet(),
+      builder: (context) => SmartMealRegistrySheet(
+        onRegister: onRegister,
+        initialIngredients: initialIngredients,
+      ),
     );
   }
 
@@ -26,44 +39,59 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
   bool _isLoading = false;
   String? _errorMessage;
-  static final List<Map<String, dynamic>> _ingredients = [];
+  late final List<Map<String, dynamic>> _ingredients;
+  late final bool _isPreFilled;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPreFilled = widget.initialIngredients != null && widget.initialIngredients!.isNotEmpty;
+    _ingredients = _isPreFilled
+        ? List<Map<String, dynamic>>.from(widget.initialIngredients!)
+        : [];
+  }
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  double get totalKcal => _ingredients.fold(0.0, (s, i) => s + (i['kcal'] as num).toDouble());
+  double get totalP    => _ingredients.fold(0.0, (s, i) => s + (i['p']   as num).toDouble());
+  double get totalC    => _ingredients.fold(0.0, (s, i) => s + (i['c']   as num).toDouble());
+  double get totalG    => _ingredients.fold(0.0, (s, i) => s + (i['g']   as num).toDouble());
 
   Future<void> _addIngredient() async {
     final qtyStrRaw = _qtyController.text.trim();
     final name = _nameController.text.trim();
-    
     setState(() => _errorMessage = null);
 
     if (qtyStrRaw.isEmpty || name.isEmpty) {
       setState(() => _errorMessage = 'Ingresa cantidad y alimento');
       return;
     }
-    
-    // Limpiar caracteres no numéricos por si acaso (ej. si ponen "200g" en vez de "200")
+
     final cleanQtyStr = qtyStrRaw.replaceAll(RegExp(r'[^0-9.]'), '');
     final qty = double.tryParse(cleanQtyStr);
-    
     if (qty == null || qty <= 0) {
       setState(() => _errorMessage = 'La cantidad no es válida');
       return;
     }
 
-    final text = '${cleanQtyStr}g de $name';
-
     setState(() => _isLoading = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.token == null) return;
-      
-      final apiService = ApiService();
-      final result = await apiService.parseIngredients(text, auth.token!);
-      
+      final result = await ApiService().parseIngredients('${cleanQtyStr}g de $name', auth.token!);
       if (result['ingredientes'] != null) {
         setState(() {
           for (var item in result['ingredientes']) {
             _ingredients.add({
               'name': item['nombre'],
-              'quantity': '${item['gramos_totales']}g (${item['cantidad']} ${item['unidad']})',
+              'gramos': item['gramos_totales'],
+              'quantity': '${item['gramos_totales']}g',
               'kcal': item['calorias'],
               'p': item['proteinas_g'],
               'c': item['carbohidratos_g'],
@@ -77,25 +105,21 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         setState(() => _errorMessage = 'No se encontró información.');
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
-      }
+      if (mounted) setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  @override
-  void dispose() {
-    _qtyController.dispose();
-    _nameController.dispose();
-    super.dispose();
+  void _confirmar() {
+    if (_ingredients.isEmpty) return;
+    final partes = _ingredients
+        .map((item) => '${item['gramos']}g de ${item['name']}')
+        .join(', ');
+    final mensaje = 'Comí: $partes';
+    Navigator.pop(context);
+    widget.onRegister?.call(mensaje);
   }
-
-  double get totalKcal => _ingredients.fold(0.0, (sum, item) => sum + (item['kcal'] as num).toDouble());
-  double get totalP => _ingredients.fold(0.0, (sum, item) => sum + (item['p'] as num).toDouble());
-  double get totalC => _ingredients.fold(0.0, (sum, item) => sum + (item['c'] as num).toDouble());
-  double get totalG => _ingredients.fold(0.0, (sum, item) => sum + (item['g'] as num).toDouble());
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +130,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           )
@@ -116,16 +140,19 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
-          child: _KeyboardPadding(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  _buildHandle(),
+                  if (_isPreFilled) _buildPreFillBanner(),
                   _buildHeader(),
                   _buildInputSection(),
                   const Divider(height: 1, color: Color(0xFFF0F2F5)),
                   _buildIngredientList(),
-                  _buildStickyFooter(),
+                  _buildFooter(),
                 ],
               ),
             ),
@@ -135,35 +162,59 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHandle() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14, bottom: 4),
+      child: Container(
+        width: 40, height: 4,
+        decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+      ),
+    );
+  }
+
+  Widget _buildPreFillBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
+          Icon(Icons.info_outline_rounded, color: Colors.orange.shade700, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Encontramos un plato en nuestro recetario. Quita los ingredientes que no comiste antes de confirmar.',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade800, height: 1.4),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            "Registro Inteligente",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "Añade alimentos o recetas en lenguaje natural",
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade600,
-            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+      child: Row(
+        children: [
+          const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF2563EB), size: 22),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Registro Inteligente',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text(
+                _isPreFilled
+                    ? 'Revisa y elimina lo que no comiste'
+                    : 'Añade alimentos con gramos exactos',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              ),
+            ],
           ),
         ],
       ),
@@ -172,73 +223,72 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
   Widget _buildInputSection() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 90,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4F6F8),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: TextField(
-                  controller: _qtyController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    hintText: '200',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                    border: InputBorder.none,
-                    suffixText: 'g',
-                    suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
+              // Campo gramos
+              SizedBox(
+                width: 88,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF4F6F8),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: TextField(
-                    controller: _nameController,
+                    controller: _qtyController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
-                      hintText: 'arroz...',
+                      hintText: '200',
                       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.restaurant_menu_rounded, color: Colors.grey.shade400, size: 20),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      suffixText: 'g',
+                      suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
+              // Campo nombre
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F6F8),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: TextField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.sentences,
+                    onSubmitted: (_) => _isLoading ? null : _addIngredient(),
+                    decoration: InputDecoration(
+                      hintText: 'arroz, pollo...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                      border: InputBorder.none,
+                      prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 18),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 28),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Botón +
               GestureDetector(
                 onTap: _isLoading ? null : _addIngredient,
                 child: Container(
-                  height: 50,
-                  width: 50,
+                  height: 48, width: 48,
                   decoration: BoxDecoration(
-                    color: _isLoading ? Colors.grey : const Color(0xFF2563EB),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: _isLoading ? [] : [
-                      BoxShadow(
-                        color: const Color(0xFF2563EB).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
+                    color: _isLoading ? Colors.grey.shade300 : const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: _isLoading 
-                    ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+                  child: _isLoading
+                      ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                 ),
               ),
             ],
@@ -246,10 +296,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(top: 8, left: 4),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
+              child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
             ),
         ],
       ),
@@ -259,12 +306,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
   Widget _buildIngredientList() {
     if (_ingredients.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(40.0),
+        padding: const EdgeInsets.symmetric(vertical: 32),
         child: Column(
           children: [
-            Icon(Icons.shopping_basket_outlined, size: 60, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text("Tu plato está vacío", style: TextStyle(color: Colors.grey.shade500)),
+            Icon(Icons.shopping_basket_outlined, size: 52, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text('Tu lista está vacía', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+            Text('Agrega alimentos arriba', style: TextStyle(color: Colors.grey.shade300, fontSize: 12)),
           ],
         ),
       );
@@ -273,87 +321,61 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: _ingredients.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final item = _ingredients[index];
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Colors.grey.shade100),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.emoji_food_beverage_rounded, color: Colors.orange.shade400, size: 20),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.orange.shade50, shape: BoxShape.circle),
+                child: Icon(Icons.emoji_food_beverage_rounded, color: Colors.orange.shade400, size: 18),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item['name'],
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item['quantity'],
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _macroBadge("P: ${item['p']}g", Colors.red.shade400),
-                        const SizedBox(width: 6),
-                        _macroBadge("C: ${item['c']}g", Colors.orange.shade400),
-                        const SizedBox(width: 6),
-                        _macroBadge("G: ${item['g']}g", Colors.blue.shade400),
-                      ],
-                    ),
+                    Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                    const SizedBox(height: 3),
+                    Text(item['quantity'], style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      _badge('P ${item['p']}g', Colors.red.shade400),
+                      const SizedBox(width: 5),
+                      _badge('C ${item['c']}g', Colors.orange.shade400),
+                      const SizedBox(width: 5),
+                      _badge('G ${item['g']}g', Colors.blue.shade400),
+                    ]),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    "${item['kcal']} kcal",
-                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.orange.shade700, fontSize: 14),
-                  ),
-                  const SizedBox(height: 12),
+                  Text('${item['kcal']} kcal',
+                      style: TextStyle(fontWeight: FontWeight.w800, color: Colors.orange.shade700, fontSize: 13)),
+                  const SizedBox(height: 8),
                   GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _ingredients.removeAt(index);
-                      });
-                    },
+                    onTap: () => setState(() => _ingredients.removeAt(index)),
                     child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.close_rounded, size: 16, color: Colors.red.shade300),
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                      child: Icon(Icons.close_rounded, size: 15, color: Colors.red.shade300),
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         );
@@ -361,82 +383,85 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     );
   }
 
-  Widget _macroBadge(String text, Color color) {
+  Widget _badge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 
-  Widget _buildStickyFooter() {
+  Widget _buildFooter() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         top: false,
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Total Acumulado",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      totalKcal.toStringAsFixed(0),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 3, left: 2),
-                      child: Text(" kcal", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _totalMacroColumn("Proteínas", "${totalP.toStringAsFixed(1)}g", Colors.red.shade400),
-                _totalMacroColumn("Carbohidratos", "${totalC.toStringAsFixed(1)}g", Colors.orange.shade400),
-                _totalMacroColumn("Grasas", "${totalG.toStringAsFixed(1)}g", Colors.blue.shade400),
-              ],
-            ),
-            const SizedBox(height: 20),
+            // Totales
+            if (_ingredients.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Total', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(totalKcal.toStringAsFixed(0),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black87)),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 2, left: 3),
+                        child: Text('kcal', style: TextStyle(fontSize: 13, color: Colors.black45)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _macroCol('Prot', '${totalP.toStringAsFixed(1)}g', Colors.red.shade400),
+                  _macroCol('Carb', '${totalC.toStringAsFixed(1)}g', Colors.orange.shade400),
+                  _macroCol('Gras', '${totalG.toStringAsFixed(1)}g', Colors.blue.shade400),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+            // Botón confirmar
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 52,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _ingredients.isEmpty ? null : _confirmar,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
+                  disabledBackgroundColor: Colors.grey.shade200,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text(
-                  "Guardar Registro",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isPreFilled ? Icons.check_circle_outline_rounded : Icons.save_outlined,
+                      color: _ingredients.isEmpty ? Colors.grey : Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _isPreFilled ? 'Confirmar Registro' : 'Guardar Registro',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: _ingredients.isEmpty ? Colors.grey : Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -446,27 +471,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     );
   }
 
-  Widget _totalMacroColumn(String label, String value, Color color) {
+  Widget _macroCol(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w600)),
       ],
-    );
-  }
-}
-
-class _KeyboardPadding extends StatelessWidget {
-  final Widget child;
-  
-  const _KeyboardPadding({Key? key, required this.child}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: child,
     );
   }
 }

@@ -145,7 +145,10 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
                     const SizedBox(height: 12),
                     _buildTextField(_confirmPasswordController,
                         'Confirmar Contraseña', Icons.lock_reset_rounded,
-                        isPassword: true),
+                        isPassword: true,
+                        extraValidator: (v) => v != _passwordController.text
+                            ? 'Las contraseñas no coinciden'
+                            : null),
                     const SizedBox(height: 20),
 
                     const Text('Rol del Sistema',
@@ -194,7 +197,8 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
   Widget _buildTextField(
       TextEditingController controller, String label, IconData icon,
       {bool isPassword = false,
-      TextInputType keyboardType = TextInputType.text}) {
+      TextInputType keyboardType = TextInputType.text,
+      String? Function(String?)? extraValidator}) {
     final bool isMainPassword = label == 'Contraseña Inicial';
     final bool isConfirmPassword = label == 'Confirmar Contraseña';
     final bool isEmail = label == 'Correo Electrónico';
@@ -237,8 +241,10 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFF1A237E), width: 1)),
       ),
-      validator: (value) =>
-          (value == null || value.isEmpty) ? 'Campo requerido' : null,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Campo requerido';
+        return extraValidator?.call(value);
+      },
     );
   }
 
@@ -273,11 +279,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
 
   Future<void> _registerStaff() async {
     if (!_formKey.currentState!.validate()) return;
-
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackbar('Las contraseñas no coinciden', isError: true);
-      return;
-    }
 
     setState(() => _isLoading = true);
 

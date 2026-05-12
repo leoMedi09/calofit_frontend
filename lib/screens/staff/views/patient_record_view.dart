@@ -43,6 +43,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   String _planStatus = 'pendiente';
   String? _planValidatedAt;
   bool _shouldRefreshList = false;
+  bool _isDirty = false;
 
   @override
   void initState() {
@@ -58,7 +59,17 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     _forInputController = TextEditingController();
     _weeklyNoteController = TextEditingController();
     _coachNotesController = TextEditingController();
+    for (final ctrl in [
+      _caloriesController, _proteinController, _carbsController, _fatsController,
+      _obsController, _strategicFocusController, _weeklyNoteController, _coachNotesController,
+    ]) {
+      ctrl.addListener(_markDirty);
+    }
     _loadData();
+  }
+
+  void _markDirty() {
+    if (!_isDirty && mounted) setState(() => _isDirty = true);
   }
 
   @override
@@ -131,7 +142,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         }
       }
 
-      setState(() => _isLoading = false);
+      setState(() { _isLoading = false; _isDirty = false; });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +151,47 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<bool> _confirmarSalida() async {
+    if (!_isDirty) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('¿Salir sin guardar?',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF263238))),
+          ],
+        ),
+        content: const Text(
+          'Los cambios que no hayas guardado se perderán.',
+          style: TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF263238),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Salir', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _savePlan() async {
@@ -184,10 +236,11 @@ class _PatientRecordViewState extends State<PatientRecordView> {
 
       if (mounted) {
         _shouldRefreshList = true;
+        setState(() => _isDirty = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Expediente y Guía IA actualizados'), backgroundColor: Colors.green),
         );
-        _loadData(); // Recargar para ver cambios
+        _loadData();
       }
     } catch (e) {
       if (mounted) {
@@ -268,22 +321,22 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context, _shouldRefreshList);
+        final nav = Navigator.of(context);
+        final salir = await _confirmarSalida();
+        if (salir) nav.pop(_shouldRefreshList);
         return false;
       },
       child: Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(
-          widget.patientData['full_name'] ?? 'Expediente',
-          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF263238), fontSize: 18),
-        ),
-        centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF263238)),
-          onPressed: () => Navigator.pop(context, _shouldRefreshList),
+          onPressed: () async {
+            final salir = await _confirmarSalida();
+            if (salir && context.mounted) Navigator.pop(context, _shouldRefreshList);
+          },
         ),
         actions: [
           if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH')) ...[
@@ -911,6 +964,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         _recommendedList = List<String>.from(suggestion['recommended_foods'] ?? []);
         _forbiddenList = List<String>.from(suggestion['forbidden_foods'] ?? []);
         _isAILoading = false;
+        _isDirty = true;
       });
 
       if (mounted) {
@@ -1013,74 +1067,68 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.auto_awesome_rounded, color: Color(0xFF1E88E5), size: 18),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'GUÍA ESTRATÉGICA MENSUAL (IA)', 
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
-                      ),
-                    ],
-                  ),
-                ],
+              // Título e instrucción
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.auto_awesome_rounded, color: Color(0xFF1E88E5), size: 18),
+                        SizedBox(width: 6),
+                        Text(
+                          'GUÍA ESTRATÉGICA MENSUAL (IA)',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Genera automáticamente la misión, alimentos recomendados y restricciones según el perfil del paciente.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500, height: 1.4),
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _isAILoading 
-                    ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
-                    : GestureDetector(
-                        onTap: _askAICopilot,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+              const SizedBox(width: 12),
+              // Botón a la derecha
+              _isAILoading
+                  ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
+                  : GestureDetector(
+                      onTap: _askAICopilot,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1E88E5).withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF1E88E5).withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.psychology_alt_rounded, size: 20, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'IA Sugerir', 
-                                style: TextStyle(
-                                  color: Colors.white, 
-                                  fontWeight: FontWeight.w800, 
-                                  fontSize: 13,
-                                  letterSpacing: 0.3
-                                )
-                              ),
-                            ],
-                          ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.psychology_alt_rounded, size: 18, color: Colors.white),
+                            SizedBox(width: 6),
+                            Text(
+                              'IA Sugerir',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                            ),
+                          ],
                         ),
                       ),
-                ],
-              ),
+                    ),
             ],
           ),
           const SizedBox(height: 24),
@@ -1108,8 +1156,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             controller: _recInputController,
             icon: Icons.check_circle_outline_rounded,
             color: Colors.green,
-            onAdd: (val) => setState(() => _recommendedList.add(val)),
-            onRemove: (idx) => setState(() => _recommendedList.removeAt(idx)),
+            onAdd: (val) => setState(() { _recommendedList.add(val); _isDirty = true; }),
+            onRemove: (idx) => setState(() { _recommendedList.removeAt(idx); _isDirty = true; }),
           ),
           
           const SizedBox(height: 24),
@@ -1119,8 +1167,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             controller: _forInputController,
             icon: Icons.block_flipped,
             color: Colors.red,
-            onAdd: (val) => setState(() => _forbiddenList.add(val)),
-            onRemove: (idx) => setState(() => _forbiddenList.removeAt(idx)),
+            onAdd: (val) => setState(() { _forbiddenList.add(val); _isDirty = true; }),
+            onRemove: (idx) => setState(() { _forbiddenList.removeAt(idx); _isDirty = true; }),
           ),
           
           const SizedBox(height: 16),

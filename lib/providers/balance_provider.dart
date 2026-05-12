@@ -19,6 +19,11 @@ class BalanceProvider with ChangeNotifier {
   bool _isSuggestionsLoading = false;
   bool get isSuggestionsLoading => _isSuggestionsLoading;
 
+  List<Map<String, dynamic>> _favoritos = [];
+  List<Map<String, dynamic>> get favoritos => _favoritos;
+  bool _isFavoritosLoading = false;
+  bool get isFavoritosLoading => _isFavoritosLoading;
+
   // Helper interno de casteo seguro
   double _toDouble(dynamic val) {
     if (val == null) return 0.0;
@@ -126,5 +131,27 @@ class BalanceProvider with ChangeNotifier {
       print('Error deleting suggestion: $e');
       rethrow;
     }
+  }
+
+  // ============ FAVORITOS ============
+
+  Future<void> fetchFavoritos(String token) async {
+    _isFavoritosLoading = true;
+    notifyListeners();
+    try {
+      final data = await _apiService.listarFavoritos(token);
+      _favoritos = data.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Error loading favoritos: $e');
+    } finally {
+      _isFavoritosLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> toggleFavorito(int registroId, String token) async {
+    final esFav = await _apiService.toggleFavorito(registroId, token);
+    await fetchFavoritos(token);
+    return esFav;
   }
 }

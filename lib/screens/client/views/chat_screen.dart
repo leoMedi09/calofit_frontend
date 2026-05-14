@@ -175,7 +175,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             return;
           }
           setState(() => _messages = loaded);
-          _scrollToBottom();
+          _jumpToBottom();
         }
       }
     } catch (e) {
@@ -290,6 +290,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _saveChatHistory(); // guarda estado actual antes de cerrar la pantalla
     _inputController.dispose();
     _focusNode.dispose();
     _flutterTts.stop();
@@ -586,8 +587,18 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      if (mounted && _scrollController.hasClients) {
+        // reverse:true → posición 0 es el fondo (mensaje más reciente)
+        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+    });
+  }
+
+  /// Scroll instantáneo al fondo para restaurar historial (reverse:true → posición 0).
+  void _jumpToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.jumpTo(0);
       }
     });
   }
@@ -744,10 +755,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Widget _buildMessageList() {
     return ListView.builder(
       controller: _scrollController,
+      reverse: true,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
-        final msg = _messages[index];
+        // reverse:true → el índice 0 es el mensaje más reciente (aparece abajo)
+        final msg = _messages[_messages.length - 1 - index];
         
         if (msg['type'] == 'registro_exitoso') {
           return _buildRichLogCard(msg);

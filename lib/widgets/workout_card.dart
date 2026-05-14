@@ -85,48 +85,25 @@ class WorkoutCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (onAdd != null || onSave != null) ...[
+              if (onSave != null) ...[
                 const SizedBox(height: 8),
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    if (onAdd != null)
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: const Icon(Icons.bolt,
-                            size: 18, color: Colors.teal),
-                        label: Text('Registrar',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.teal.shade800)),
-                        onPressed: onAdd,
-                      ),
-                    if (onSave != null)
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: const Icon(Icons.bookmark_add,
-                            size: 18, color: Colors.blue),
-                        label: const Text('Guardar',
-                            style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600)),
-                        onPressed: onSave,
-                      ),
-                  ],
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.bookmark_add,
+                        size: 18, color: Colors.blue),
+                    label: const Text('Guardar',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600)),
+                    onPressed: onSave,
+                  ),
                 ),
               ],
             ],

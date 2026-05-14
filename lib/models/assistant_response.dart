@@ -221,17 +221,24 @@ class Section {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final base = <String, dynamic>{
       'tipo': tipo,
       'nombre': nombre,
       'macros': macros,
-      'ingredientes': ingredientes,
-      'preparacion': preparacion,
       'nota': nota,
       'consulta_id': consultaId,
       if (imagenReferencia != null) 'imagen_referencia': imagenReferencia,
       if (macrosNormalizados != null)
         'macros_normalizados': macrosNormalizados!.toMap(),
     };
+    // Guardar con las claves que fromJson() espera según el tipo
+    if (tipo == 'ejercicio') {
+      base['ejercicios'] = ingredientes;
+      base['tecnica'] = preparacion;
+    } else {
+      base['ingredientes'] = ingredientes;
+      base['preparacion'] = preparacion;
+    }
+    return base;
   }
 }

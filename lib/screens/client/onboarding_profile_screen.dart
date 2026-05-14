@@ -76,6 +76,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     if (widget.client.height > 0) _heightCtrl.text = widget.client.height.toStringAsFixed(0);
     _activityLevel = widget.client.activityLevel;
     _goal = widget.client.goal;
+    _workoutType = widget.client.workoutType;
+    _sessionDuration = widget.client.sessionDuration;
     _selectedConditions.addAll(widget.client.medicalConditions);
   }
 

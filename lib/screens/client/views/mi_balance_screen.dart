@@ -930,8 +930,11 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   Widget _buildEjercicioCard(Map<String, dynamic> ejercicio, int index) {
     final nombre = ejercicio['nombre'] ?? '';
     final hora = ejercicio['hora_registro'] ?? '';
-    final freq = ejercicio['frecuencia_total'] ?? 1;
+    final series = ejercicio['series'] ?? 0;
+    final reps = ejercicio['reps'] ?? 0;
+    final intensidad = ejercicio['intensidad'] ?? '';
     final horaCorta = hora.length >= 5 ? hora.substring(0, 5) : hora;
+    final volumenLabel = (series > 0 && reps > 0) ? '${series}×${reps}' : null;
 
     return AnimatedBuilder(
       animation: _animController,
@@ -982,12 +985,12 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        _buildMiniChip(Icons.local_fire_department_rounded, '${ejercicio['calorias_quemadas']?.toStringAsFixed(0) ?? 0} kcal', Colors.orange),
+                        _buildMiniChip(Icons.local_fire_department_rounded, '${(ejercicio['calorias_quemadas'] as num?)?.toStringAsFixed(0) ?? '0'} kcal', Colors.orange),
                         const SizedBox(width: 8),
                         Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                        if (freq > 1) ...[
+                        if (volumenLabel != null) ...[
                           const SizedBox(width: 10),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -996,10 +999,14 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'x$freq',
+                              volumenLabel,
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade700),
                             ),
                           ),
+                        ],
+                        if (intensidad.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          _buildMiniChip(Icons.speed_rounded, intensidad, Colors.deepPurple),
                         ],
                       ],
                     ),

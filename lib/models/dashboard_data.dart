@@ -20,6 +20,7 @@ class DailySummary {
   final String aiInsight;
   final PlanNutricional? planObjetivo;
   final String? aiStrategicFocus;
+  final String? nutriWeeklyNote;
   final bool isStrategyValidated;
 
   DailySummary({
@@ -39,6 +40,7 @@ class DailySummary {
     required this.aiInsight,
     this.planObjetivo,
     this.aiStrategicFocus,
+    this.nutriWeeklyNote,
     this.isStrategyValidated = false,
   });
 
@@ -87,6 +89,7 @@ class DailySummary {
       aiInsight: (json['ai_insight'] ?? dieta['notes'] ?? dieta['ai_insight'] ?? "").toString(),
       planObjetivo: plan != null ? PlanNutricional.fromJson(plan) : null,
       aiStrategicFocus: json['ai_strategic_focus'] as String?,
+      nutriWeeklyNote: json['nutri_weekly_note'] as String?,
       isStrategyValidated: json['is_strategy_validated'] as bool? ?? false,
     );
   }

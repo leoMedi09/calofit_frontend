@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/assistant_response.dart';
 import 'assistant_text_helpers.dart';
 
-class RecipeCard extends StatelessWidget {
+class RecipeCard extends StatefulWidget {
   final Section section;
   final VoidCallback? onAdd;
   final VoidCallback? onSave;
@@ -10,13 +10,39 @@ class RecipeCard extends StatelessWidget {
   const RecipeCard({Key? key, required this.section, this.onAdd, this.onSave})
       : super(key: key);
 
+  @override
+  State<RecipeCard> createState() => _RecipeCardState();
+}
+
+class _RecipeCardState extends State<RecipeCard> {
+  bool _expanded = false;
+  final GlobalKey _contentKey = GlobalKey();
+
+  String get _nombreLimpio =>
+      widget.section.nombre.replaceAll('**', '').trim();
+
+  void _toggleExpand() {
+    setState(() => _expanded = !_expanded);
+    if (!_expanded) return;
+    Future.delayed(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      final ctx = _contentKey.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx, // ignore: use_build_context_synchronously
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+        alignment: 0.3,
+      );
+    });
+  }
+
   static String _fmtMacroGrams(double v) {
     if (v.isNaN || v.isInfinite) return '0';
     if (v == v.roundToDouble()) return v.round().toString();
     return v.toStringAsFixed(1);
   }
 
-  /// Si el backend envía [MacrosNormalizados] con algún valor > 0, chips/panel desde números (más estable que parsear el string).
   Map<String, String> _macrosMapForSection(Section section) {
     final n = section.macrosNormalizados;
     if (n != null && n.hasUsableMacros) {
@@ -30,51 +56,31 @@ class RecipeCard extends StatelessWidget {
     return _parseMacros(section.macros);
   }
 
-  /// Quita emojis/símbolos del rótulo antes de mapear (el LLM a veces envía `🥚 P: 21g` y `lk.startsWith('p')` fallaba).
   static String _macroKeyLettersOnly(String raw) {
     return raw
-        .replaceAll(
-          RegExp(r'[^a-zA-ZñÑáéíóúüÁÉÍÓÚÜ0-9\s\-\.]'),
-          ' ',
-        )
+        .replaceAll(RegExp(r'[^a-zA-ZñÑáéíóúüÁÉÍÓÚÜ0-9\s\-\.]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
 
-  /// Parsea "P: 9.4g | C: 18.4g | G: 15.2g | Cal: 350kcal" → Map
   Map<String, String> _parseMacros(String macros) {
     final result = <String, String>{};
     if (macros.isEmpty) return result;
-    
-    // v66: Estrategia de Split Ultra-Robusta
-    // 1. Normalizar separadores: Reemplazar '|' y ';' por comas
     String text = macros.replaceAll('|', ',').replaceAll(';', ',');
-    
-    // 2. Proteger decimales (ej: 30,5 -> 30.5) temporalmente para no partir por la coma
-    // Buscamos coma entre dos números
     text = text.replaceAllMapped(RegExp(r'(\d),(\d)'), (m) => '${m[1]}.${m[2]}');
-    
-    // 3. Ahora sí, partir por comas con confianza
     for (final pair in text.split(',')) {
       final parts = pair.trim().split(':');
       if (parts.length >= 2) {
         String key = parts[0].trim();
         final lk = _macroKeyLettersOnly(key).toLowerCase();
-        // Mapeo flexible: abreviaturas y palabras completas (español). "Cal" antes que "C" suelto.
-        if (lk.contains('kcal') ||
-            lk.contains('calor') ||
-            lk.contains('energ') ||
-            lk == 'cal' ||
-            lk.startsWith('cal ')) {
+        if (lk.contains('kcal') || lk.contains('calor') || lk.contains('energ') ||
+            lk == 'cal' || lk.startsWith('cal ')) {
           key = 'Cal';
         } else if (lk.contains('prote')) {
           key = 'P';
         } else if (lk.contains('carb') || lk == 'carbos') {
           key = 'C';
-        } else if (lk.contains('grasa') ||
-            lk == 'lipidos' ||
-            lk == 'lípidos' ||
-            lk == 'grasas') {
+        } else if (lk.contains('grasa') || lk == 'lipidos' || lk == 'lípidos' || lk == 'grasas') {
           key = 'G';
         } else if (lk.startsWith('p') && lk.length <= 2) {
           key = 'P';
@@ -85,10 +91,7 @@ class RecipeCard extends StatelessWidget {
         } else {
           continue;
         }
-        
-        // El valor es el resto, volviendo a poner la coma si se prefiere (o dejar el punto)
         String val = parts.sublist(1).join(':').trim();
-        // Limpiar comentarios entre paréntesis
         val = val.replaceAll(RegExp(r'\(.*?\)'), '').trim();
         result[key] = val;
       }
@@ -98,12 +101,12 @@ class RecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final macrosMap = _macrosMapForSection(section);
+    final macrosMap = _macrosMapForSection(widget.section);
     final hasMacros = macrosMap.isNotEmpty;
-    final hasSubtitle = hasMacros ||
-        section.macros.isNotEmpty ||
-        onAdd != null ||
-        onSave != null;
+    final ingredientes = _ingredientListWidgets(widget.section.ingredientes);
+    final preparacion = _preparacionListWidgets(widget.section.preparacion);
+    final hayIngredientes = ingredientes.isNotEmpty;
+    final hayPreparacion = preparacion.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
@@ -113,131 +116,179 @@ class RecipeCard extends StatelessWidget {
         border: Border.all(color: Colors.orange.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.shade900.withOpacity(0.04),
+            color: Colors.orange.shade900.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: Colors.orange.shade50, shape: BoxShape.circle),
-          child: const Icon(Icons.restaurant_menu,
-              color: Colors.orange, size: 20),
-        ),
-        title: Text(
-          section.nombre.replaceAll('**', '').trim().toUpperCase(),
-          style: const TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-          maxLines: 4,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: hasSubtitle
-            ? Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (hasMacros) _MacroChipsRow(macrosMap: macrosMap),
-                    if (!hasMacros && section.macros.isNotEmpty)
-                      Text(section.macros,
-                          style: TextStyle(
-                              color: Colors.orange.shade800,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis),
-                    if (onSave != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon: const Icon(Icons.bookmark_add,
-                              size: 18, color: Colors.blue),
-                          label: const Text('Guardar',
-                              style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
-                          onPressed: onSave,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              )
-            : null,
-        childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Panel detallado de macros al expandir
-          if (hasMacros) ...[
-            _MacroDetailPanel(macrosMap: macrosMap),
-            const SizedBox(height: 16),
-          ],
-
-          if (section.ingredientes.isNotEmpty) ...[
-            _sectionHeader('INGREDIENTES', Icons.shopping_basket),
-            const SizedBox(height: 8),
-            ..._ingredientListWidgets(section.ingredientes),
-          ],
-          if (section.ingredientes.isNotEmpty && section.preparacion.isNotEmpty)
-            const Divider(height: 32),
-          if (section.preparacion.isNotEmpty) ...[
-            _sectionHeader('PREPARACIÓN', Icons.list),
-            const SizedBox(height: 8),
-            ..._preparacionListWidgets(section.preparacion),
-          ],
-          if (section.ingredientes.isEmpty && section.preparacion.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                'No se recibió el detalle de ingredientes o pasos en esta respuesta.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                  fontStyle: FontStyle.italic,
-                  height: 1.35,
-                ),
-              ),
-            ),
-
-          if (section.nota.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
+          // ── Header (siempre visible) ──────────────────────────────────────
+          InkWell(
+            onTap: _toggleExpand,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.lightbulb_outline,
-                      size: 16, color: Colors.orange),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      section.nota,
-                      style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        color: Colors.orange.shade900,
-                        fontSize: 12,
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(Icons.restaurant_menu,
+                        color: Colors.orange, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _nombreLimpio.toUpperCase(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (hasMacros) ...[
+                          const SizedBox(height: 6),
+                          _MacroChipsRow(macrosMap: macrosMap),
+                        ] else if (widget.section.macros.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            widget.section.macros,
+                            style: TextStyle(
+                              color: Colors.orange.shade800,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (widget.onSave != null) ...[
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(Icons.bookmark_add,
+                                  size: 18, color: Colors.blue),
+                              label: const Text('Guardar',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
+                              onPressed: widget.onSave,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Colors.orange.shade400, size: 22),
                   ),
                 ],
               ),
             ),
-          ],
+          ),
+
+          // ── Contenido expandible ──────────────────────────────────────────
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _expanded
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Divider(key: _contentKey, height: 1),
+                        const SizedBox(height: 12),
+                        if (hasMacros) ...[
+                          _MacroDetailPanel(macrosMap: macrosMap),
+                          const SizedBox(height: 16),
+                        ],
+                        if (hayIngredientes) ...[
+                          _sectionHeader('INGREDIENTES', Icons.shopping_basket),
+                          const SizedBox(height: 8),
+                          ...ingredientes,
+                        ],
+                        if (hayIngredientes && hayPreparacion)
+                          const Divider(height: 32),
+                        if (hayPreparacion) ...[
+                          _sectionHeader('PREPARACIÓN', Icons.list),
+                          const SizedBox(height: 8),
+                          ...preparacion,
+                        ],
+                        if (!hayIngredientes && !hayPreparacion)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              'No se recibió el detalle de ingredientes o pasos en esta respuesta.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        if (widget.section.nota.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange.shade100),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.lightbulb_outline,
+                                    size: 18, color: Colors.orange.shade800),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    widget.section.nota,
+                                    style: TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.orange.shade900,
+                                      fontSize: 12.5,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -260,17 +311,7 @@ class RecipeCard extends StatelessWidget {
     return w;
   }
 
-  /// Widget especializado para una línea de ingrediente.
-  /// Parsea el string del backend y muestra:
-  ///   • nombre principal (con gramos o medida)   [kcal badge]
-  ///     ~Xg (si viene de medida doméstica)
-  ///
-  /// Formatos que maneja:
-  ///   "200g pechuga de pollo (330 kcal)"
-  ///   "1 cucharada (~15g) aceite de oliva (132.6 kcal)"
-  ///   "150g platano maduro (133.5 kcal)"
   Widget _ingredientLine(String text, Color accent) {
-    // Extraer kcal del último paréntesis: "(132.6 kcal)" o "(~15g | 132.6 kcal)"
     final reKcal = RegExp(
         r'\((?:~[\d.]+g\s*\|\s*)?([\d.]+)\s*kcal\)\s*$',
         caseSensitive: false);
@@ -281,8 +322,6 @@ class RecipeCard extends StatelessWidget {
       kcalStr = mKcal.group(1) ?? '';
       nameRaw = text.substring(0, mKcal.start).trim();
     }
-
-    // Extraer equivalencia en gramos: "(~15g)" o "(~15g |"
     final reGram = RegExp(r'\((~[\d.]+g)\)', caseSensitive: false);
     final mGram = reGram.firstMatch(nameRaw);
     String gramEquiv = '';
@@ -310,8 +349,7 @@ class RecipeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(nameRaw,
-                    style:
-                        const TextStyle(fontSize: 13, height: 1.35)),
+                    style: const TextStyle(fontSize: 13, height: 1.35)),
                 if (gramEquiv.isNotEmpty)
                   Text(gramEquiv,
                       style: TextStyle(
@@ -324,8 +362,7 @@ class RecipeCard extends StatelessWidget {
           if (kcalStr.isNotEmpty) ...[
             const SizedBox(width: 8),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 color: accent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
@@ -348,8 +385,7 @@ class RecipeCard extends StatelessWidget {
   List<Widget> _preparacionListWidgets(List<String> pasos) {
     final accent = Colors.orange;
     final flat = expandItemLines(pasos);
-    final substantive =
-        flat.where((r) => !isAssistantSubheader(r)).toList();
+    final substantive = flat.where((r) => !isAssistantSubheader(r)).toList();
     final singleStep = substantive.length == 1;
 
     final w = <Widget>[];
@@ -376,14 +412,14 @@ class RecipeCard extends StatelessWidget {
 
   Widget _sectionHeader(String title, IconData icon) {
     return Row(children: [
-      Icon(icon, size: 14, color: Colors.grey.shade600),
+      Icon(icon, size: 16, color: Colors.orange.shade700),
       const SizedBox(width: 8),
       Text(title,
           style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
-              letterSpacing: 1.1)),
+              color: Colors.grey.shade800,
+              letterSpacing: 0.6)),
     ]);
   }
 
@@ -391,13 +427,20 @@ class RecipeCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('$index.',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('$index',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: color, fontSize: 11)),
+        ),
         const SizedBox(width: 12),
         Expanded(
-            child:
-                Text(text, style: const TextStyle(fontSize: 13, height: 1.4))),
+            child: Text(text,
+                style: const TextStyle(fontSize: 13.5, height: 1.45))),
       ]),
     );
   }
@@ -414,17 +457,13 @@ class _MacroChipsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Wrap(spacing: 6, runSpacing: 4, children: [
       if (macrosMap.containsKey('Cal'))
-        _chip('🔥 ${macrosMap['Cal']}', Colors.orange.shade700,
-            Colors.orange.shade50),
+        _chip('🔥 ${macrosMap['Cal']}', Colors.orange.shade700, Colors.orange.shade50),
       if (macrosMap.containsKey('P'))
-        _chip('💪 P: ${macrosMap['P']}', Colors.blue.shade700,
-            Colors.blue.shade50),
+        _chip('💪 P: ${macrosMap['P']}', Colors.blue.shade700, Colors.blue.shade50),
       if (macrosMap.containsKey('C'))
-        _chip('🌾 C: ${macrosMap['C']}', Colors.amber.shade800,
-            Colors.amber.shade50),
+        _chip('🌾 C: ${macrosMap['C']}', Colors.amber.shade800, Colors.amber.shade50),
       if (macrosMap.containsKey('G'))
-        _chip('🥑 G: ${macrosMap['G']}', Colors.green.shade700,
-            Colors.green.shade50),
+        _chip('🥑 G: ${macrosMap['G']}', Colors.green.shade700, Colors.green.shade50),
     ]);
   }
 
@@ -461,7 +500,6 @@ class _MacroDetailPanel extends StatelessWidget {
         border: Border.all(color: Colors.orange.shade100),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Encabezado
         Row(children: [
           Icon(Icons.analytics_outlined, size: 14, color: Colors.orange.shade800),
           const SizedBox(width: 6),
@@ -473,8 +511,6 @@ class _MacroDetailPanel extends StatelessWidget {
                   letterSpacing: 1.0)),
         ]),
         const SizedBox(height: 12),
-
-        // Calorías (tarjeta grande) + macros (barras)
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (macrosMap.containsKey('Cal')) ...[
             _CalCard(calories: macrosMap['Cal']!),
@@ -483,14 +519,11 @@ class _MacroDetailPanel extends StatelessWidget {
           Expanded(
             child: Column(children: [
               if (macrosMap.containsKey('P'))
-                _MacroRow('Proteína', macrosMap['P']!,
-                    Colors.blue.shade400, Icons.fitness_center),
+                _MacroRow('Proteína', macrosMap['P']!, Colors.blue.shade400, Icons.fitness_center),
               if (macrosMap.containsKey('C'))
-                _MacroRow('Carbos', macrosMap['C']!,
-                    Colors.amber.shade600, Icons.grain),
+                _MacroRow('Carbos', macrosMap['C']!, Colors.amber.shade600, Icons.grain),
               if (macrosMap.containsKey('G'))
-                _MacroRow('Grasas', macrosMap['G']!,
-                    Colors.green.shade500, Icons.water_drop),
+                _MacroRow('Grasas', macrosMap['G']!, Colors.green.shade500, Icons.water_drop),
             ]),
           ),
         ]),
@@ -514,7 +547,7 @@ class _CalCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
+            color: Colors.orange.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 3),
           )
@@ -526,8 +559,7 @@ class _CalCard extends StatelessWidget {
         Text(numStr,
             style: const TextStyle(
                 fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        const Text('kcal',
-            style: TextStyle(fontSize: 11, color: Colors.white70)),
+        const Text('kcal', style: TextStyle(fontSize: 11, color: Colors.white70)),
       ]),
     );
   }
@@ -554,13 +586,11 @@ class _MacroRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
           decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8)),
           child: Text(value,
               style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: color)),
+                  fontSize: 12, fontWeight: FontWeight.bold, color: color)),
         ),
       ]),
     );

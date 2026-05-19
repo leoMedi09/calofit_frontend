@@ -34,10 +34,10 @@ class SmartMealRegistrySheet extends StatefulWidget {
 }
 
 class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
-  final TextEditingController _qtyController = TextEditingController();
+  final TextEditingController _qtyController  = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
-  bool _isLoading = false;
+  bool    _isLoading    = false;
   String? _errorMessage;
   late final List<Map<String, dynamic>> _ingredients;
   late final bool _isPreFilled;
@@ -65,14 +65,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
   Future<void> _addIngredient() async {
     final qtyStrRaw = _qtyController.text.trim();
-    final name = _nameController.text.trim();
+    final name      = _nameController.text.trim();
     setState(() => _errorMessage = null);
 
     if (qtyStrRaw.isEmpty || name.isEmpty) {
       setState(() => _errorMessage = 'Ingresa cantidad y alimento');
       return;
     }
-
     final cleanQtyStr = qtyStrRaw.replaceAll(RegExp(r'[^0-9.]'), '');
     final qty = double.tryParse(cleanQtyStr);
     if (qty == null || qty <= 0) {
@@ -89,13 +88,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         setState(() {
           for (var item in result['ingredientes']) {
             _ingredients.add({
-              'name': item['nombre'],
-              'gramos': item['gramos_totales'],
+              'name':     item['nombre'],
+              'gramos':   item['gramos_totales'],
               'quantity': '${item['gramos_totales']}g',
               'kcal': item['calorias'],
-              'p': item['proteinas_g'],
-              'c': item['carbohidratos_g'],
-              'g': item['grasas_g'],
+              'p':    item['proteinas_g'],
+              'c':    item['carbohidratos_g'],
+              'g':    item['grasas_g'],
             });
           }
         });
@@ -113,9 +112,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
   void _confirmar() {
     if (_ingredients.isEmpty) return;
-    final partes = _ingredients
-        .map((item) => '${item['gramos']}g de ${item['name']}')
-        .join(', ');
+    final partes  = _ingredients.map((i) => '${i['gramos']}g de ${i['name']}').join(', ');
     final mensaje = 'Comí: $partes';
     Navigator.pop(context);
     widget.onRegister?.call(mensaje);
@@ -128,13 +125,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5))],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -209,9 +200,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               const Text('Registro Inteligente',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87)),
               Text(
-                _isPreFilled
-                    ? 'Revisa y elimina lo que no comiste'
-                    : 'Añade alimentos con gramos exactos',
+                _isPreFilled ? 'Revisa y elimina lo que no comiste' : 'Añade alimentos con gramos exactos',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
             ],
@@ -295,7 +284,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
           ),
           if (_errorMessage != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8, left: 4),
+              padding: const EdgeInsets.only(top: 6, left: 4),
               child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
             ),
         ],
@@ -402,21 +391,16 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         top: false,
         child: Column(
           children: [
-            // ── Fila 1: Total Estimado + kcal (siempre visible) ───────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total Estimado',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
-                ),
+                const Text('Total Estimado',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      totalKcal.toStringAsFixed(1),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87),
-                    ),
+                    Text(totalKcal.toStringAsFixed(1),
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87)),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 3, left: 3),
                       child: Text(' kcal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black45)),
@@ -426,7 +410,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               ],
             ),
             const SizedBox(height: 14),
-            // ── Fila 2: Contador Alimentos + Macros (siempre visible) ─────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -437,7 +420,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
               ],
             ),
             const SizedBox(height: 18),
-            // ── Botón guardar ─────────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -450,11 +432,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                      )
+                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -482,21 +460,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     );
   }
 
-  /// Columna de contador — mismo estilo que Constructor de Rutinas
   Widget _counterCol(String label, String value, Color color) {
     return Column(
       children: [
-        Text(
-          value,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
-        ),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
         const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
-        ),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
       ],
     );
   }
-
 }

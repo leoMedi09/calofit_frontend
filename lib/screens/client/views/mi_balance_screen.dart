@@ -784,9 +784,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   Widget _buildAlimentoCard(Map<String, dynamic> alimento, int index) {
     final nombre = alimento['nombre'] ?? '';
     final hora = alimento['hora_registro'] ?? '';
-    final punt = (alimento['puntuacion'] ?? 0.0).toDouble();
-    final esFavorito = alimento['es_favorito'] == true;
+
     final horaCorta = hora.length >= 5 ? hora.substring(0, 5) : hora;
+    final cantidad = (alimento['cantidad'] ?? 1) as int;
 
     return AnimatedBuilder(
       animation: _animController,
@@ -829,10 +829,30 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      nombre,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            nombre,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (cantidad > 1) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade600,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '×$cantidad',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Wrap(
@@ -851,56 +871,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                         Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                        if (punt > 0) ...[
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.star_rounded, size: 12, color: Colors.amber.shade700),
-                                const SizedBox(width: 2),
-                                Text(
-                                  punt.toStringAsFixed(1),
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.amber.shade700),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ],
-                ),
-              ),
-              Consumer2<BalanceProvider, AuthProvider>(
-                builder: (context, balProv, authProv, _) => Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () async {
-                      await balProv.toggleFavorito(alimento['id'] as int, authProv.token!);
-                      if (context.mounted) {
-                        await balProv.fetchFullBalance(authProv.token!);
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: esFavorito ? Colors.amber.shade50 : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        esFavorito ? Icons.star_rounded : Icons.star_border_rounded,
-                        color: esFavorito ? Colors.amber.shade600 : Colors.grey.shade400,
-                        size: 18,
-                      ),
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -983,15 +956,21 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _buildMiniChip(Icons.local_fire_department_rounded, '${(ejercicio['calorias_quemadas'] as num?)?.toStringAsFixed(0) ?? '0'} kcal', Colors.orange),
-                        const SizedBox(width: 8),
-                        Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
-                        const SizedBox(width: 4),
-                        Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                        if (volumenLabel != null) ...[
-                          const SizedBox(width: 10),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
+                            const SizedBox(width: 3),
+                            Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                        if (volumenLabel != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
@@ -1003,11 +982,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade700),
                             ),
                           ),
-                        ],
-                        if (intensidad.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                        if (intensidad.isNotEmpty)
                           _buildMiniChip(Icons.speed_rounded, intensidad, Colors.deepPurple),
-                        ],
                       ],
                     ),
                   ],

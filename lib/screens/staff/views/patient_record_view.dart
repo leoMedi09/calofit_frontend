@@ -1079,9 +1079,13 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                       children: const [
                         Icon(Icons.auto_awesome_rounded, color: Color(0xFF1E88E5), size: 18),
                         SizedBox(width: 6),
-                        Text(
-                          'GUÍA ESTRATÉGICA MENSUAL (IA)',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
+                        Flexible(
+                          child: Text(
+                            'GUÍA ESTRATÉGICA MENSUAL (IA)',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
                         ),
                       ],
                     ),

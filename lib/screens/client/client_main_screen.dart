@@ -399,11 +399,13 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                       const SizedBox(height: 4),
 
                       _buildProgressHero(dailySummary),
-                      if (dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ...[
+                      if ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
+                          (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty)) ...[
                         const SizedBox(height: 20),
                         _buildStrategicMissionCard(
-                          dailySummary.aiStrategicFocus!,
-                          dailySummary.isStrategyValidated
+                          dailySummary.aiStrategicFocus,
+                          dailySummary.isStrategyValidated,
+                          nutriWeeklyNote: dailySummary.nutriWeeklyNote,
                         ),
                       ],
                       const SizedBox(height: 20),
@@ -766,19 +768,21 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
     return Container(width: 1, height: 30, color: Colors.white12);
   }
 
-  Widget _buildStrategicMissionCard(String mission, bool isValidated) {
+  Widget _buildStrategicMissionCard(String? mission, bool isValidated, {String? nutriWeeklyNote}) {
+    final hasNote = nutriWeeklyNote != null && nutriWeeklyNote.isNotEmpty;
+    final hasMission = mission != null && mission.isNotEmpty;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isValidated ? const Color(0xFFE8F5E9) : const Color(0xFFE3F2FD),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isValidated ? Colors.green.withOpacity(0.3) : const Color(0xFF1E88E5).withOpacity(0.3), 
-          width: 1.5
+          color: isValidated ? Colors.green.withValues(alpha: 0.3) : const Color(0xFF1E88E5).withValues(alpha: 0.3),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isValidated ? Colors.green : const Color(0xFF1E88E5)).withOpacity(0.08),
+            color: (isValidated ? Colors.green : const Color(0xFF1E88E5)).withValues(alpha: 0.08),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -799,9 +803,9 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isValidated ? Icons.verified_rounded : Icons.auto_awesome_rounded, 
-                      color: Colors.white, 
-                      size: 14
+                      isValidated ? Icons.verified_rounded : Icons.auto_awesome_rounded,
+                      color: Colors.white,
+                      size: 14,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -830,40 +834,82 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                 ),
             ],
           ),
-          const SizedBox(height: 18),
-          Text(
-            mission,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF263238),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Icon(
-                Icons.info_outline, 
-                size: 14, 
-                color: isValidated ? Colors.green.shade700 : const Color(0xFF1E88E5)
+          if (hasMission) ...[
+            const SizedBox(height: 18),
+            Text(
+              mission,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF263238),
+                height: 1.4,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  isValidated 
-                    ? 'Tu nutricionista aprobó este enfoque.' 
-                    : 'Tu asistente IA usa esto como norte estratégico.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: (isValidated ? Colors.green.shade700 : const Color(0xFF1E88E5)).withOpacity(0.8),
-                    fontStyle: FontStyle.italic,
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: isValidated ? Colors.green.shade700 : const Color(0xFF1E88E5),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isValidated
+                        ? 'Tu nutricionista aprobó este enfoque.'
+                        : 'Tu asistente IA usa esto como norte estratégico.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: (isValidated ? Colors.green.shade700 : const Color(0xFF1E88E5)).withValues(alpha: 0.8),
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
-              ),
+              ],
+            ),
+          ],
+          if (hasNote) ...[
+            if (hasMission) ...[
+              const SizedBox(height: 16),
+              Divider(color: Colors.green.withValues(alpha: 0.25), height: 1),
             ],
-          ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.medical_services_rounded, size: 14, color: Colors.green.shade700),
+                const SizedBox(width: 8),
+                Text(
+                  'NOTA DE TU NUTRICIONISTA',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.green.shade800,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                nutriWeeklyNote,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green.shade900,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

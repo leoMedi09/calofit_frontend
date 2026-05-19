@@ -491,7 +491,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final logKeywords = [
       "comí", "comi", "almorzé", "almorcé", "cené", "desayuné", "tomé", "bebí", "ingerí",
       "registra", "anota", "apunta", "hice", "entrené", "corrí", "troté", "agregame", "clavé", "zampé",
-      "me clavé", "me zampé", "me comí", "sali", "salí", "fui", "correr", "caminar", "andar", "gym", "gimnasio", "pesas"
+      "me clavé", "me zampé", "me comí", "sali", "salí", "fui", "correr", "caminar", "andar", "gym", "gimnasio", "pesas",
+      "realice", "realicé", "termine", "terminé", "entrene", "entrenó",
     ];
     
     bool isLogIntent = logKeywords.any((k) => lowerText.startsWith(k) || lowerText.contains(" $k "));

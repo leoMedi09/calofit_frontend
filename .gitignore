@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Claude Code internal folders
+.agents/
+.claude/
+
+# Firebase config con API keys (no exponer en repo público)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist

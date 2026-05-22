@@ -196,12 +196,14 @@ class ApiService {
     String dni,
     String token, {
     int? assignedCoachId,
+    int? assignedNutriId,
   }) async {
     try {
       final body = <String, dynamic>{
         'email': email.trim(),
         'dni': dni.trim(),
         if (assignedCoachId != null) 'assigned_coach_id': assignedCoachId,
+        if (assignedNutriId != null) 'assigned_nutri_id': assignedNutriId,
       };
       final response = await _dio.post(
         '/nutricionista/clientes/express',

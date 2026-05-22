@@ -69,7 +69,13 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   void _markDirty() {
-    if (!_isDirty && mounted) setState(() => _isDirty = true);
+    if (_isLoading || !mounted || _isDirty) return;
+    setState(() => _isDirty = true);
+  }
+
+  bool _esEntrenador() {
+    final role = Provider.of<AuthProvider>(context, listen: false).userRole?.toUpperCase() ?? '';
+    return role.contains('COACH') || role.contains('ENTRENADOR');
   }
 
   @override
@@ -339,7 +345,17 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           },
         ),
         actions: [
-          if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH')) ...[
+          if (_esEntrenador()) ...[
+            TextButton.icon(
+              onPressed: _isDirty ? _saveCoachNotes : null,
+              icon: const Icon(Icons.save_outlined, size: 18),
+              label: const Text('Guardar Nota',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF1E88E5)),
+            ),
+            const SizedBox(width: 4),
+          ],
+          if (!_esEntrenador()) ...[
             Tooltip(
               message: _planStatus == 'validado'
                   ? 'Guarda cambios en kcal/macros y guía estratégica'
@@ -395,7 +411,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               const SizedBox(height: 24),
 
               // 🛡️ Guía Estratégica (Solo para Nutris/Admins)
-              if (!Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH')) ...[
+              if (!_esEntrenador()) ...[
                 _buildValidationCard(),
                 const SizedBox(height: 24),
                 _buildStrategicGuideSection(),
@@ -736,7 +752,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   Widget _buildNutritionalPlanSection() {
-    final bool isCoach = Provider.of<AuthProvider>(context, listen: false).userRole!.toUpperCase().contains('COACH');
+    final bool isCoach = _esEntrenador();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -893,6 +909,34 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     );
   }
 
+  Future<void> _saveCoachNotes() async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      await _apiService.saveCoachNote(
+        widget.patientData['id'],
+        _coachNotesController.text,
+        auth.token!,
+      );
+      if (mounted) {
+        _shouldRefreshList = true;
+        setState(() => _isDirty = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Nota del entrenador guardada'),
+            backgroundColor: Color(0xFF2E7D32),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Widget _buildCoachNotesSection() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -919,31 +963,63 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             ],
           ),
           const SizedBox(height: 16),
-          TextField(
-            controller: _coachNotesController,
-            maxLines: 4,
-            readOnly: true,
-            decoration: InputDecoration(
-              hintText: 'El entrenador aún no ha registrado notas.',
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-              filled: true,
-              fillColor: const Color(0xFFF1F5F9),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.lock_outline_rounded, size: 13, color: Colors.blueGrey),
-              const SizedBox(width: 6),
-              const Text(
-                'Solo editable por el entrenador.',
-                style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic),
-              ),
-            ],
-          ),
+          Builder(builder: (context) {
+            final isCoach = _esEntrenador();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _coachNotesController,
+                  maxLines: 4,
+                  readOnly: !isCoach,
+                  decoration: InputDecoration(
+                    hintText: isCoach
+                        ? 'Escribe tus observaciones sobre este atleta...'
+                        : 'El entrenador aún no ha registrado notas.',
+                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                    filled: true,
+                    fillColor: isCoach ? Colors.white : const Color(0xFFF1F5F9),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: isCoach
+                            ? BorderSide(color: Colors.blue.shade200)
+                            : BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: isCoach
+                            ? BorderSide(color: Colors.blue.shade200)
+                            : BorderSide.none),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5), width: 2)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      isCoach ? Icons.edit_outlined : Icons.lock_outline_rounded,
+                      size: 13,
+                      color: Colors.blueGrey,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        isCoach
+                            ? 'Solo tú puedes editar esta sección. Usa el botón "Guardar Nota".'
+                            : 'Solo editable por el entrenador.',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.blueGrey,
+                            fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          }),
         ],
       ),
     );

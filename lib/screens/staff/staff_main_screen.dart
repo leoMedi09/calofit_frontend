@@ -20,6 +20,9 @@ class StaffMainScreen extends StatefulWidget {
 class _StaffMainScreenState extends State<StaffMainScreen> {
   int _selectedIndex = 0;
 
+  bool _isEntrenador(String role) =>
+      role.contains('COACH') || role.contains('ENTRENADOR');
+
   @override
   void initState() {
     super.initState();
@@ -106,11 +109,11 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
             label: 'Dashboard'),
       },
       'patients': {
-        'view': userRole.contains('COACH') ? const TrainerClientsView() : const PatientListView(),
+        'view': _isEntrenador(userRole) ? const TrainerClientsView() : const PatientListView(),
         'item': BottomNavigationBarItem(
-          icon: Icon(userRole.contains('COACH') ? Icons.fitness_center_outlined : Icons.assignment_ind_outlined), 
-          activeIcon: Icon(userRole.contains('COACH') ? Icons.fitness_center_rounded : Icons.assignment_ind_rounded),
-          label: userRole.contains('COACH') ? 'Mis Atletas' : 'Clientes'
+          icon: Icon(_isEntrenador(userRole) ? Icons.fitness_center_outlined : Icons.assignment_ind_outlined),
+          activeIcon: Icon(_isEntrenador(userRole) ? Icons.fitness_center_rounded : Icons.assignment_ind_rounded),
+          label: _isEntrenador(userRole) ? 'Mis Atletas' : 'Clientes'
         ),
       },
       'assistant': {
@@ -156,8 +159,8 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       activeSectionKeys = ['dashboard', 'team', 'patients', 'profile'];
     } else if (userRole.contains('NUTRI')) {
       activeSectionKeys = ['dashboard', 'patients', 'profile']; // ✅ Quitamos 'team' para evitar 403
-    } else if (userRole.contains('COACH')) {
-      activeSectionKeys = ['dashboard', 'patients', 'profile']; // ✅ Acceso para el Coach
+    } else if (_isEntrenador(userRole)) {
+      activeSectionKeys = ['dashboard', 'patients', 'profile']; // ✅ Acceso para el Entrenador
     } else {
       activeSectionKeys = ['dashboard', 'profile'];
     }

@@ -78,7 +78,7 @@ class _TeamManagementViewState extends State<TeamManagementView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const StaffRegistrationForm(),
+      builder: (_) => StaffRegistrationForm(parentContext: context),
     );
   }
 
@@ -141,21 +141,21 @@ class _TeamManagementViewState extends State<TeamManagementView> {
                         children: [
                           Expanded(child: _buildRoleCard(
                             'Nutricionistas', 
-                            _members.where((m) => m.roleName.toLowerCase().contains('nutri')).length.toString(), 
+                            _members.where((m) => m.isNutri).length.toString(),
                             Icons.restaurant_menu, 
                             const Color(0xFFFF5252)
                           )),
                           const SizedBox(width: 12),
                           Expanded(child: _buildRoleCard(
                             'Entrenadores', 
-                            _members.where((m) => m.roleName.toLowerCase().contains('coach') || m.roleName.toLowerCase().contains('train')).length.toString(), 
+                            _members.where((m) => m.isCoach).length.toString(),
                             Icons.fitness_center, 
                             const Color(0xFFFFA000)
                           )),
                           const SizedBox(width: 12),
                           Expanded(child: _buildRoleCard(
                             'Administradores', 
-                            _members.where((m) => m.roleName.toLowerCase().contains('admin')).length.toString(), 
+                            _members.where((m) => m.isAdmin).length.toString(),
                             Icons.admin_panel_settings, 
                             primaryBlue
                           )),

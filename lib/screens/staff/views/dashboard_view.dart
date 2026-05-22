@@ -99,7 +99,7 @@ class _DashboardViewState extends State<DashboardView> {
             admins++;
           } else if (role.contains('nutri')) {
             nutris++;
-          } else if (role.contains('coach') || role.contains('trainer')) {
+          } else if (role.contains('coach') || role.contains('trainer') || role.contains('entrenador')) {
             coaches++;
           }
 
@@ -1127,7 +1127,7 @@ class _DashboardViewState extends State<DashboardView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const StaffRegistrationForm(),
+      builder: (_) => StaffRegistrationForm(parentContext: context),
     ).then((_) => _refreshData());
   }
 

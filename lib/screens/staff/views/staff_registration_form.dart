@@ -6,7 +6,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
 class StaffRegistrationForm extends StatefulWidget {
-  const StaffRegistrationForm({super.key});
+  final BuildContext parentContext;
+  const StaffRegistrationForm({super.key, required this.parentContext});
 
   @override
   State<StaffRegistrationForm> createState() => _StaffRegistrationFormState();
@@ -36,6 +37,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
       TextEditingController(text: _persistedData['confirm'] ?? '');
 
   bool _isLoading = false;
+  String? _apiError;
 
   final Map<String, int> _roleIds = {
     'ADMIN': 1,
@@ -157,7 +159,30 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
                     const SizedBox(height: 10),
                     _buildRoleSelector(),
 
-                    const SizedBox(height: 32),
+                    if (_apiError != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFEBEE),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFEF9A9A)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Color(0xFFC62828), size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _apiError!,
+                                style: const TextStyle(color: Color(0xFFC62828), fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 54,
@@ -280,7 +305,10 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
   Future<void> _registerStaff() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _apiError = null;
+    });
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -309,14 +337,16 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
       _showSnackbar('Profesional registrado con éxito', isError: false);
       _clearFields();
     } catch (e) {
-      _showSnackbar(e.toString().replaceAll('Exception: ', ''), isError: true);
+      if (mounted) {
+        setState(() => _apiError = e.toString().replaceAll('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showSnackbar(String message, {required bool isError}) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(widget.parentContext).showSnackBar(
       SnackBar(
         content: Row(
           children: [

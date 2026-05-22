@@ -23,6 +23,19 @@ class User {
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
 
+  bool get isNutri  => roleName.toLowerCase().contains('nutri');
+  bool get isAdmin  => roleName.toLowerCase().contains('admin');
+  bool get isCoach  => roleName.toLowerCase().contains('coach') ||
+                       roleName.toLowerCase().contains('train') ||
+                       roleName.toLowerCase().contains('entrenador');
+
+  String get roleDisplayLabel {
+    if (isNutri)  return 'NUTRI';
+    if (isAdmin)  return 'ADMIN';
+    if (isCoach)  return 'ENTRENADOR';
+    return roleName.toUpperCase();
+  }
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'],

@@ -48,18 +48,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pushNamed(
-          context,
-          '/verify-code',
-          arguments: email,
-        );
+        Navigator.pushNamed(context, '/verify-code', arguments: email);
       } else {
         _showError('No se pudo enviar el código');
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _showError('El correo electrónico no está registrado');
+      final msg = e.toString();
+      if (msg.contains('personal del gimnasio') || msg.contains('contacta al administrador')) {
+        _showError('Eres personal del gimnasio. Contacta al administrador para cambiar tu contraseña.');
+      } else {
+        _showError('El correo electrónico no está registrado');
+      }
     }
   }
 
@@ -106,7 +107,29 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 style: TextStyle(
                     fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: Colors.orange.shade700, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Este servicio es exclusivo para clientes. Si eres nutricionista, entrenador o administrador, contacta al administrador del sistema.',
+                        style: TextStyle(color: Colors.orange.shade900, fontSize: 12, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,

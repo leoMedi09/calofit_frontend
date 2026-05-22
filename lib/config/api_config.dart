@@ -10,7 +10,7 @@ class ApiConfig {
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
       // Para dispositivo físico Android usa la IP de tu red Wi-Fi:
-      return 'http://192.168.15.91:8000';
+      return 'http://192.168.15.108:8000';
     } else if (Platform.isIOS) {
       // Para iOS Simulator
       return 'http://localhost:8000';
@@ -24,11 +24,10 @@ class ApiConfig {
 
   // URLs alternativas para diferentes entornos
   static const String devUrl = 'http://localhost:8000';
-  static const String prodUrl =
-      'https://api.calofit.com'; // Cuando tengas producción
+  
+  static const String prodUrl = 'https://api.calofit.com'; // Cuando tengas producción
 
   // Para dispositivos físicos Android, usa la IP de tu máquina
-  // Ejemplo: static const String physicalDeviceUrl = 'http://192.168.1.100:8000';
 
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 120);

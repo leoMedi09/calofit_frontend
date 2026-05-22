@@ -37,21 +37,19 @@ class _StaffProfileViewState extends State<StaffProfileView> {
   }
 
   String _roleLabel(String? role) {
-    switch ((role ?? '').toUpperCase()) {
-      case 'NUTRI': return 'Nutricionista';
-      case 'COACH': return 'Entrenador';
-      case 'ADMIN': return 'Administrador';
-      default: return role ?? 'Staff';
-    }
+    final r = (role ?? '').toLowerCase();
+    if (r.contains('nutri')) return 'Nutricionista';
+    if (r.contains('admin')) return 'Administrador';
+    if (r.contains('coach') || r.contains('entrenador') || r.contains('train')) return 'Entrenador';
+    return role ?? 'Staff';
   }
 
   String _roleTag(String? role) {
-    switch ((role ?? '').toUpperCase()) {
-      case 'NUTRI': return 'NUTRICIÓN';
-      case 'COACH': return 'ENTRENAMIENTO';
-      case 'ADMIN': return 'ADMINISTRACIÓN';
-      default: return 'STAFF';
-    }
+    final r = (role ?? '').toLowerCase();
+    if (r.contains('nutri')) return 'NUTRICIÓN';
+    if (r.contains('admin')) return 'ADMINISTRACIÓN';
+    if (r.contains('coach') || r.contains('entrenador') || r.contains('train')) return 'ENTRENAMIENTO';
+    return 'STAFF';
   }
 
   @override

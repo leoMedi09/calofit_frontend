@@ -120,7 +120,7 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HOLA, COACH', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2)),
+                          const Text('HOLA, ENTRENADOR', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2)),
                           Text(
                             auth.userName?.split(' ')[0] ?? 'Entrenador',
                             style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -1),
@@ -298,7 +298,7 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('COPILOT COACH AI', style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.2)),
+                Text('COPILOT ENTRENADOR IA', style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.2)),
                 const SizedBox(height: 4),
                 Text(
                   '3 atletas están listos para subir cargas de peso esta semana.',

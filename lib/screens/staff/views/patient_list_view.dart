@@ -117,11 +117,19 @@ class _PatientListViewState extends State<PatientListView> {
   }
 
   Future<void> _showExpressCreationModal(BuildContext context) async {
-    // Pre-carga entrenadores antes de abrir el sheet
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final bool isAdmin = (authProvider.userRole ?? '').toUpperCase().contains('ADMIN');
+
     List<Map<String, dynamic>> coaches = [];
+    List<Map<String, dynamic>> nutris = [];
     try {
       coaches = await _apiService.getCoachesList(authProvider.token!);
+      if (isAdmin) {
+        final allStaff = await _apiService.getStaffList(authProvider.token!);
+        nutris = allStaff
+            .where((s) => (s['role_name'] ?? '').toString().toLowerCase().contains('nutri'))
+            .toList();
+      }
     } catch (_) {}
 
     if (!context.mounted) return;
@@ -131,6 +139,7 @@ class _PatientListViewState extends State<PatientListView> {
     final dniController = TextEditingController();
     bool isSubmitting = false;
     int? selectedCoachId;
+    int? selectedNutriId;
     String? errorMsg;
 
     showModalBottomSheet(
@@ -255,164 +264,33 @@ class _PatientListViewState extends State<PatientListView> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ── Sección: Asignar Entrenador ──────────────────────────
-                  Row(
-                    children: [
-                      const Icon(Icons.fitness_center_rounded,
-                          size: 16, color: Color(0xFF1E88E5)),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'ASIGNAR ENTRENADOR',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                          color: Color(0xFF1E88E5),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Opcional',
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey.shade500,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (coaches.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded,
-                              size: 16, color: Colors.grey.shade400),
-                          const SizedBox(width: 10),
-                          Text(
-                            'No hay entrenadores registrados aún',
-                            style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 160),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: coaches.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (context, i) {
-                          final coach = coaches[i];
-                          final isSelected =
-                              selectedCoachId == coach['id'];
-                          final initials = (coach['full_name'] as String)
-                              .trim()
-                              .split(' ')
-                              .where((w) => w.isNotEmpty)
-                              .take(2)
-                              .map((w) => w[0].toUpperCase())
-                              .join();
-
-                          return GestureDetector(
-                            onTap: () => setModalState(() {
-                              selectedCoachId = isSelected
-                                  ? null
-                                  : coach['id'] as int;
-                            }),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF1E88E5)
-                                        .withValues(alpha: 0.06)
-                                    : Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFF1E88E5)
-                                      : Colors.grey.shade200,
-                                  width: isSelected ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: isSelected
-                                        ? const Color(0xFF1E88E5)
-                                        : Colors.grey.shade200,
-                                    child: Text(
-                                      initials.isEmpty ? 'E' : initials,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          coach['full_name'] as String,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                            color: isSelected
-                                                ? const Color(0xFF1565C0)
-                                                : const Color(0xFF263238),
-                                          ),
-                                        ),
-                                        Text(
-                                          coach['email'] as String,
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey.shade500),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (isSelected)
-                                    const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Color(0xFF1E88E5),
-                                      size: 20,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                  // ── Asignar Nutricionista (solo Admin) ──────────────────
+                  if (isAdmin) ...[
+                    _buildDropdownSelector(
+                      context: context,
+                      label: 'Nutricionista',
+                      icon: Icons.restaurant_menu_rounded,
+                      color: const Color(0xFF1565C0),
+                      items: nutris,
+                      selectedId: selectedNutriId,
+                      emptyText: 'Sin nutricionistas registrados',
+                      onChanged: (id) => setModalState(() => selectedNutriId = id),
                     ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // ── Asignar Entrenador ───────────────────────────────────
+                  _buildDropdownSelector(
+                    context: context,
+                    label: 'Entrenador',
+                    icon: Icons.fitness_center_rounded,
+                    color: const Color(0xFF1E88E5),
+                    items: coaches,
+                    selectedId: selectedCoachId,
+                    emptyText: 'Sin entrenadores registrados',
+                    onChanged: (id) => setModalState(() => selectedCoachId = id),
+                  ),
+                  const SizedBox(height: 16),
 
                   // Error inline
                   if (errorMsg != null)
@@ -470,6 +348,7 @@ class _PatientListViewState extends State<PatientListView> {
                                   dni,
                                   authProvider.token!,
                                   assignedCoachId: selectedCoachId,
+                                  assignedNutriId: isAdmin ? selectedNutriId : null,
                                 );
                                 if (context.mounted) Navigator.pop(context);
                                 messenger.showSnackBar(const SnackBar(
@@ -519,6 +398,222 @@ class _PatientListViewState extends State<PatientListView> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildDropdownSelector({
+    required BuildContext context,
+    required String label,
+    required IconData icon,
+    required Color color,
+    required List<Map<String, dynamic>> items,
+    required int? selectedId,
+    required String emptyText,
+    required void Function(int?) onChanged,
+  }) {
+    final selectedName = selectedId != null
+        ? items.firstWhere(
+            (m) => m['id'] == selectedId,
+            orElse: () => {},
+          )['full_name'] as String?
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 7),
+            Text(
+              label.toUpperCase(),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1, color: color),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(20)),
+              child: Text('Opcional', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: items.isEmpty
+              ? null
+              : () => _showStaffPickerSheet(
+                    context,
+                    label: label,
+                    icon: icon,
+                    color: color,
+                    items: items,
+                    selectedId: selectedId,
+                    onChanged: onChanged,
+                  ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: items.isEmpty ? Colors.grey.shade100 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selectedName != null ? color.withValues(alpha: 0.5) : Colors.grey.shade200,
+                width: selectedName != null ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  selectedName != null ? Icons.check_circle_outline_rounded : icon,
+                  size: 18,
+                  color: selectedName != null ? color : Colors.grey.shade400,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: selectedName != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.3)),
+                            Text(selectedName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF263238)), overflow: TextOverflow.ellipsis),
+                          ],
+                        )
+                      : Text(
+                          items.isEmpty ? emptyText : 'Seleccionar $label...',
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+                        ),
+                ),
+                Icon(Icons.keyboard_arrow_down_rounded, color: items.isEmpty ? Colors.grey.shade300 : Colors.grey.shade400),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showStaffPickerSheet(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required Color color,
+    required List<Map<String, dynamic>> items,
+    required int? selectedId,
+    required void Function(int?) onChanged,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.65),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 45, height: 5,
+                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Seleccionar $label',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF263238), letterSpacing: -0.5),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Opción "Sin asignar"
+            GestureDetector(
+              onTap: () { onChanged(null); Navigator.pop(ctx); },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: selectedId == null ? Colors.grey.shade100 : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: selectedId == null ? Colors.grey.shade400 : Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 18, backgroundColor: Colors.grey.shade200, child: const Icon(Icons.person_off_outlined, size: 18, color: Colors.grey)),
+                    const SizedBox(width: 14),
+                    const Expanded(child: Text('Sin asignar', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 14))),
+                    if (selectedId == null) const Icon(Icons.check_circle_rounded, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const BouncingScrollPhysics(),
+                itemCount: items.length,
+                itemBuilder: (_, i) {
+                  final m = items[i];
+                  final int id = m['id'] as int;
+                  final bool isSelected = selectedId == id;
+                  final String name = (m['full_name'] as String?)?.trim() ?? (m['first_name'] as String? ?? '');
+                  final int count = (m['pacientes_count'] as num?)?.toInt() ?? 0;
+                  final String initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+                  return GestureDetector(
+                    onTap: () { onChanged(id); Navigator.pop(ctx); },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? color.withValues(alpha: 0.05) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isSelected ? color : Colors.grey.shade100, width: isSelected ? 2 : 1),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: color.withValues(alpha: 0.12),
+                            child: Text(initial, style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 16)),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF263238))),
+                                Text('$count pacientes asignados', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                            color: isSelected ? color : Colors.grey.shade300,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -657,7 +752,6 @@ class _PatientListViewState extends State<PatientListView> {
         final double adherence =
             double.tryParse(patient['adherencia']?.toString() ?? '0') ?? 0;
         final bool isMale = patient['gender']?.toString().toLowerCase() == 'm';
-        final bool isValidated = patient['is_validated'] == true;
 
         final String status = patient['semana_status'] ?? 'falta_checkin';
         final bool isProfileComplete = patient['is_profile_complete'] ?? true;
@@ -777,7 +871,7 @@ class _PatientListViewState extends State<PatientListView> {
                     const SizedBox(height: 4),
                     // Contenido Principal
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Avatar
                         CircleAvatar(
@@ -904,6 +998,8 @@ class _PatientListViewState extends State<PatientListView> {
                           ],
                           ),
                         ),
+                        if (isProfileComplete)
+                          const Icon(Icons.chevron_right_rounded, color: Color(0xFFBDBDBD), size: 24),
                       ],
                     ),
                   ],
@@ -994,7 +1090,7 @@ class _PatientListViewState extends State<PatientListView> {
       final staff = await _apiService.getStaffList(authProvider.token!);
       final filteredStaff = staff.where((s) {
         final r = s['role_name']?.toString().toLowerCase() ?? '';
-        return isNutri ? r.contains('nutri') : r.contains('coach');
+        return isNutri ? r.contains('nutri') : (r.contains('coach') || r.contains('entrenador') || r.contains('train'));
       }).toList();
 
       if (context.mounted) Navigator.pop(context);
@@ -1024,7 +1120,7 @@ class _PatientListViewState extends State<PatientListView> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  isNutri ? 'Asignar Nutricionista' : 'Asignar Coach / Trainer',
+                  isNutri ? 'Asignar Nutricionista' : 'Asignar Entrenador',
                   style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
@@ -1111,7 +1207,7 @@ class _PatientListViewState extends State<PatientListView> {
                                           .showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                              '${isNutri ? "Nutricionista" : "Coach"} asignado con éxito'),
+                                              '${isNutri ? "Nutricionista" : "Entrenador"} asignado con éxito'),
                                           backgroundColor: Colors.green,
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -1316,8 +1412,8 @@ class PatientPreviewModal extends StatelessWidget {
                     color: Colors.white, size: 20),
                 label: Text(
                     patient['coach_id'] != null
-                        ? 'Cambiar Coach'
-                        : 'Asignar Coach / Trainer',
+                        ? 'Cambiar Entrenador'
+                        : 'Asignar Entrenador',
                     style: const TextStyle(
                         fontWeight: FontWeight.w900, fontSize: 16)),
                 style: ElevatedButton.styleFrom(

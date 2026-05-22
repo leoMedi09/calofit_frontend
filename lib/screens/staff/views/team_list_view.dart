@@ -15,6 +15,7 @@ class TeamListView extends StatefulWidget {
 
 class _TeamListViewState extends State<TeamListView> {
   final ApiService _apiService = ApiService();
+  final ScrollController _scrollController = ScrollController();
   List<User> _allMembers = [];
   List<User> _filteredMembers = [];
   String _searchQuery = "";
@@ -24,6 +25,12 @@ class _TeamListViewState extends State<TeamListView> {
   void initState() {
     super.initState();
     _loadTeam();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTeam() async {
@@ -62,12 +69,11 @@ class _TeamListViewState extends State<TeamListView> {
 
         bool matchesRole = true;
         if (_selectedRole == 'nutritionist') {
-          matchesRole = member.roleName.toLowerCase().contains('nutri');
+          matchesRole = member.isNutri;
         } else if (_selectedRole == 'coach') {
-          matchesRole = member.roleName.toLowerCase().contains('coach') ||
-              member.roleName.toLowerCase().contains('train');
+          matchesRole = member.isCoach;
         } else if (_selectedRole == 'admin') {
-          matchesRole = member.roleName.toLowerCase().contains('admin');
+          matchesRole = member.isAdmin;
         }
 
         return matchesSearch && matchesRole;
@@ -75,8 +81,16 @@ class _TeamListViewState extends State<TeamListView> {
     });
   }
 
-  void _refreshTeam() {
-    _loadTeam();
+  Future<void> _refreshTeam() async {
+    final double savedOffset = _scrollController.hasClients ? _scrollController.offset : 0;
+    await _loadTeam();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && savedOffset > 0) {
+        _scrollController.jumpTo(
+          savedOffset.clamp(0, _scrollController.position.maxScrollExtent),
+        );
+      }
+    });
   }
 
   @override
@@ -100,6 +114,7 @@ class _TeamListViewState extends State<TeamListView> {
                     : _filteredMembers.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
+                            controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
                             itemCount: _filteredMembers.length,
                             itemBuilder: (context, index) {
@@ -132,9 +147,9 @@ class _TeamListViewState extends State<TeamListView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: const StaffRegistrationForm(),
+      builder: (modalCtx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(modalCtx).viewInsets.bottom),
+        child: StaffRegistrationForm(parentContext: context),
       ),
     ).then((_) => _refreshTeam());
   }
@@ -237,13 +252,13 @@ class _TeamListViewState extends State<TeamListView> {
     IconData roleIcon = Icons.help_outline;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    if (member.roleName.toLowerCase().contains('nutri')) {
+    if (member.isNutri) {
       roleColor = Colors.green.shade600;
       roleIcon = Icons.restaurant_menu_rounded;
-    } else if (member.roleName.toLowerCase().contains('admin')) {
+    } else if (member.isAdmin) {
       roleColor = Colors.indigo.shade700;
       roleIcon = Icons.admin_panel_settings_rounded;
-    } else if (member.roleName.toLowerCase().contains('coach') || member.roleName.toLowerCase().contains('train')) {
+    } else if (member.isCoach) {
       roleColor = Colors.orange.shade700;
       roleIcon = Icons.fitness_center_rounded;
     }
@@ -306,7 +321,7 @@ class _TeamListViewState extends State<TeamListView> {
                         children: [
                           Icon(roleIcon, size: 12, color: roleColor),
                           const SizedBox(width: 4),
-                          Text(member.roleName.toUpperCase(),
+                          Text(member.roleDisplayLabel,
                               style: TextStyle(color: roleColor, fontSize: 10, fontWeight: FontWeight.w900)),
                         ],
                       ),
@@ -408,6 +423,7 @@ class _TeamListViewState extends State<TeamListView> {
     bool isPasswordVisible = false;
     bool isConfirmVisible = false;
     bool isLoading = false;
+    String? errorMsg;
 
     InputDecoration buildInputDecoration(String label, IconData icon, bool isObscure, VoidCallback toggleVisibility) {
       return InputDecoration(
@@ -430,8 +446,8 @@ class _TeamListViewState extends State<TeamListView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -471,11 +487,31 @@ class _TeamListViewState extends State<TeamListView> {
                   setDialogState(() => isConfirmVisible = !isConfirmVisible);
                 }),
               ),
+              if (errorMsg != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFEF9A9A)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: Color(0xFFC62828), size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(errorMsg!, style: const TextStyle(color: Color(0xFFC62828), fontSize: 12, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
             TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
+              onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.grey.shade600,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -491,26 +527,25 @@ class _TeamListViewState extends State<TeamListView> {
                       final confirm = confirmPasswordController.text.trim();
 
                       if (password.length < 6) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mínimo 6 caracteres')));
+                        setDialogState(() => errorMsg = 'La contraseña debe tener mínimo 6 caracteres');
                         return;
                       }
 
                       if (password != confirm) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Las contraseñas no coinciden')));
+                        setDialogState(() => errorMsg = 'Las contraseñas no coinciden');
                         return;
                       }
 
-                      setDialogState(() => isLoading = true);
+                      setDialogState(() { isLoading = true; errorMsg = null; });
                       try {
                         final authProvider = Provider.of<AuthProvider>(context, listen: false);
                         await _apiService.updateStaffPassword(member.id, password, authProvider.token ?? '');
-                        if (context.mounted) {
-                          Navigator.pop(context);
+                        if (dialogCtx.mounted) {
+                          Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada correctamente'), backgroundColor: Colors.green));
                         }
                       } catch (e) {
-                        setDialogState(() => isLoading = false);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        setDialogState(() { isLoading = false; errorMsg = e.toString().replaceAll('Exception: ', ''); });
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -543,11 +578,11 @@ class _TeamListViewState extends State<TeamListView> {
     final TextEditingController lastMaternalController = TextEditingController(text: member.lastNameMaternal);
     final TextEditingController emailController = TextEditingController(text: member.email);
     
-    // Simplificación de rol para el dropdown
+    // Pre-populate usando los getters normalizados del modelo
     String currentRole = 'Nutricionista';
-    if (member.roleName.toLowerCase().contains('admin')) {
+    if (member.isAdmin) {
       currentRole = 'Administrador';
-    } else if (member.roleName.toLowerCase().contains('coach') || member.roleName.toLowerCase().contains('train')) {
+    } else if (member.isCoach) {
       currentRole = 'Entrenador';
     }
     
@@ -571,8 +606,8 @@ class _TeamListViewState extends State<TeamListView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -648,7 +683,7 @@ class _TeamListViewState extends State<TeamListView> {
           ),
           actions: [
             TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
+              onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.grey.shade600,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -668,25 +703,25 @@ class _TeamListViewState extends State<TeamListView> {
                       setDialogState(() => isLoading = true);
                       try {
                         final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                        
+
                         String mappedRole = 'nutricionista';
                         if (selectedRole == 'Administrador') mappedRole = 'admin';
-                        if (selectedRole == 'Entrenador') mappedRole = 'entrenador';
+                        if (selectedRole == 'Entrenador') mappedRole = 'coach';
 
                         await _apiService.updateStaff(
-                          member.id, 
+                          member.id,
                           {
                             'first_name': firstNameController.text.trim(),
                             'last_name_paternal': lastPaternalController.text.trim(),
                             'last_name_maternal': lastMaternalController.text.trim(),
                             'email': emailController.text.trim(),
                             'role_name': mappedRole,
-                          }, 
+                          },
                           authProvider.token ?? ''
                         );
-                        
-                        if (context.mounted) {
-                          Navigator.pop(context);
+
+                        if (dialogCtx.mounted) {
+                          Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil actualizado con éxito'), backgroundColor: Colors.green));
                           _refreshTeam();
                         }
@@ -725,23 +760,23 @@ class _TeamListViewState extends State<TeamListView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Row(
             children: [
-              Icon(isDisabling ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded, 
+              Icon(isDisabling ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
                    color: isDisabling ? Colors.orange : Colors.green),
               const SizedBox(width: 10),
               Text(isDisabling ? '¿Dar de baja?' : '¿Reactivar?'),
             ],
           ),
-          content: Text(isDisabling 
+          content: Text(isDisabling
             ? 'Suspenderá el acceso de ${member.firstName} al sistema. Podrás reactivarlo luego.'
             : 'Se restaurará el acceso de ${member.firstName} al sistema con su última contraseña o contraseña temporal.'),
           actions: [
             TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
+              onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
@@ -752,10 +787,10 @@ class _TeamListViewState extends State<TeamListView> {
                       try {
                         final authProvider = Provider.of<AuthProvider>(context, listen: false);
                         await _apiService.updateStaffStatus(member.id, authProvider.token ?? '');
-                        if (context.mounted) {
-                          Navigator.pop(context);
+                        if (dialogCtx.mounted) {
+                          Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(isDisabling ? 'Personal dado de baja' : 'Personal reactivado'), 
+                            content: Text(isDisabling ? 'Personal dado de baja' : 'Personal reactivado'),
                             backgroundColor: isDisabling ? Colors.orange : Colors.green
                           ));
                           _refreshTeam();
@@ -781,8 +816,8 @@ class _TeamListViewState extends State<TeamListView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Row(
             children: [
@@ -794,7 +829,7 @@ class _TeamListViewState extends State<TeamListView> {
           content: Text('¿Estás seguro de eliminar permanentemente a ${member.firstName} del sistema? Esta acción no se puede deshacer y desvinculará a los pacientes a su cargo.'),
           actions: [
             TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
+              onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
               child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
@@ -805,10 +840,10 @@ class _TeamListViewState extends State<TeamListView> {
                       try {
                         final authProvider = Provider.of<AuthProvider>(context, listen: false);
                         await _apiService.deleteStaff(member.id, authProvider.token ?? '');
-                        if (context.mounted) {
-                          Navigator.pop(context);
+                        if (dialogCtx.mounted) {
+                          Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('Personal eliminado permanentemente'), 
+                            content: Text('Personal eliminado permanentemente'),
                             backgroundColor: Colors.redAccent
                           ));
                           _refreshTeam();

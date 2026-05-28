@@ -10,7 +10,7 @@ class ApiConfig {
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
       // Para dispositivo físico Android usa la IP de tu red Wi-Fi:
-      return 'http://192.168.15.108:8000';
+      return 'http://192.168.15.127:8000';
     } else if (Platform.isIOS) {
       // Para iOS Simulator
       return 'http://localhost:8000';

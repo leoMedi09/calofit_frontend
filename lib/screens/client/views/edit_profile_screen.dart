@@ -79,12 +79,98 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  /// Diálogo de confirmación: avisa que guardar cambios quita la aprobación del plan.
+  Future<bool> _confirmarCambiosPerfil() async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 28),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Cambios en tu perfil',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Text(
+                    '⚠️ Si tu plan nutricional fue aprobado por tu nutricionista, '
+                    'modificar tus datos (peso, talla, actividad, objetivo o condiciones médicas) '
+                    'requiere una nueva aprobación.',
+                    style: TextStyle(
+                      color: Colors.orange.shade900,
+                      height: 1.5,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '¿Deseas guardar los cambios y solicitar nueva aprobación?',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('Guardar cambios'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A237E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Capturar providers ANTES de cualquier await para evitar async-gap BuildContext
+    final authProvider    = Provider.of<AuthProvider>(context, listen: false);
+    final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
+
+    // Mostrar confirmación antes de proceder
+    final confirmed = await _confirmarCambiosPerfil();
+    if (!confirmed) return;
+
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final current = widget.client;
       final updatedClient = Client(
         id: current.id,
@@ -115,8 +201,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Refresh the daily plan so BalanceCard shows recalculated macros
       if (mounted) {
-        await Provider.of<BalanceProvider>(context, listen: false)
-            .fetchFullBalance(authProvider.token!);
+        await balanceProvider.fetchFullBalance(authProvider.token!);
       }
 
       if (mounted) {

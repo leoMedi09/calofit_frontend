@@ -39,16 +39,19 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
   bool    _isLoading    = false;
   String? _errorMessage;
-  late final List<Map<String, dynamic>> _ingredients;
-  late final bool _isPreFilled;
+  static final List<Map<String, dynamic>> _ingredients = [];
+  late bool _isPreFilled;
 
   @override
   void initState() {
     super.initState();
     _isPreFilled = widget.initialIngredients != null && widget.initialIngredients!.isNotEmpty;
-    _ingredients = _isPreFilled
-        ? List<Map<String, dynamic>>.from(widget.initialIngredients!)
-        : [];
+    if (_isPreFilled) {
+      // Pre-fill desde recetario: reemplaza la lista estática con los ingredientes sugeridos
+      _ingredients
+        ..clear()
+        ..addAll(widget.initialIngredients!);
+    }
   }
 
   @override
@@ -114,6 +117,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     if (_ingredients.isEmpty) return;
     final partes  = _ingredients.map((i) => '${i['gramos']}g de ${i['name']}').join(', ');
     final mensaje = 'Comí: $partes';
+    _ingredients.clear();           // limpiar lista estática al confirmar, no al cerrar
     Navigator.pop(context);
     widget.onRegister?.call(mensaje);
   }

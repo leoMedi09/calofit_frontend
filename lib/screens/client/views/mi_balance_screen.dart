@@ -88,6 +88,10 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   }
 
   Future<void> _eliminarRegistro(int id, String tipo) async {
+    // Capturar providers ANTES de cualquier await (incluye showDialog)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -119,38 +123,47 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
     if (confirm != true) return;
 
+    final token = authProvider.token;
+    final String? dateParam = _selectedDate != null
+        ? "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+        : null;
+
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.token;
       await _apiService.eliminarRegistro(id, tipo, token!);
+      await balanceProvider.fetchFullBalance(token, fecha: dateParam);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text('${tipo == 'alimento' ? 'Alimento' : 'Ejercicio'} eliminado'),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('${tipo == 'alimento' ? 'Alimento' : 'Ejercicio'} eliminado'),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 2),
+          ));
       }
-      
-      String? dateParam;
-      if (_selectedDate != null) {
-        dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
-      }
-      await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token, fecha: dateParam);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ));
+      // Si el registro ya no existe (404) refrescamos silenciosamente sin mostrar error
+      final is404 = e.toString().contains('404');
+      try {
+        await balanceProvider.fetchFullBalance(token!, fecha: dateParam);
+      } catch (_) {}
+      if (!is404 && mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(
+            content: const Text('No se pudo eliminar. Intenta de nuevo.'),
+            backgroundColor: Colors.orange.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ));
       }
     }
   }
@@ -230,7 +243,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final consumidas = (resumen['calorias_consumidas'] ?? 0).toDouble();
     final quemadas = (resumen['calorias_quemadas'] ?? 0).toDouble();
     final objetivo = (resumen['objetivo_diario'] ?? 2000).toDouble();
-    final restantes = (resumen['calorias_restantes'] ?? (objetivo - consumidas + quemadas)).toDouble();
+    // Restan = Meta − Consumido (consistente con el % mostrado; quemadas van aparte)
+    final restantes = (resumen['calorias_restantes'] ?? (objetivo - consumidas)).toDouble();
     final proteinas = (resumen['proteinas_g'] ?? 0.0).toDouble();
     final carbohidratos = (resumen['carbohidratos_g'] ?? 0.0).toDouble();
     final grasas = (resumen['grasas_g'] ?? 0.0).toDouble();

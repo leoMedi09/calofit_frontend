@@ -47,7 +47,9 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       return;
     }
 
-    final text = '${cleanDurationStr} min de $name';
+    // Formato con verbo para que el NLP del backend pueda extraer nombre y duración
+    // correctamente: rotulo_actividad_desde_mensaje() quita "hice" y "por X min".
+    final text = 'hice $name por $cleanDurationStr min';
 
     setState(() => _isLoading = true);
     try {

@@ -44,8 +44,11 @@ class PlanStatusBadge extends StatelessWidget {
         label = 'Provisional';
     }
 
-    // Si es condición crítica, sobrescribir
-    if (esCondicionCritica) {
+    // Si es condición crítica Y el plan NO está validado → pedir validación urgente
+    // Si ya está validado, mantener el badge verde aunque haya condición crítica
+    if (esCondicionCritica &&
+        estadoPlan != 'validado' &&
+        estadoPlan != 'modificado') {
       backgroundColor = Colors.red.shade100;
       textColor = Colors.red.shade900;
       icon = Icons.local_hospital;

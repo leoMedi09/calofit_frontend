@@ -488,10 +488,18 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final lowerText = text.toLowerCase();
     
     // Palabras detonantes de REGISTRO
+    // Incluir variantes CON y SIN tilde (los usuarios escriben de ambas formas)
     final logKeywords = [
-      "comí", "comi", "almorzé", "almorcé", "cené", "desayuné", "tomé", "bebí", "ingerí",
-      "registra", "anota", "apunta", "hice", "entrené", "corrí", "troté", "agregame", "clavé", "zampé",
-      "me clavé", "me zampé", "me comí", "sali", "salí", "fui", "correr", "caminar", "andar", "gym", "gimnasio", "pesas",
+      "comí", "comi", "me comí", "me comi",
+      "almorzé", "almorcé", "almorce", "almorze",
+      "cené", "cene", "desayuné", "desayune",
+      "tomé", "tome", "bebí", "bebi", "ingerí", "ingeri",
+      "registra", "anota", "apunta",
+      "hice", "entrené", "entrenе", "corrí", "corri", "troté", "trote",
+      "agregame", "clavé", "clave", "zampé", "zampe",
+      "me clavé", "me clave", "me zampé", "me zampe",
+      "sali", "salí", "fui", "correr", "caminar", "andar",
+      "gym", "gimnasio", "pesas",
       "realice", "realicé", "termine", "terminé", "entrene", "entrenó",
     ];
     

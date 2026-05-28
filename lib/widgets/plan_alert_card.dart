@@ -16,8 +16,8 @@ class PlanAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No mostrar nada si el plan ya está validado
-    if (estadoPlan == 'validado' || estadoPlan == 'modificado') {
+    // Plan validado sin condición crítica → banner verde de confianza
+    if ((estadoPlan == 'validado' || estadoPlan == 'modificado') && !esCondicionCritica) {
       return Card(
         color: Colors.green.shade50,
         elevation: 2,
@@ -31,6 +31,30 @@ class PlanAlertCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   '✅ Plan aprobado por tu nutricionista. ¡Sigue adelante con confianza!',
+                  style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Plan validado CON condición crítica → aprobado + seguimiento especial (todo verde)
+    if ((estadoPlan == 'validado' || estadoPlan == 'modificado') && esCondicionCritica) {
+      return Card(
+        color: Colors.green.shade50,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.medical_services, color: Colors.green.shade700, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  mensajeCliente,
                   style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.w500),
                 ),
               ),

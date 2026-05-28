@@ -24,7 +24,8 @@ class ClientMainScreen extends StatefulWidget {
   State<ClientMainScreen> createState() => _ClientMainScreenState();
 }
 
-class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerProviderStateMixin {
+class _ClientMainScreenState extends State<ClientMainScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   AnimationController? _progressController;
   
@@ -46,6 +47,8 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
+    // No hay polling periódico: se recarga al volver de cualquier sub-pantalla
+    // (ver .then en cada Navigator.push) y al volver al primer plano (WidgetsBindingObserver)
     
     // Carga inicial de datos a través del Provider
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -324,11 +327,12 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                           ),
                         ),
 
-                      // ✅ NUEVO: Card de Check-in Semanal
-                      if (_checkInNeeded || _precisionScore < 100)
+                      // Card de Check-in: solo aparece cuando el check-in ya es HOY
+                      if (_checkInNeeded)
                         CheckInCard(
                           precisionScore: _precisionScore,
                           isNeeded: _checkInNeeded,
+                          daysUntilCheckin: _daysUntilCheckin,
                           onTap: () async {
                             final result = await Navigator.push(
                               context,
@@ -350,6 +354,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
+                            // Badge de cuenta regresiva: siempre que queden días y no sea urgente
                             if (_daysUntilCheckin > 0 && !_checkInNeeded)
                               Container(
                                 margin: const EdgeInsets.only(right: 12, bottom: 16, top: 4),
@@ -430,15 +435,6 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                           estadoPlan: dailySummary.planObjetivo!.estadoPlan,
                           esCondicionCritica: dailySummary.planObjetivo!.esCondicionCritica,
                           mensajeCliente: dailySummary.planObjetivo!.mensajeCliente,
-                          onContactarNutricionista: () {
-                            // Navegar al chat con el asistente
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ChatScreen(),
-                              ),
-                            );
-                          },
                         ),
                         const SizedBox(height: 16),
                         _buildPlanNutricionalCompact(dailySummary),
@@ -472,11 +468,12 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       ),
       bottomNavigationBar: _buildBottomNavigation(),
       floatingActionButton: _assignedNutriId == null ? null : FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ChatScreen()),
           );
+          if (mounted) _loadDashboardData();
         },
         backgroundColor: const Color(0xFF1E88E5),
         elevation: 4,
@@ -626,8 +623,9 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
     final consumido = dailySummary.calorias;
     final quemadas = dailySummary.caloriasQuemadas;
     
-    // El balance neto: Meta + lo que quemé - lo que comí
-    final restante = (meta + quemadas - consumido).clamp(0.0, 5000.0);
+    // Restan = Meta − Consumido (la meta ya incluye factor de actividad;
+    // sumar quemadas doblaría el ejercicio y rompería la coherencia con el %)
+    final restante = (meta - consumido).clamp(0.0, 5000.0);
     final progreso = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
 
     return Container(
@@ -1231,24 +1229,17 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '🎯 Tu Plan Nutricional',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              // ✨ Usar el nuevo PlanStatusBadge
-              PlanStatusBadge(
-                estadoPlan: plan.estadoPlan,
-                esCondicionCritica: plan.esCondicionCritica,
-              ),
-            ],
+          // Título completo + badge debajo → nunca se trunca sin importar el texto del badge
+          const Text(
+            '🎯 Tu Plan Nutricional',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
+          PlanStatusBadge(
+            estadoPlan: plan.estadoPlan,
+            esCondicionCritica: plan.esCondicionCritica,
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               const Icon(Icons.local_fire_department, size: 30, color: Colors.orange),
@@ -1503,9 +1494,11 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       selectedIndex: 0,
       onDestinationSelected: (index) async {
         if (index == 1) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
+          if (mounted) _loadDashboardData();
         } else if (index == 2) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
+          if (mounted) _loadDashboardData();
         } else if (index == 3) {
           // Cargar perfil antes de navegar
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -1515,12 +1508,13 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
               authProvider.token!,
             );
             if (mounted) {
-              Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => EditProfileScreen(client: client),
                 ),
               );
+              if (mounted) _loadDashboardData();
             }
           } catch (e) {
             if (mounted) {

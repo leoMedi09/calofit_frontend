@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 class CheckInCard extends StatelessWidget {
   final int precisionScore; // 0 a 100
   final bool isNeeded;
+  final int daysUntilCheckin; // 0 = no programado
   final VoidCallback onTap;
 
   const CheckInCard({
     super.key,
     required this.precisionScore,
     required this.isNeeded,
+    this.daysUntilCheckin = 0,
     required this.onTap,
   });
 
@@ -136,10 +138,14 @@ class CheckInCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  isNeeded 
-                      ? '⚠️ Requiere datos para la próxima semana. ¡Actualiza ahora!' 
-                      : '✅ IA operando al máximo nivel de precisión.',
-                  style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 10, fontStyle: FontStyle.italic),
+                  isNeeded
+                      ? '⚠️ Requiere datos para la próxima semana. ¡Actualiza ahora!'
+                      : precisionScore >= 100
+                          ? '✅ IA operando al máximo nivel de precisión.'
+                          : daysUntilCheckin > 0
+                              ? '📅 Próxima calibración en $daysUntilCheckin días — toca para adelantar.'
+                              : '📅 Actualiza tus medidas para mejorar la precisión del plan.',
+                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, fontStyle: FontStyle.italic),
                 ),
               ],
             ),

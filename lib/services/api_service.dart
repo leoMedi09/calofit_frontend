@@ -566,16 +566,14 @@ class ApiService {
   /// 🗑️ Elimina un registro de alimento o ejercicio
   /// tipo: "alimento" o "ejercicio"
   /// Recalcula automáticamente el balance después de eliminar
-  Future<Map<String, dynamic>> eliminarRegistro(int registroId, String tipo, String token) async {
+  Future<Map<String, dynamic>> eliminarRegistro(int registroId, String tipo, String token, {int n = 0}) async {
     try {
-      print('🗑️ Eliminando registro ID: $registroId, tipo: $tipo');
+      final params = {'tipo': tipo, if (n > 0) 'n': n.toString()};
       final response = await _dio.delete('/balance/registro/$registroId',
-          queryParameters: {'tipo': tipo},
+          queryParameters: params,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      print('✅ Registro eliminado: ${response.data}');
       return response.data;
     } catch (e) {
-      print('❌ Error eliminando registro: $e');
       throw Exception('Error eliminando registro: $e');
     }
   }

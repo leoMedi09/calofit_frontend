@@ -135,6 +135,7 @@ class MacrosNormalizados {
 class Section {
   final String tipo; // "comida" o "ejercicio"
   final String nombre;
+  final String justificacion;
   final String macros;
   final List<String> ingredientes;
   final List<String> preparacion;
@@ -148,6 +149,7 @@ class Section {
   Section({
     required this.tipo,
     required this.nombre,
+    this.justificacion = '',
     required this.macros,
     required this.ingredientes,
     required this.preparacion,
@@ -206,6 +208,7 @@ class Section {
     return Section(
       tipo: tipo,
       nombre: json['nombre'] ?? json['plato'] ?? '',
+      justificacion: (json['justificacion'] ?? '').toString(),
       macros: (json['macros'] ??
               json['gasto_calorico_estimado'] ??
               json['estimacion_calorica'] ??

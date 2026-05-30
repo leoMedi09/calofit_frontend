@@ -11,6 +11,7 @@ import 'screens/staff/staff_main_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/verify_code_screen.dart';
+import 'app_theme.dart';
 
 import 'screens/client/onboarding_profile_screen.dart';
 import 'models/client.dart';
@@ -100,11 +101,7 @@ class MyApp extends StatelessWidget {
         navigatorKey: navigatorKey,
         title: 'CaloFit',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primaryColor: Colors.blue,
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        ),
+        theme: AppTheme.light,
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,

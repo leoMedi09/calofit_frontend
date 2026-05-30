@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/assistant_response.dart';
 import 'assistant_text_helpers.dart';
+import 'app_components.dart';
 
-class RecipeCard extends StatefulWidget {
+class RecipeCard extends StatelessWidget {
   final Section section;
   final VoidCallback? onAdd;
   final VoidCallback? onSave;
@@ -10,32 +11,7 @@ class RecipeCard extends StatefulWidget {
   const RecipeCard({Key? key, required this.section, this.onAdd, this.onSave})
       : super(key: key);
 
-  @override
-  State<RecipeCard> createState() => _RecipeCardState();
-}
-
-class _RecipeCardState extends State<RecipeCard> {
-  bool _expanded = false;
-  final GlobalKey _contentKey = GlobalKey();
-
-  String get _nombreLimpio =>
-      widget.section.nombre.replaceAll('**', '').trim();
-
-  void _toggleExpand() {
-    setState(() => _expanded = !_expanded);
-    if (!_expanded) return;
-    Future.delayed(const Duration(milliseconds: 220), () {
-      if (!mounted) return;
-      final ctx = _contentKey.currentContext;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx, // ignore: use_build_context_synchronously
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-        alignment: 0.3,
-      );
-    });
-  }
+  String get _nombreLimpio => section.nombre.replaceAll('**', '').trim();
 
   static String _fmtMacroGrams(double v) {
     if (v.isNaN || v.isInfinite) return '0';
@@ -43,8 +19,8 @@ class _RecipeCardState extends State<RecipeCard> {
     return v.toStringAsFixed(1);
   }
 
-  Map<String, String> _macrosMapForSection(Section section) {
-    final n = section.macrosNormalizados;
+  Map<String, String> _macrosMapForSection(Section s) {
+    final n = s.macrosNormalizados;
     if (n != null && n.hasUsableMacros) {
       final m = <String, String>{};
       if (n.kcal > 0) m['Cal'] = '${_fmtMacroGrams(n.kcal)}kcal';
@@ -53,7 +29,7 @@ class _RecipeCardState extends State<RecipeCard> {
       if (n.grasasG > 0) m['G'] = '${_fmtMacroGrams(n.grasasG)}g';
       if (m.isNotEmpty) return m;
     }
-    return _parseMacros(section.macros);
+    return _parseMacros(s.macros);
   }
 
   static String _macroKeyLettersOnly(String raw) {
@@ -101,196 +77,81 @@ class _RecipeCardState extends State<RecipeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final macrosMap = _macrosMapForSection(widget.section);
+    final macrosMap = _macrosMapForSection(section);
     final hasMacros = macrosMap.isNotEmpty;
-    final ingredientes = _ingredientListWidgets(widget.section.ingredientes);
-    final preparacion = _preparacionListWidgets(widget.section.preparacion);
+    final ingredientes = _ingredientListWidgets(section.ingredientes);
+    final preparacion = _preparacionListWidgets(section.preparacion);
     final hayIngredientes = ingredientes.isNotEmpty;
     final hayPreparacion = preparacion.isNotEmpty;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.shade900.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+    Widget? subtitle;
+    if (hasMacros) {
+      subtitle = MacroChipsRow(macrosMap: macrosMap);
+    } else if (section.macros.isNotEmpty) {
+      subtitle = Text(
+        section.macros,
+        style: TextStyle(
+          color: Colors.orange.shade800,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          height: 1.35,
+        ),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    final justificacion = section.justificacion.trim();
+
+    return ExpandableCard(
+      accent: Colors.orange,
+      headerIcon: Icons.restaurant_menu,
+      title: _nombreLimpio.toUpperCase(),
+      subtitle: subtitle,
+      justificacion: justificacion.isNotEmpty ? justificacion : null,
+      action: onSave != null ? CardSaveButton(onPressed: onSave!) : null,
+      expandedContent: [
+        if (hasMacros) ...[
+          MacroDetailPanel(macrosMap: macrosMap),
+          const SizedBox(height: 16),
         ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Header (siempre visible) ──────────────────────────────────────
-          InkWell(
-            onTap: _toggleExpand,
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.restaurant_menu,
-                        color: Colors.orange, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _nombreLimpio.toUpperCase(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 0.5,
-                          ),
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (hasMacros) ...[
-                          const SizedBox(height: 6),
-                          _MacroChipsRow(macrosMap: macrosMap),
-                        ] else if (widget.section.macros.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            widget.section.macros,
-                            style: TextStyle(
-                              color: Colors.orange.shade800,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              height: 1.35,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                        if (widget.onSave != null) ...[
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              icon: const Icon(Icons.bookmark_add,
-                                  size: 18, color: Colors.blue),
-                              label: const Text('Guardar',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600)),
-                              onPressed: widget.onSave,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        color: Colors.orange.shade400, size: 22),
-                  ),
-                ],
+        if (hayIngredientes) ...[
+          CardSectionHeader(
+            title: 'INGREDIENTES',
+            icon: Icons.shopping_basket,
+            color: Colors.orange.shade700,
+          ),
+          const SizedBox(height: 8),
+          ...ingredientes,
+        ],
+        if (hayIngredientes && hayPreparacion) const Divider(height: 32),
+        if (hayPreparacion) ...[
+          CardSectionHeader(
+            title: 'PREPARACIÓN',
+            icon: Icons.list,
+            color: Colors.orange.shade700,
+          ),
+          const SizedBox(height: 8),
+          ...preparacion,
+        ],
+        if (!hayIngredientes && !hayPreparacion)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'No se recibió el detalle de ingredientes o pasos en esta respuesta.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+                height: 1.35,
               ),
             ),
           ),
-
-          // ── Contenido expandible ──────────────────────────────────────────
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: _expanded
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Divider(key: _contentKey, height: 1),
-                        const SizedBox(height: 12),
-                        if (hasMacros) ...[
-                          _MacroDetailPanel(macrosMap: macrosMap),
-                          const SizedBox(height: 16),
-                        ],
-                        if (hayIngredientes) ...[
-                          _sectionHeader('INGREDIENTES', Icons.shopping_basket),
-                          const SizedBox(height: 8),
-                          ...ingredientes,
-                        ],
-                        if (hayIngredientes && hayPreparacion)
-                          const Divider(height: 32),
-                        if (hayPreparacion) ...[
-                          _sectionHeader('PREPARACIÓN', Icons.list),
-                          const SizedBox(height: 8),
-                          ...preparacion,
-                        ],
-                        if (!hayIngredientes && !hayPreparacion)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              'No se recibió el detalle de ingredientes o pasos en esta respuesta.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontStyle: FontStyle.italic,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
-                        if (widget.section.nota.isNotEmpty) ...[
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.shade100),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.lightbulb_outline,
-                                    size: 18, color: Colors.orange.shade800),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    widget.section.nota,
-                                    style: TextStyle(
-                                      fontStyle: FontStyle.italic,
-                                      color: Colors.orange.shade900,
-                                      fontSize: 12.5,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+        if (section.nota.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          CardNoteBox(nota: section.nota, accent: Colors.orange),
         ],
-      ),
+      ],
     );
   }
 
@@ -403,55 +264,21 @@ class _RecipeCardState extends State<RecipeCard> {
         if (singleStep) {
           w.add(assistantBulletLine(line, accent));
         } else {
-          w.add(_stepRow(stepIndex, line, accent));
+          w.add(CardStepRow(stepIndex, line, accent));
         }
       }
     }
     return w;
   }
-
-  Widget _sectionHeader(String title, IconData icon) {
-    return Row(children: [
-      Icon(icon, size: 16, color: Colors.orange.shade700),
-      const SizedBox(width: 8),
-      Text(title,
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
-              letterSpacing: 0.6)),
-    ]);
-  }
-
-  Widget _stepRow(int index, String text, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text('$index',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: color, fontSize: 11)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-            child: Text(text,
-                style: const TextStyle(fontSize: 13.5, height: 1.45))),
-      ]),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Chips compactos de macros (visibles sin expandir)
+// MacroChipsRow — chips compactos de macros visibles sin expandir
+// Público para poder reutilizarse en otras pantallas de nutrición
 // ─────────────────────────────────────────────────────────────────────────────
-class _MacroChipsRow extends StatelessWidget {
+class MacroChipsRow extends StatelessWidget {
   final Map<String, String> macrosMap;
-  const _MacroChipsRow({required this.macrosMap});
+  const MacroChipsRow({super.key, required this.macrosMap});
 
   @override
   Widget build(BuildContext context) {
@@ -480,11 +307,12 @@ class _MacroChipsRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel detallado de macros (visible al expandir)
+// MacroDetailPanel — panel de información nutricional expandido
+// Público para poder reutilizarse en otras pantallas de nutrición
 // ─────────────────────────────────────────────────────────────────────────────
-class _MacroDetailPanel extends StatelessWidget {
+class MacroDetailPanel extends StatelessWidget {
   final Map<String, String> macrosMap;
-  const _MacroDetailPanel({required this.macrosMap});
+  const MacroDetailPanel({super.key, required this.macrosMap});
 
   @override
   Widget build(BuildContext context) {

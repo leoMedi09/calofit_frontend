@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ExpandableCard
@@ -20,6 +21,9 @@ class ExpandableCard extends StatefulWidget {
   /// Acción alineada a la derecha del subtítulo (ej. CardSaveButton).
   final Widget? action;
 
+  /// Motivo de recomendación (1 frase). Se muestra debajo del subtítulo en cursiva.
+  final String? justificacion;
+
   /// Contenido visible al expandir. Se renderiza después del Divider interno.
   final List<Widget> expandedContent;
 
@@ -31,6 +35,7 @@ class ExpandableCard extends StatefulWidget {
     required this.expandedContent,
     this.subtitle,
     this.action,
+    this.justificacion,
   }) : super(key: key);
 
   @override
@@ -49,7 +54,7 @@ class _ExpandableCardState extends State<ExpandableCard> {
       final ctx = _dividerKey.currentContext;
       if (ctx == null) return;
       Scrollable.ensureVisible(
-        ctx,
+        ctx, // ignore: use_build_context_synchronously
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
         alignment: 0.3,
@@ -104,6 +109,20 @@ class _ExpandableCardState extends State<ExpandableCard> {
                         if (widget.subtitle != null) ...[
                           const SizedBox(height: 6),
                           widget.subtitle!,
+                        ],
+                        if (widget.justificacion != null && widget.justificacion!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.justificacion!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey.shade600,
+                              height: 1.35,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                         if (widget.action != null) ...[
                           const SizedBox(height: 6),
@@ -412,7 +431,7 @@ class EmptyStateView extends StatelessWidget {
                   icon: const Icon(Icons.refresh, size: 18),
                   label: Text(actionLabel ?? 'Recargar'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E88E5),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),

@@ -5,6 +5,8 @@ import '../../../providers/auth_provider.dart';
 import 'chat_screen.dart';
 import '../../../providers/balance_provider.dart';
 import 'edit_profile_screen.dart';
+import '../../../widgets/app_components.dart';
+import '../../../app_theme.dart';
 
 class MiBalanceScreen extends StatefulWidget {
   const MiBalanceScreen({Key? key}) : super(key: key);
@@ -87,41 +89,101 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     }
   }
 
-  Future<void> _eliminarRegistro(int id, String tipo) async {
-    // Capturar providers ANTES de cualquier await (incluye showDialog)
+  Future<void> _eliminarRegistro(int id, String tipo, {int cantidad = 1}) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 24),
-            const SizedBox(width: 10),
-            const Text('Confirmar', style: TextStyle(fontWeight: FontWeight.w800)),
+    // Si hay más de 1 registro del mismo alimento, preguntar cuántos borrar
+    int nEliminar = 1;
+    if (cantidad > 1 && tipo == 'alimento') {
+      final resultado = await showDialog<int>(
+        context: context,
+        builder: (ctx) {
+          int seleccionado = 1;
+          return StatefulBuilder(
+            builder: (ctx, setStateDialog) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Icon(Icons.delete_outline_rounded, color: Colors.red.shade600, size: 24),
+                  const SizedBox(width: 10),
+                  const Text('¿Cuántos eliminar?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Tienes $cantidad registros de este alimento.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: seleccionado > 1 ? () => setStateDialog(() => seleccionado--) : null,
+                        icon: Icon(Icons.remove_circle_outline, color: seleccionado > 1 ? Colors.red.shade500 : Colors.grey.shade300, size: 32),
+                      ),
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.orange.shade200)),
+                        alignment: Alignment.center,
+                        child: Text('$seleccionado', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.orange.shade700)),
+                      ),
+                      IconButton(
+                        onPressed: seleccionado < cantidad ? () => setStateDialog(() => seleccionado++) : null,
+                        icon: Icon(Icons.add_circle_outline, color: seleccionado < cantidad ? Colors.green.shade500 : Colors.grey.shade300, size: 32),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    seleccionado == cantidad ? 'Se eliminarán todos los registros' : 'Se eliminará $seleccionado de $cantidad',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, 0),
+                  child: Text('Cancelar', style: TextStyle(color: Colors.grey.shade600)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, seleccionado),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+      if (resultado == null || resultado == 0) return;
+      nEliminar = resultado;
+    } else {
+      // 1 solo registro: confirmar simple
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 24),
+              const SizedBox(width: 10),
+              const Text('Confirmar', style: TextStyle(fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: Text('¿Eliminar este ${tipo == 'alimento' ? 'alimento' : 'ejercicio'} de tu registro?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar', style: TextStyle(color: Colors.grey.shade600))),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
           ],
         ),
-        content: Text('¿Eliminar este ${tipo == 'alimento' ? 'alimento' : 'ejercicio'} de tu registro?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar', style: TextStyle(color: Colors.grey.shade600)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
+      );
+      if (confirm != true) return;
+    }
 
     final token = authProvider.token;
     final String? dateParam = _selectedDate != null
@@ -129,7 +191,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         : null;
 
     try {
-      await _apiService.eliminarRegistro(id, tipo, token!);
+      await _apiService.eliminarRegistro(id, tipo, token!, n: nEliminar);
       await balanceProvider.fetchFullBalance(token, fecha: dateParam);
 
       if (mounted) {
@@ -176,7 +238,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         final isLoading = isLocalLoading && balanceData == null;
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF1F5F9),
+          backgroundColor: AppColors.surface,
           body: isLoading
               ? _buildLoadingState()
               : errorMessage != null
@@ -199,7 +261,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
             width: 60, height: 60,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation(const Color(0xFF1E88E5)),
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
             ),
           ),
           const SizedBox(height: 20),
@@ -225,7 +287,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
             icon: const Icon(Icons.refresh, size: 18),
             label: const Text('Recargar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E88E5),
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -258,7 +320,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
     return RefreshIndicator(
       onRefresh: _loadBalance,
-      color: const Color(0xFF1E88E5),
+      color: AppColors.primary,
       child: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           // ── PREMIUM HEADER ──
@@ -286,9 +348,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  labelColor: const Color(0xFF1565C0),
+                  labelColor: AppColors.primaryDark,
                   unselectedLabelColor: Colors.grey.shade400,
-                  indicatorColor: const Color(0xFF1E88E5),
+                  indicatorColor: AppColors.primary,
                   indicatorWeight: 3,
                   indicatorSize: TabBarIndicatorSize.label,
                   labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
@@ -331,8 +393,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
             end: Alignment.bottomRight,
             stops: const [0.3, 0.9],
             colors: [
-              const Color(0xFF1E88E5),
-              const Color(0xFF1565C0),
+              AppColors.primary,
+              AppColors.primaryDark,
             ],
           ),
           borderRadius: const BorderRadius.only(
@@ -398,7 +460,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                             return Theme(
                               data: Theme.of(context).copyWith(
                                 colorScheme: const ColorScheme.light(
-                                  primary: Color(0xFF1565C0), // header background color
+                                  primary: AppColors.primaryDark, // header background color
                                   onPrimary: Colors.white, // header text color
                                   onSurface: Colors.black, // body text color
                                 ),
@@ -556,7 +618,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 proteinas,
                 metaP,
                 Icons.restaurant_menu_rounded,
-                const Color(0xFFEF5350),
+                AppColors.macroProtein,
               ),
             ),
             const SizedBox(width: 12),
@@ -566,7 +628,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 carbohidratos,
                 metaC,
                 Icons.bakery_dining_rounded,
-                const Color(0xFFFFA726),
+                AppColors.macroCarbs,
               ),
             ),
             const SizedBox(width: 12),
@@ -576,7 +638,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 grasas,
                 metaG,
                 Icons.water_drop_rounded,
-                const Color(0xFF42A5F5),
+                AppColors.macroFat,
               ),
             ),
           ],
@@ -645,9 +707,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
   Widget _buildAlimentosList(List alimentos) {
     if (alimentos.isEmpty) {
-      return _buildEmptyTabState(
-        'Sin alimentos registrados',
-        Icons.restaurant_rounded,
+      return EmptyStateView(
+        icon: Icons.restaurant_rounded,
+        message: 'Sin alimentos registrados',
       );
     }
 
@@ -660,9 +722,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
   Widget _buildEjerciciosList(List ejercicios) {
     if (ejercicios.isEmpty) {
-      return _buildEmptyTabState(
-        'Sin ejercicio registrado',
-        Icons.fitness_center_rounded,
+      return EmptyStateView(
+        icon: Icons.fitness_center_rounded,
+        message: 'Sin ejercicio registrado',
       );
     }
 
@@ -670,40 +732,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       padding: const EdgeInsets.only(top: 8),
       itemCount: ejercicios.length,
       itemBuilder: (context, index) => _buildEjercicioCard(ejercicios[index], index),
-    );
-  }
-
-  Widget _buildEmptyTabState(String mensaje, IconData icon) {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.05),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 64, color: Colors.blue.withOpacity(0.3)),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                mensaje,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -719,9 +747,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         final favs = provider.favoritos;
 
         if (favs.isEmpty) {
-          return _buildEmptyTabState(
-            'Sin favoritos aún.\nToca la estrella en cualquier comida registrada para guardarla aquí.',
-            Icons.star_border_rounded,
+          return EmptyStateView(
+            icon: Icons.star_border_rounded,
+            message: 'Sin favoritos aún.\nToca la estrella en cualquier comida registrada para guardarla aquí.',
           );
         }
 
@@ -761,17 +789,17 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                           children: [
                             Text(
                               fav['nombre'] ?? '',
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
                               maxLines: 1, overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                _buildMiniChip(Icons.local_fire_department_rounded, '${fav['macros']?['calorias']?.toStringAsFixed(0) ?? 0}', Colors.orange),
+                                MiniChip(icon: Icons.local_fire_department_rounded, label: '${fav['macros']?['calorias']?.toStringAsFixed(0) ?? 0}', color: Colors.orange),
                                 const SizedBox(width: 6),
-                                _buildMiniChip(null, 'P: ${fav['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFEF5350)),
+                                MiniChip(label: 'P: ${fav['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroProtein),
                                 const SizedBox(width: 6),
-                                _buildMiniChip(null, 'C: ${fav['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFFFA726)),
+                                MiniChip(label: 'C: ${fav['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroCarbs),
                               ],
                             ),
                           ],
@@ -802,19 +830,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final horaCorta = hora.length >= 5 ? hora.substring(0, 5) : hora;
     final cantidad = (alimento['cantidad'] ?? 1) as int;
 
-    return AnimatedBuilder(
-      animation: _animController,
-      builder: (context, child) {
-        final delay = (index * 0.1).clamp(0.0, 0.5);
-        final anim = CurvedAnimation(
-          parent: _animController,
-          curve: Interval(delay, (delay + 0.4).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
-        );
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - anim.value)),
-          child: Opacity(opacity: anim.value, child: child),
-        );
-      },
+    return AnimatedListEntry(
+      controller: _animController,
+      index: index,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
@@ -848,7 +866,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                         Expanded(
                           child: Text(
                             nombre,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
                             maxLines: 1, overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -873,10 +891,10 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       spacing: 5,
                       runSpacing: 3,
                       children: [
-                        _buildMiniChip(Icons.local_fire_department_rounded, '${alimento['macros']?['calorias']?.toStringAsFixed(0) ?? 0} kcal', Colors.orange),
-                        _buildMiniChip(null, 'P: ${alimento['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFEF5350)),
-                        _buildMiniChip(null, 'C: ${alimento['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', const Color(0xFFFFA726)),
-                        _buildMiniChip(null, 'G: ${alimento['macros']?['grasas']?.toStringAsFixed(1) ?? 0}g', const Color(0xFF42A5F5)),
+                        MiniChip(icon: Icons.local_fire_department_rounded, label: '${alimento['macros']?['calorias']?.toStringAsFixed(0) ?? 0} kcal', color: Colors.orange),
+                        MiniChip(label: 'P: ${alimento['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroProtein),
+                        MiniChip(label: 'C: ${alimento['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroCarbs),
+                        MiniChip(label: 'G: ${alimento['macros']?['grasas']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroFat),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -894,7 +912,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => _eliminarRegistro(alimento['id'], 'alimento'),
+                  onTap: () => _eliminarRegistro(alimento['id'], 'alimento', cantidad: (alimento['cantidad'] as num? ?? 1).toInt()),
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -923,19 +941,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final horaCorta = hora.length >= 5 ? hora.substring(0, 5) : hora;
     final volumenLabel = (series > 0 && reps > 0) ? '${series}×${reps}' : null;
 
-    return AnimatedBuilder(
-      animation: _animController,
-      builder: (context, child) {
-        final delay = (index * 0.1).clamp(0.0, 0.5);
-        final anim = CurvedAnimation(
-          parent: _animController,
-          curve: Interval(delay, (delay + 0.4).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
-        );
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - anim.value)),
-          child: Opacity(opacity: anim.value, child: child),
-        );
-      },
+    return AnimatedListEntry(
+      controller: _animController,
+      index: index,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
@@ -966,7 +974,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                   children: [
                     Text(
                       nombre,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
@@ -975,7 +983,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        _buildMiniChip(Icons.local_fire_department_rounded, '${(ejercicio['calorias_quemadas'] as num?)?.toStringAsFixed(0) ?? '0'} kcal', Colors.orange),
+                        MiniChip(icon: Icons.local_fire_department_rounded, label: '${(ejercicio['calorias_quemadas'] as num?)?.toStringAsFixed(0) ?? '0'} kcal', color: Colors.orange),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -997,7 +1005,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                             ),
                           ),
                         if (intensidad.isNotEmpty)
-                          _buildMiniChip(Icons.speed_rounded, intensidad, Colors.deepPurple),
+                          MiniChip(icon: Icons.speed_rounded, label: intensidad, color: Colors.deepPurple),
                       ],
                     ),
                   ],
@@ -1028,30 +1036,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   // ═══════════════════════════════════════════
   // ██  BOTTOM NAV
   // ═══════════════════════════════════════════
-
-  Widget _buildMiniChip(IconData? icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.1), width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 10, color: color),
-            const SizedBox(width: 3),
-          ],
-          Text(
-            label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBottomNavigation() {
     return NavigationBar(
@@ -1118,7 +1102,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E88E5),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

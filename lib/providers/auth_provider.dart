@@ -206,13 +206,14 @@ class AuthProvider with ChangeNotifier {
       debugPrint('❌ Sesión inválida o expirada detectada en background: $e');
       // Detectar 401/403 correctamente tanto en DioException como en otros errores.
       // Si es error de red (timeout/sin conexión) mantenemos al usuario (modo offline).
-      final statusCode = (e is DioException) ? e.response?.statusCode : null;
-      final isAuthError = statusCode == 401 ||
-          statusCode == 403 ||
-          e.toString().contains('401') ||
-          e.toString().contains('403');
-      if (isAuthError) {
-        await logout();
+      // Solo logout por errores de autenticación reales (no por red/timeout)
+      if (e is DioException) {
+        final code = e.response?.statusCode;
+        if (code == 401 || code == 403) {
+          debugPrint('🔐 Token inválido ($code) — cerrando sesión automáticamente.');
+          await logout();
+        }
+        // Si es error de red/timeout: no cerrar sesión (modo offline)
       }
     }
   }

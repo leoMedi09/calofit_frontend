@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/balance_provider.dart';
 import '../../../services/api_service.dart';
 
 class SmartMealRegistrySheet extends StatefulWidget {
@@ -113,13 +114,74 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     }
   }
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     if (_ingredients.isEmpty) return;
-    final partes  = _ingredients.map((i) => '${i['gramos']}g de ${i['name']}').join(', ');
-    final mensaje = 'Comí: $partes';
-    _ingredients.clear();           // limpiar lista estática al confirmar, no al cerrar
-    Navigator.pop(context);
-    widget.onRegister?.call(mensaje);
+
+    setState(() => _isLoading = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.token == null) return;
+
+      // Preparar lista con macros exactos del preview
+      final alimentos = _ingredients.map((i) => {
+        'nombre':          i['name'] as String,
+        'gramos':          (i['gramos'] as num).toDouble(),
+        'kcal':            (i['kcal']  as num).toDouble(),
+        'proteinas_g':     (i['p']     as num).toDouble(),
+        'carbohidratos_g': (i['c']     as num).toDouble(),
+        'grasas_g':        (i['g']     as num).toDouble(),
+      }).toList();
+
+      final partes = _ingredients.map((i) => '${i['gramos']}g de ${i['name']}').join(', ');
+
+      // Registro directo — usa macros del preview (sin re-estimación)
+      await ApiService().registrarDirecto(
+        alimentos: alimentos,
+        token: auth.token!,
+        textoOriginal: 'Registro manual: $partes',
+      );
+
+      final kcalTotal = alimentos.fold(0.0, (sum, a) => sum + (a['kcal'] as double));
+      final nombresResumen = alimentos.length <= 2
+          ? alimentos.map((a) => a['nombre']).join(' + ')
+          : '${alimentos[0]['nombre']} y ${alimentos.length - 1} más';
+
+      _ingredients.clear();
+
+      if (mounted) {
+        // Mostrar confirmación antes de cerrar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '✅ $nombresResumen — ${kcalTotal.toInt()} kcal registradas',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF059669),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+
+        Navigator.pop(context);
+
+        // Refrescar balance en segundo plano
+        final balance = Provider.of<BalanceProvider>(context, listen: false);
+        balance.fetchFullBalance(auth.token!).catchError((_) {});
+      }
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = 'Error al guardar: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -215,83 +277,134 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
   }
 
   Widget _buildInputSection() {
+    const accent = Color(0xFF2563EB);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // Campo gramos
-              SizedBox(
-                width: 88,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4F6F8),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ── Campo gramos ─────────────────────────────────────
+                SizedBox(
+                  width: 90,
                   child: TextField(
                     controller: _qtyController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                      color: Color(0xFF1E293B),
+                    ),
                     decoration: InputDecoration(
                       hintText: '200',
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                      border: InputBorder.none,
+                      hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 15),
                       suffixText: 'g',
-                      suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
+                      suffixStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF64748B),
+                          fontSize: 13),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: accent, width: 2),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Campo nombre
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4F6F8),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
+                const SizedBox(width: 8),
+                // ── Campo nombre ─────────────────────────────────────
+                Expanded(
                   child: TextField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.sentences,
                     onSubmitted: (_) => _isLoading ? null : _addIngredient(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E293B),
+                    ),
                     decoration: InputDecoration(
                       hintText: 'arroz, pollo...',
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                      border: InputBorder.none,
-                      prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 18),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 28),
+                      hintStyle: const TextStyle(color: Color(0xFFADB5BD), fontSize: 14),
+                      prefixIcon: const Icon(Icons.search_rounded, color: accent, size: 19),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: accent, width: 2),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Botón +
-              GestureDetector(
-                onTap: _isLoading ? null : _addIngredient,
-                child: Container(
-                  height: 48, width: 48,
-                  decoration: BoxDecoration(
-                    color: _isLoading ? Colors.grey.shade300 : const Color(0xFF2563EB),
-                    borderRadius: BorderRadius.circular(14),
+                const SizedBox(width: 8),
+                // ── Botón + ──────────────────────────────────────────
+                SizedBox(
+                  height: 52,
+                  width: 52,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _addIngredient,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accent,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      padding: EdgeInsets.zero,
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22, height: 22,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2.5))
+                        : const Icon(Icons.add_rounded, color: Colors.white, size: 26),
                   ),
-                  child: _isLoading
-                      ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                ),
+              ],
+            ),
+            // ── Error ─────────────────────────────────────────────────
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-          if (_errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6, left: 4),
-              child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

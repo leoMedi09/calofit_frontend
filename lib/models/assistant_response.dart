@@ -4,10 +4,13 @@ class AssistantResponse {
   final String usuario;
   final ScientificData dataCientifica;
   final StructuredResponse respuestaEstructurada;
-  final String? intencion; // INFO, RECIPE, POWER, SUCCESS, DANGER, PROGRESS
-  final String? tipoPregunta; // ABIERTA, RAPIDA
+  final String? intencion;
+  final String? tipoPregunta;
   final bool? alertaSalud;
   final String? advertencia;
+  /// Datos de registro: {nombre, calorias, proteinas_g, carbohidratos_g, grasas_g}
+  /// para comida, o {nombre, kcal_quemadas, duracion_min, series, reps, peso_kg} para ejercicio.
+  final Map<String, dynamic>? datos;
 
   AssistantResponse({
     required this.usuario,
@@ -17,9 +20,11 @@ class AssistantResponse {
     this.tipoPregunta,
     this.alertaSalud,
     this.advertencia,
+    this.datos,
   });
 
   factory AssistantResponse.fromJson(Map<String, dynamic> json) {
+    final rawDatos = json['datos'];
     return AssistantResponse(
       usuario: json['usuario'] ?? '',
       dataCientifica: ScientificData.fromJson(json['data_cientifica'] ?? {}),
@@ -29,6 +34,7 @@ class AssistantResponse {
       tipoPregunta: json['tipo_pregunta'],
       alertaSalud: json['alerta_salud'] as bool?,
       advertencia: json['advertencia_nutricional'],
+      datos: rawDatos is Map ? Map<String, dynamic>.from(rawDatos) : null,
     );
   }
 
@@ -45,6 +51,7 @@ class AssistantResponse {
         'secciones': respuestaEstructurada.secciones.map((s) => s.toMap()).toList(),
       },
       'alerta_salud': alertaSalud,
+      if (datos != null) 'datos': datos,
     };
   }
 }

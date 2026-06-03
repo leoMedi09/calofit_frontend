@@ -484,83 +484,39 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final token = auth.token;
     if (token == null) return;
 
-    // Detectar Intención Simple (Heurística del lado del cliente para rapidez)
-    final lowerText = text.toLowerCase();
-    
-    // Palabras detonantes de REGISTRO
-    // Incluir variantes CON y SIN tilde (los usuarios escriben de ambas formas)
-    final logKeywords = [
-      "comí", "comi", "me comí", "me comi",
-      "almorzé", "almorcé", "almorce", "almorze",
-      "cené", "cene", "desayuné", "desayune",
-      "tomé", "tome", "bebí", "bebi", "ingerí", "ingeri",
-      "registra", "anota", "apunta",
-      "hice", "entrené", "entrenе", "corrí", "corri", "troté", "trote",
-      "agregame", "clavé", "clave", "zampé", "zampe",
-      "me clavé", "me clave", "me zampé", "me zampe",
-      "sali", "salí", "fui", "correr", "caminar", "andar",
-      "gym", "gimnasio", "pesas",
-      "realice", "realicé", "termine", "terminé", "entrene", "entrenó",
-    ];
-    
-    bool isLogIntent = logKeywords.any((k) => lowerText.startsWith(k) || lowerText.contains(" $k "));
-
+    // Nueva arquitectura: todo va por /consultar (LLM clasifica la intención)
+    // Se eliminó la bifurcación isLogIntent → /log-inteligente que usaba el sistema viejo
     try {
-      if (isLogIntent) {
-        // 👉 RUTA REGISTRO (/log-inteligente)
-        final result = await _apiService.registrarPorVoz(text, token);
-        final bool ok = result['success'] != false;
-
-        if (ok && result['balance_actualizado'] != null) {
-          balance.updateFromAssistant(result['balance_actualizado']);
-          // Actualización silenciosa de listas para la pantalla de Balance
-          balance.fetchFullBalance(token).catchError((e) => print("Silent refresh failed: $e"));
-        }
-
-        setState(() {
-          _isTyping = false;
-          if (!ok) {
-            _messages.add({
-              'role': 'assistant',
-              'content': result['mensaje'] ?? 'No pude registrar. Intenta con más detalle.',
-              'type': 'error',
-            });
-            if (!_isMuted) {
-              _speak(result['mensaje']?.toString() ?? '', "reg_err_${_messages.length}");
-            }
-          } else {
-            _messages.add({
-              'role': 'assistant',
-              'content': result['mensaje'] ?? 'Registrado.',
-              'type': 'registro_exitoso', // Card visual solo si el backend confirma success
-              'badge': result['tipo_detectado'],
-              'data': result['datos'],
-            });
-            if (!_isMuted) _speak(result['mensaje'] ?? '', "reg_${_messages.length}");
-          }
-        });
-        _saveChatHistory();
-
-      } else {
-        // 👉 RUTA CONSULTA (/consultar)
-        // Construir historial reducido
-        final history = _messages.length > 2 
-          ? _messages.sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
-            .where((m) => m['type'] != 'registro_exitoso') // Filtrar logs puros del historial de chat
-            .map((m) {
-               String content = "";
-               if (m['role'] == 'user') content = m['content'];
-               else if (m['response'] is AssistantResponse) content = (m['response'] as AssistantResponse).respuestaEstructurada.textoConversacional;
-               else content = m['content'] ?? "";
-               return {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': content};
-            }).toList() 
-          : null;
+      {
+        // Construir historial reducido para contexto conversacional
+        final history = _messages.length > 2
+            ? _messages
+                .sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
+                .where((m) => m['type'] != 'registro_exitoso')
+                .map((m) {
+                  String content = "";
+                  if (m['role'] == 'user') {
+                    content = m['content'];
+                  } else if (m['response'] is AssistantResponse) {
+                    content = (m['response'] as AssistantResponse)
+                        .respuestaEstructurada.textoConversacional;
+                  } else {
+                    content = m['content'] ?? "";
+                  }
+                  return {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': content};
+                }).toList()
+            : null;
 
         final result = await _apiService.consultarAsistente(text, token, historial: history);
         final responseObj = AssistantResponse.fromJson(result);
-        
-        // Actualizar datos si la consulta trajo progreso (ej: "¿cuánto me falta?")
+
+        // Actualizar balance si hubo registro o progreso
         balance.updateFromAssistant(responseObj.dataCientifica.progresoDiario);
+        if (result['balance_actualizado'] != null) {
+          balance.updateFromAssistant(
+              Map<String, dynamic>.from(result['balance_actualizado'] as Map));
+          balance.fetchFullBalance(token).catchError((e) => null);
+        }
 
         setState(() {
           _isTyping = false;
@@ -568,19 +524,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           _messages.add({
             'role': 'assistant',
             'response': responseObj,
-            'type': 'assistant_v3'
+            'type': 'assistant_v3',
           });
-
-          // v21.1: Speech inteligente corregido
-          String ttsText = responseObj.respuestaEstructurada.textoConversacional;
-          if (responseObj.respuestaEstructurada.secciones.isNotEmpty) {
-            final names = responseObj.respuestaEstructurada.secciones
-                .map((s) => s.nombre.replaceAll('**', '').trim())
-                .join(", ");
-            ttsText = "${ttsText.split('.').first}. Te sugiero: $names";
+          final ttsText = responseObj.respuestaEstructurada.textoConversacional;
+          if (!_isMuted && ttsText.isNotEmpty) {
+            _speak(ttsText, "answ_${_messages.length}");
           }
-          
-          if (!_isMuted) _speak(ttsText, "answ_${_messages.length}");
         });
         _saveChatHistory();
       }
@@ -708,7 +657,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         if (summary == null) return const SizedBox.shrink();
         
         final meta = summary.planObjetivo?.caloriasObjetivo ?? 2000;
-        final restante = (meta - summary.calorias).clamp(0, meta);
+        final restante = (meta - summary.calorias + summary.caloriasQuemadas).clamp(0.0, 5000.0);
         
         return Container(
           width: double.infinity,
@@ -777,40 +726,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           return AssistantMessageBubble(
             response: msg['response'],
             onAction: (text) => _handleUnifiedSubmit(quickMessage: text),
-            onSave: (section) async {
-              final auth = Provider.of<AuthProvider>(context, listen: false);
-              final token = auth.token;
-              if (token == null) return;
-              try {
-                await _apiService.guardarSugerencia(
-                  tipo: section.tipo,
-                  nombre: section.nombre,
-                  ingredientes: section.ingredientes,
-                  preparacion: section.preparacion,
-                  macros: section.macros,
-                  nota: section.nota,
-                  token: token,
-                );
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('🔖 "${section.nombre}" guardado en tu recetario'),
-                      backgroundColor: Colors.blue.shade700,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al guardar: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
           );
         } else if (msg['role'] == 'user') {
           return _buildUserBubble(msg['content']);
@@ -1055,9 +970,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             "🏋️ ¿Qué ejercicio hago hoy?",
             "Dime qué ejercicios puedo hacer hoy según mi plan.",
           ),
-          _quickChip("🍎 Registrar Comida", "He comido ", autofill: true),
-          _quickChip("🏃 Registrar Ejercicio", "Hoy entrené ", autofill: true),
-          _quickChip("📊 Mi Balance", "¿Cómo va mi progreso y macros de hoy?"),
         ],
       ),
     );

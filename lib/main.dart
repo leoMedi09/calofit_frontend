@@ -82,6 +82,7 @@ void main() async {
   }
 
   final authProvider = AuthProvider();
+  AuthProvider.navigatorKey = navigatorKey;
   await authProvider.loadToken();
   runApp(MyApp(authProvider: authProvider));
 }

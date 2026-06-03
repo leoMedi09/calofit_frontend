@@ -623,9 +623,8 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     final consumido = dailySummary.calorias;
     final quemadas = dailySummary.caloriasQuemadas;
     
-    // Restan = Meta − Consumido (la meta ya incluye factor de actividad;
-    // sumar quemadas doblaría el ejercicio y rompería la coherencia con el %)
-    final restante = (meta - consumido).clamp(0.0, 5000.0);
+    // Restan = Meta − Consumido + Quemadas
+    final restante = (meta - consumido + quemadas).clamp(0.0, 5000.0);
     final progreso = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
 
     return Container(

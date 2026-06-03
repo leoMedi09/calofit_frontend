@@ -21,64 +21,108 @@ class RoutineBuilderSheet extends StatefulWidget {
 }
 
 class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
-  final TextEditingController _durationController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _nameController   = TextEditingController();
+  final TextEditingController _seriesController = TextEditingController();
+  final TextEditingController _repsController   = TextEditingController();
+  final TextEditingController _pesoController   = TextEditingController();
 
   bool _isLoading = false;
   String? _errorMessage;
+
+  // Lista estática para persistir ejercicios entre rebuilds del sheet
   static final List<Map<String, dynamic>> _exercises = [];
 
+  // ── Agregar ejercicio ────────────────────────────────────────────────────
   Future<void> _addExercise() async {
-    final durationStrRaw = _durationController.text.trim();
-    final name = _nameController.text.trim();
-    
+    final name   = _nameController.text.trim();
+    final series = int.tryParse(_seriesController.text.trim()) ?? 0;
+    final reps   = int.tryParse(_repsController.text.trim()) ?? 0;
+    final peso   = double.tryParse(_pesoController.text.trim().replaceAll(',', '.')) ?? 0.0;
+
     setState(() => _errorMessage = null);
 
-    if (durationStrRaw.isEmpty || name.isEmpty) {
-      setState(() => _errorMessage = 'Ingresa minutos y ejercicio');
+    if (name.isEmpty) {
+      setState(() => _errorMessage = 'Escribe el nombre del ejercicio');
       return;
     }
-    
-    final cleanDurationStr = durationStrRaw.replaceAll(RegExp(r'[^0-9.]'), '');
-    final duration = double.tryParse(cleanDurationStr);
-    
-    if (duration == null || duration <= 0) {
-      setState(() => _errorMessage = 'La duración no es válida');
+    if (series <= 0 || reps <= 0) {
+      setState(() => _errorMessage = 'Ingresa series y repeticiones');
       return;
     }
-
-    // Formato con verbo para que el NLP del backend pueda extraer nombre y duración
-    // correctamente: rotulo_actividad_desde_mensaje() quita "hice" y "por X min".
-    final text = 'hice $name por $cleanDurationStr min';
 
     setState(() => _isLoading = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.token == null) return;
-      
-      final apiService = ApiService();
-      // Temporalmente usamos el parse de alimentos adaptado o un endpoint nuevo
-      // Por ahora creamos la UI, luego el endpoint /asistente/calcular-ejercicio
-      final result = await apiService.calcularEjercicioManual(text, auth.token!);
-      
+
+      final result = await ApiService().calcularEjercicioManual(
+        nombre: name,
+        series: series,
+        reps: reps,
+        pesoKg: peso,
+        token: auth.token!,
+      );
+
       if (result['ejercicio'] != null) {
+        final ex = result['ejercicio'] as Map<String, dynamic>;
         setState(() {
-          final ex = result['ejercicio'];
           _exercises.add({
-            'name': ex['nombre'],
-            'duration': '${ex['duracion']} min',
-            'kcal': ex['calorias'],
-            'met': ex['met'],
+            'name':        ex['nombre']     ?? name,
+            'series':      ex['series']     ?? series,
+            'reps':        ex['reps']       ?? reps,
+            'peso_kg':     ex['peso_kg']    ?? peso,
+            'duracion_min': ex['duracion_min'] ?? 10.0,
+            'kcal':        (ex['calorias']  ?? 0.0).toDouble(),
+            'met':         (ex['met']       ?? 5.0).toDouble(),
           });
         });
-        _durationController.clear();
         _nameController.clear();
+        _seriesController.clear();
+        _repsController.clear();
+        _pesoController.clear();
       } else {
-        setState(() => _errorMessage = 'No se encontró información.');
+        setState(() => _errorMessage = 'No se encontró ese ejercicio. Prueba otro nombre.');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ── Registrar rutina completa ────────────────────────────────────────────
+  Future<void> _saveRoutine() async {
+    setState(() => _isLoading = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.token == null) return;
+
+      final result = await ApiService().registrarRutinaManual(_exercises, auth.token!);
+
+      if (result['success'] == true) {
+        if (mounted) {
+          final kcalTotal = (result['total_kcal'] ?? 0.0).toStringAsFixed(0);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Rutina registrada — $kcalTotal kcal quemadas'),
+              backgroundColor: Colors.green.shade600,
+            ),
+          );
+          setState(() => _exercises.clear());
+          Navigator.pop(context);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['mensaje'] ?? 'Error al registrar')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -87,31 +131,28 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
 
   @override
   void dispose() {
-    _durationController.dispose();
     _nameController.dispose();
+    _seriesController.dispose();
+    _repsController.dispose();
+    _pesoController.dispose();
     super.dispose();
   }
 
-  double get totalKcal => _exercises.fold(0.0, (sum, item) => sum + (item['kcal'] as num).toDouble());
-  double get totalMinutes => _exercises.fold(0.0, (sum, item) {
-    final minStr = item['duration'].toString().replaceAll(' min', '');
-    return sum + (double.tryParse(minStr) ?? 0.0);
-  });
+  double get totalKcal => _exercises.fold(
+      0.0, (sum, e) => sum + (e['kcal'] as num).toDouble());
 
+  double get totalMinutes => _exercises.fold(
+      0.0, (sum, e) => sum + (e['duracion_min'] as num).toDouble());
+
+  // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: kToolbarHeight),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          )
-        ],
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -5))],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -126,7 +167,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                   _buildInputSection(),
                   const Divider(height: 1, color: Color(0xFFF0F2F5)),
                   _buildExerciseList(),
-                  _buildStickyFooter(),
+                  _buildFooter(),
                 ],
               ),
             ),
@@ -137,34 +178,23 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
   }
 
   Widget _buildHeader() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         children: [
           Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           const Text(
             "Constructor de Rutinas",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 4),
           Text(
-            "Añade ejercicios y arma tu entrenamiento",
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade600,
-            ),
+            "Añade ejercicios con series, reps y peso",
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -173,85 +203,165 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
 
   Widget _buildInputSection() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Campo de nombre ───────────────────────────────────────
+            TextField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B),
+              ),
+              decoration: InputDecoration(
+                hintText: 'Nombre del ejercicio (ej: Press Banca)',
+                hintStyle: const TextStyle(color: Color(0xFFADB5BD), fontSize: 14),
+                prefixIcon: const Icon(
+                  Icons.fitness_center_rounded,
+                  color: Color(0xFF10B981),
+                  size: 20,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF10B981), width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Series | Reps | Kg | Botón + ─────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _numField(_seriesController, 'Series', '3'),
+                const SizedBox(width: 8),
+                _numField(_repsController, 'Reps', '10'),
+                const SizedBox(width: 8),
+                _numField(_pesoController, 'Kg', '70', isDecimal: true),
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 56,
+                  width: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _addExercise,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      padding: EdgeInsets.zero,
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2.5))
+                        : const Icon(Icons.add_rounded,
+                            color: Colors.white, size: 28),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Mensaje de error ──────────────────────────────────────
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _numField(
+    TextEditingController ctrl,
+    String label,
+    String hint, {
+    bool isDecimal = false,
+  }) {
+    return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 90,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4F6F8),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: TextField(
-                  controller: _durationController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    hintText: '15',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                    border: InputBorder.none,
-                    suffixText: 'min',
-                    suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4F6F8),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      hintText: 'Press banca...',
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                      border: InputBorder.none,
-                      prefixIcon: Icon(Icons.fitness_center_rounded, color: Colors.grey.shade400, size: 20),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _isLoading ? null : _addExercise,
-                child: Container(
-                  height: 50,
-                  width: 50,
-                  decoration: BoxDecoration(
-                    color: _isLoading ? Colors.grey : const Color(0xFF10B981), // Verde estilo fitness
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: _isLoading ? [] : [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-                  ),
-                  child: _isLoading 
-                    ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.add_rounded, color: Colors.white, size: 26),
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF64748B),
+              letterSpacing: 0.3,
+            ),
           ),
-          if (_errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8, left: 4),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+          const SizedBox(height: 5),
+          TextField(
+            controller: ctrl,
+            keyboardType: isDecimal
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.number,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: Color(0xFF1E293B),
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(
+                color: Color(0xFFCBD5E1),
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide:
+                    const BorderSide(color: Color(0xFF10B981), width: 2),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -260,11 +370,11 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
   Widget _buildExerciseList() {
     if (_exercises.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(40.0),
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           children: [
             Icon(Icons.directions_run_rounded, size: 60, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text("Tu rutina está vacía", style: TextStyle(color: Colors.grey.shade500)),
           ],
         ),
@@ -274,34 +384,32 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       itemCount: _exercises.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final item = _exercises[index];
+        final int    series  = item['series']  as int;
+        final int    reps    = item['reps']    as int;
+        final double pesoKg  = (item['peso_kg'] as num).toDouble();
+        final double durMin  = (item['duracion_min'] as num).toDouble();
+        final double kcal    = (item['kcal'] as num).toDouble();
+        final double met     = (item['met'] as num).toDouble();
+
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey.shade100),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.fitness_center_rounded, color: Colors.green.shade400, size: 20),
+                decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+                child: Icon(Icons.fitness_center_rounded, color: Colors.green.shade500, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -310,17 +418,20 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                   children: [
                     Text(
                       item['name'],
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      item['duration'],
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
+                    // Series × Reps @Peso
                     Row(
                       children: [
-                        _macroBadge("MET: ${item['met']}", Colors.blue.shade400),
+                        _badge(
+                          '$series × $reps${pesoKg > 0 ? " @${pesoKg.toStringAsFixed(pesoKg % 1 == 0 ? 0 : 1)}kg" : ""}',
+                          Colors.green,
+                        ),
+                        const SizedBox(width: 6),
+                        _badge('~${durMin.toStringAsFixed(0)} min', Colors.blue),
+                        const SizedBox(width: 6),
+                        _badge('MET $met', Colors.purple),
                       ],
                     ),
                   ],
@@ -330,27 +441,20 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    "${item['kcal'].toStringAsFixed(1)} kcal",
-                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.orange.shade700, fontSize: 14),
+                    '${kcal.toStringAsFixed(1)} kcal',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.orange.shade700, fontSize: 13),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _exercises.removeAt(index);
-                      });
-                    },
+                    onTap: () => setState(() => _exercises.removeAt(index)),
                     child: Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.close_rounded, size: 16, color: Colors.red.shade300),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                      child: Icon(Icons.close_rounded, size: 16, color: Colors.red.shade400),
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         );
@@ -358,32 +462,20 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     );
   }
 
-  Widget _macroBadge(String text, Color color) {
+  Widget _badge(String text, MaterialColor color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
-      ),
+      decoration: BoxDecoration(color: color.shade50, borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color.shade600)),
     );
   }
 
-  Widget _buildStickyFooter() {
+  Widget _buildFooter() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: SafeArea(
         top: false,
@@ -392,34 +484,30 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Total Estimado",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
-                ),
+                const Text("Total Estimado",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      totalKcal.toStringAsFixed(1),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87),
-                    ),
+                    Text(totalKcal.toStringAsFixed(1),
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87)),
                     const Padding(
-                      padding: EdgeInsets.only(bottom: 3, left: 2),
-                      child: Text(" kcal", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
-                    ),
+                        padding: EdgeInsets.only(bottom: 3, left: 2),
+                        child: Text(" kcal",
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54))),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _totalMacroColumn("Ejercicios", "${_exercises.length}", Colors.purple.shade400),
-                _totalMacroColumn("Duración", "${totalMinutes.toStringAsFixed(0)} min", Colors.blue.shade400),
+                _statCol("Ejercicios", "${_exercises.length}", Colors.purple.shade400),
+                _statCol("Duración est.", "${totalMinutes.toStringAsFixed(0)} min", Colors.blue.shade400),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -442,45 +530,8 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       ),
     );
   }
-  
-  Future<void> _saveRoutine() async {
-    setState(() => _isLoading = true);
-    try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      if (auth.token == null) return;
-      
-      final apiService = ApiService();
-      final result = await apiService.registrarRutinaManual(_exercises, auth.token!);
-      
-      if (result['success'] == true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rutina registrada con éxito'), backgroundColor: Colors.green),
-          );
-          setState(() {
-            _exercises.clear();
-          });
-          Navigator.pop(context);
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['mensaje'] ?? 'Error al registrar')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
-  Widget _totalMacroColumn(String label, String value, Color color) {
+  Widget _statCol(String label, String value, Color color) {
     return Column(
       children: [
         Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
@@ -493,7 +544,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
 
 class _KeyboardPadding extends StatelessWidget {
   final Widget child;
-  
   const _KeyboardPadding({Key? key, required this.child}) : super(key: key);
 
   @override

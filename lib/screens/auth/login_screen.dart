@@ -139,8 +139,11 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 16),
               Center(
-                child: Icon(Icons.lock_person_rounded,
-                    size: 72, color: Colors.blue[700]),
+                child: Image.asset(
+                  'assets/icon/calofit_logo.png',
+                  width: 120,
+                  height: 120,
+                ),
               ),
               const SizedBox(height: 28),
               Text(

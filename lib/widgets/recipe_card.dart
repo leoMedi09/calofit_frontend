@@ -158,7 +158,8 @@ class RecipeCard extends StatelessWidget {
   List<Widget> _ingredientListWidgets(List<String> ingredientes) {
     final accent = Colors.orange;
     final w = <Widget>[];
-    for (final raw in expandItemLines(ingredientes)) {
+    for (final raw in expandItemLines(ingredientes).where((l) =>
+        !RegExp(r'^0\s*g\b', caseSensitive: false).hasMatch(l.trim()))) {
       if (isAssistantSubheader(raw)) {
         w.add(assistantSubheaderLine(
           stripMarkdownLight(raw),

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../models/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 
 class AuthProvider with ChangeNotifier {
+  // Inyectado desde main.dart para poder navegar a /login globalmente
+  // (funciona incluso cuando el Consumer<AuthProvider> del home ya no está en el árbol).
+  static GlobalKey<NavigatorState>? navigatorKey;
   String? _token;
   String? _userType;
   String? _userRole;
@@ -118,9 +122,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> _saveSession(bool rememberMe) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('remember_me', rememberMe);
-    
-    // Siempre guardamos el token básico para evitar que el usuario sea expulsado por error
-    // pero respetamos el rememberMe para la carga automática del perfil completo
+
     if (_token != null) await prefs.setString('token', _token!);
     if (_userType != null) await prefs.setString('userType', _userType!);
     if (_userRole != null) await prefs.setString('userRole', _userRole!);
@@ -128,14 +130,15 @@ class AuthProvider with ChangeNotifier {
     if (_userEmail != null) await prefs.setString('userEmail', _userEmail!);
     if (_userId != null) await prefs.setInt('userId', _userId!);
     await prefs.setBool('isProfileComplete', _isProfileComplete);
-    
+
+    // Guarda la fecha de expiración para validación local al relanzar la app.
+    final expiry = DateTime.now()
+        .add(rememberMe ? const Duration(days: 30) : const Duration(hours: 24));
+    await prefs.setInt('token_expiry', expiry.millisecondsSinceEpoch);
+
     if (rememberMe) {
       if (_profilePictureUrl != null) await prefs.setString('profilePictureUrl', _profilePictureUrl!);
       if (_userIdFirebase != null) await prefs.setString('userIdFirebase', _userIdFirebase!);
-    } else {
-      // Si no marcó recordarme, al menos mantenemos la sesión por 24 horas (duración del token)
-      // pero podríamos limpiar datos sensibles si fuera necesario.
-      // Por ahora, priorizamos que NO lo bote de la sesión.
     }
   }
 
@@ -149,38 +152,47 @@ class AuthProvider with ChangeNotifier {
     await prefs.remove('userId');
     await prefs.remove('userIdFirebase');
     await prefs.remove('isProfileComplete');
+    await prefs.remove('token_expiry');
+    await prefs.remove('remember_me');
   }
 
   Future<void> loadToken() async {
     final prefs = await SharedPreferences.getInstance();
-    bool rememberMe = prefs.getBool('remember_me') ?? false;
-    
-    if (rememberMe) {
-      _token = prefs.getString('token');
-      _userType = prefs.getString('userType');
-      _userRole = prefs.getString('userRole');
-      _userName = prefs.getString('userName');
-      _userEmail = prefs.getString('userEmail');
-      _userId = prefs.getInt('userId');
-      _profilePictureUrl = prefs.getString('profilePictureUrl');
-      _userIdFirebase = prefs.getString('userIdFirebase');
-      _isProfileComplete = prefs.getBool('isProfileComplete') ?? true;
-      
-      debugPrint('👤 AuthProvider: Sesión cargada. profilePictureUrl = $_profilePictureUrl');
-      
-      // ✅ NOTIFICAR AL INICIO: Permitir que la App cargue la UI al instante
-      notifyListeners();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
 
-      // ✅ VALIDACIÓN ASÍNCRONA (Background): Validar en segundo plano para no bloquear el arranque
-      if (_token != null && _userId != null) {
-        _validateSessionInBackground();
-      }
-    } else {
+    if (!rememberMe) {
       notifyListeners();
+      return;
+    }
+
+    // Verificar expiración localmente antes de mostrar la pantalla principal.
+    // Esto evita que el usuario vea el dashboard con un token muerto.
+    final expiryMs = prefs.getInt('token_expiry');
+    if (expiryMs != null && DateTime.now().millisecondsSinceEpoch > expiryMs) {
+      debugPrint('🕐 Token expirado localmente — limpiando sesión.');
+      await _removeSession();
+      notifyListeners();
+      return;
+    }
+
+    _token = prefs.getString('token');
+    _userType = prefs.getString('userType');
+    _userRole = prefs.getString('userRole');
+    _userName = prefs.getString('userName');
+    _userEmail = prefs.getString('userEmail');
+    _userId = prefs.getInt('userId');
+    _profilePictureUrl = prefs.getString('profilePictureUrl');
+    _userIdFirebase = prefs.getString('userIdFirebase');
+    _isProfileComplete = prefs.getBool('isProfileComplete') ?? true;
+
+    debugPrint('👤 AuthProvider: Sesión cargada. profilePictureUrl = $_profilePictureUrl');
+    notifyListeners();
+
+    if (_token != null && _userId != null) {
+      _validateSessionInBackground();
     }
   }
 
-  // Nueva función para validación silenciosa
   Future<void> _validateSessionInBackground() async {
     try {
       debugPrint('🔐 Validando sesión en segundo plano...');
@@ -192,9 +204,14 @@ class AuthProvider with ChangeNotifier {
       debugPrint('✅ Sesión validada exitosamente.');
     } catch (e) {
       debugPrint('❌ Sesión inválida o expirada detectada en background: $e');
-      // Solo si el error es 401/403 (Autenticación), cerramos sesión. 
-      // Si es error de red (Timeout), mantenemos al usuario (modo offline/resiliente).
-      if (e.toString().contains('401') || e.toString().contains('403')) {
+      // Detectar 401/403 correctamente tanto en DioException como en otros errores.
+      // Si es error de red (timeout/sin conexión) mantenemos al usuario (modo offline).
+      final statusCode = (e is DioException) ? e.response?.statusCode : null;
+      final isAuthError = statusCode == 401 ||
+          statusCode == 403 ||
+          e.toString().contains('401') ||
+          e.toString().contains('403');
+      if (isAuthError) {
         await logout();
       }
     }
@@ -205,7 +222,6 @@ class AuthProvider with ChangeNotifier {
       await _firebaseAuth.signOut();
     } catch (e) {
       debugPrint('⚠️ Error cerrando sesión de Firebase (probablemente sin conexión): $e');
-      // Continuar con el logout de todas formas
     }
 
     _token = null;
@@ -218,9 +234,13 @@ class AuthProvider with ChangeNotifier {
     _isProfileComplete = true;
 
     await _removeSession();
-    
-    debugPrint('✅ Logout completado. Usuario debe ser redirigido al login.');
+
+    debugPrint('✅ Logout completado.');
     notifyListeners();
+
+    // Navegar a /login con navigatorKey para garantizar la redirección
+    // independientemente de cuántas rutas haya en el stack.
+    navigatorKey?.currentState?.pushNamedAndRemoveUntil('/login', (r) => false);
   }
 
 

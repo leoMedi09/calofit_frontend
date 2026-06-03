@@ -4,28 +4,28 @@ import 'package:flutter/foundation.dart';
 class ApiConfig {
   // Configuración centralizada de URLs por plataforma
 
+  // Cambia a false para usar el backend local (desarrollo)
+  static const bool useProduction = false;
+
   static String get baseUrl {
+    if (useProduction) {
+      return prodUrl;
+    }
     if (kIsWeb) {
-      // Para Flutter Web
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
-      // Para dispositivo físico Android usa la IP de tu red Wi-Fi:
-      return 'http://192.168.15.144:8000';
+      return 'http://192.168.15.161:8000'; // IP local Wi-Fi
     } else if (Platform.isIOS) {
-      // Para iOS Simulator
       return 'http://localhost:8000';
     } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-      // Para apps de escritorio
       return 'http://localhost:8000';
     }
-    // Fallback por defecto
-    return 'http://localhost:8000';
+    return devUrl;
   }
 
   // URLs alternativas para diferentes entornos
-  static const String devUrl = 'http://localhost:8000';
-  
-  static const String prodUrl = 'https://api.calofit.com'; // Cuando tengas producción
+  static const String devUrl = 'http://192.168.15.144:8000'; // desarrollo local
+  static const String prodUrl = 'https://calofit-backend.onrender.com'; // producción Render
 
   // Para dispositivos físicos Android, usa la IP de tu máquina
 

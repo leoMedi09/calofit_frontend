@@ -27,7 +27,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -305,8 +305,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final consumidas = (resumen['calorias_consumidas'] ?? 0).toDouble();
     final quemadas = (resumen['calorias_quemadas'] ?? 0).toDouble();
     final objetivo = (resumen['objetivo_diario'] ?? 2000).toDouble();
-    // Restan = Meta − Consumido (consistente con el % mostrado; quemadas van aparte)
-    final restantes = (resumen['calorias_restantes'] ?? (objetivo - consumidas)).toDouble();
+    // Restan = Meta − Consumido + Quemadas
+    final restantes = (resumen['calorias_restantes'] ?? (objetivo - consumidas + quemadas)).toDouble();
     final proteinas = (resumen['proteinas_g'] ?? 0.0).toDouble();
     final carbohidratos = (resumen['carbohidratos_g'] ?? 0.0).toDouble();
     final grasas = (resumen['grasas_g'] ?? 0.0).toDouble();
@@ -314,9 +314,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final metaP = (resumen['proteinas_objetivo'] ?? 150.0).toDouble();
     final metaC = (resumen['carbohidratos_objetivo'] ?? 250.0).toDouble();
     final metaG = (resumen['grasas_objetivo'] ?? 60.0).toDouble();
-
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final balance = Provider.of<BalanceProvider>(context, listen: false);
 
     return RefreshIndicator(
       onRefresh: _loadBalance,
@@ -357,7 +354,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                   tabs: const [
                     Tab(text: 'Comidas'),
                     Tab(text: 'Ejercicios'),
-                    Tab(text: 'Favoritos'),
                   ],
                 ),
               ),
@@ -371,7 +367,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                   children: [
                     _buildAlimentosList(alimentos),
                     _buildEjerciciosList(ejercicios),
-                    _buildFavoritosList(balance, auth),
                   ],
                 ),
               ),
@@ -736,92 +731,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   }
 
   // ============ FAVORITOS UI ============
-
-  Widget _buildFavoritosList(BalanceProvider balance, AuthProvider auth) {
-    return Consumer<BalanceProvider>(
-      builder: (context, provider, _) {
-        if (provider.isFavoritosLoading && provider.favoritos.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final favs = provider.favoritos;
-
-        if (favs.isEmpty) {
-          return EmptyStateView(
-            icon: Icons.star_border_rounded,
-            message: 'Sin favoritos aún.\nToca la estrella en cualquier comida registrada para guardarla aquí.',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => provider.fetchFavoritos(auth.token!),
-          child: ListView.builder(
-            padding: const EdgeInsets.only(top: 8),
-            itemCount: favs.length,
-            itemBuilder: (context, index) {
-              final fav = favs[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.amber.shade200, width: 1),
-                  boxShadow: [
-                    BoxShadow(color: Colors.amber.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 3)),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 46, height: 46,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [Colors.amber.shade300, Colors.amber.shade600]),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(Icons.star_rounded, color: Colors.white, size: 22),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fav['nombre'] ?? '',
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                MiniChip(icon: Icons.local_fire_department_rounded, label: '${fav['macros']?['calorias']?.toStringAsFixed(0) ?? 0}', color: Colors.orange),
-                                const SizedBox(width: 6),
-                                MiniChip(label: 'P: ${fav['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroProtein),
-                                const SizedBox(width: 6),
-                                MiniChip(label: 'C: ${fav['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroCarbs),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
-                        tooltip: 'Quitar de favoritos',
-                        onPressed: () async {
-                          await provider.toggleFavorito(fav['id'] as int, auth.token!);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildAlimentoCard(Map<String, dynamic> alimento, int index) {
     final nombre = alimento['nombre'] ?? '';

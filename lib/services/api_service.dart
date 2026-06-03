@@ -637,13 +637,44 @@ class ApiService {
     }
   }
 
+  /// Registra ingredientes con macros ya calculados (Registro Inteligente).
+  /// Usa los valores exactos del preview — sin re-estimación LLM.
+  Future<Map<String, dynamic>> registrarDirecto({
+    required List<Map<String, dynamic>> alimentos,
+    required String token,
+    String textoOriginal = '',
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/asistente/registrar-directo',
+        data: {
+          'alimentos': alimentos,
+          'texto_original': textoOriginal,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      final msg = e.response?.data != null ? e.response!.data.toString() : e.message;
+      throw Exception('Error: $msg');
+    }
+  }
+
   // ============ ROUTINE BUILDER ============
 
-  Future<Map<String, dynamic>> calcularEjercicioManual(String texto, String token) async {
+  Future<Map<String, dynamic>> calcularEjercicioManual({
+    required String nombre,
+    required int series,
+    required int reps,
+    required double pesoKg,
+    required String token,
+  }) async {
     try {
-      final response = await _dio.post('/asistente/calcular-ejercicio',
-          data: {'texto': texto},
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      final response = await _dio.post(
+        '/asistente/calcular-ejercicio',
+        data: {'nombre': nombre, 'series': series, 'reps': reps, 'peso_kg': pesoKg},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
       return response.data;
     } catch (e) {
       throw Exception('Error al calcular ejercicio: $e');

@@ -214,8 +214,9 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
               client['profile_picture_url'].toString().isEmpty
           ? Center(
               child: Text(
-                client['full_name']?.toString().substring(0, 1).toUpperCase() ??
-                    'A',
+                (client['full_name'] != null && client['full_name'].toString().trim().isNotEmpty)
+                    ? client['full_name'].toString().trim().substring(0, 1).toUpperCase()
+                    : 'A',
                 style: TextStyle(
                   color: (isMale ? Colors.blue.shade700 : Colors.pink.shade700),
                   fontWeight: FontWeight.w900,

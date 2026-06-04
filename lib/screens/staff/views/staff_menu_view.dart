@@ -110,7 +110,9 @@ class StaffMenuView extends StatelessWidget {
 
   Widget _buildUserInfoCard(AuthProvider auth) {
     final String? photoUrl = auth.profilePictureUrl;
-    final String initials = (auth.userName ?? 'U').substring(0, 1).toUpperCase();
+    final String initials = (auth.userName != null && auth.userName!.trim().isNotEmpty)
+        ? auth.userName!.trim().substring(0, 1).toUpperCase()
+        : 'U';
 
     return Container(
       padding: const EdgeInsets.all(24),

@@ -284,7 +284,10 @@ class _TeamListViewState extends State<TeamListView> {
                     ? NetworkImage(UrlService.formatImageUrl(member.profilePictureUrl))
                     : null,
                 child: member.profilePictureUrl == null || member.profilePictureUrl!.isEmpty
-                    ? Text(member.firstName.substring(0, 1).toUpperCase(),
+                    ? Text(
+                        member.firstName.trim().isNotEmpty
+                            ? member.firstName.trim().substring(0, 1).toUpperCase()
+                            : '?',
                         style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 20))
                     : null,
               ),

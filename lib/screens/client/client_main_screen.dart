@@ -578,7 +578,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                             : null,
                         child: (authProvider.profilePictureUrl == null || authProvider.profilePictureUrl!.isEmpty)
                             ? Text(
-                                authProvider.userName?.substring(0, 1).toUpperCase() ?? 'U',
+                                (authProvider.userName != null && authProvider.userName!.trim().isNotEmpty)
+                                    ? authProvider.userName!.trim().substring(0, 1).toUpperCase()
+                                    : 'U',
                                 style: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,

@@ -75,7 +75,7 @@ class AssistantMessageBubble extends StatelessWidget {
                         Icon(
                           Icons.psychology_outlined,
                           size: 13,
-                          color: const Color(0xFF059669).withOpacity(0.8),
+                          color: const Color(0xFF059669).withValues(alpha: 0.8),
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -83,7 +83,7 @@ class AssistantMessageBubble extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF059669).withOpacity(0.8),
+                            color: const Color(0xFF059669).withValues(alpha: 0.8),
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -105,13 +105,43 @@ class AssistantMessageBubble extends StatelessWidget {
 // 1. BURBUJA CONVERSACIONAL — chat, consejos, dudas
 // ════════════════════════════════════════════════════════════════════════════
 
+enum _BubbleType { chat, receta, tecnica }
+
 class _ConversationalBubble extends StatelessWidget {
   final String texto;
   const _ConversationalBubble({required this.texto});
 
+  /// Detecta automáticamente si es receta o técnica de ejercicio
+  _BubbleType _detectarTipo() {
+    final t = texto.toLowerCase();
+    if (t.contains('ingredientes:') || t.contains('preparación:') || t.contains('preparacion:')) {
+      return _BubbleType.receta;
+    }
+    const ejerciciosKw = ['press', 'sentadilla', 'curl', 'remo', 'dominada', 'fondos',
+      'peso muerto', 'plancha', 'burpee', 'bíceps', 'biceps', 'tríceps', 'triceps',
+      'pecho', 'espalda', 'pierna', 'hombro'];
+    if (ejerciciosKw.any((k) => t.contains(k)) &&
+        (t.contains('1.') || t.contains('2.') || t.contains('paso'))) {
+      return _BubbleType.tecnica;
+    }
+    return _BubbleType.chat;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (texto.isEmpty) return const SizedBox.shrink();
+    final tipo = _detectarTipo();
+    final Color? badgeColor = tipo == _BubbleType.receta
+        ? const Color(0xFFD97706)
+        : tipo == _BubbleType.tecnica
+            ? const Color(0xFF2563EB)
+            : null;
+    final String? badgeLabel = tipo == _BubbleType.receta
+        ? '🍽 Receta'
+        : tipo == _BubbleType.tecnica
+            ? '💪 Técnica'
+            : null;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -122,7 +152,9 @@ class _ConversationalBubble extends StatelessWidget {
           bottomLeft: Radius.circular(18),
           bottomRight: Radius.circular(18),
         ),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: badgeColor?.withValues(alpha: 0.3) ?? const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -131,25 +163,39 @@ class _ConversationalBubble extends StatelessWidget {
           ),
         ],
       ),
-      child: MarkdownBody(
-        data: texto,
-        styleSheet: MarkdownStyleSheet(
-          p: const TextStyle(
-            fontSize: 15,
-            color: Color(0xFF1E293B),
-            height: 1.55,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Badge automático para receta o técnica
+          if (badgeLabel != null) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: badgeColor!.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                badgeLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: badgeColor,
+                ),
+              ),
+            ),
+          ],
+          MarkdownBody(
+            data: texto,
+            styleSheet: MarkdownStyleSheet(
+              p: const TextStyle(fontSize: 15, color: Color(0xFF1E293B), height: 1.55),
+              listBullet: TextStyle(fontSize: 15, color: badgeColor ?? const Color(0xFF1E293B)),
+              strong: const TextStyle(fontSize: 15, color: Color(0xFF1E293B), fontWeight: FontWeight.w700),
+              orderedListAlign: WrapAlignment.start,
+            ),
+            shrinkWrap: true,
           ),
-          listBullet: const TextStyle(
-            fontSize: 15,
-            color: Color(0xFF1E293B),
-          ),
-          strong: const TextStyle(
-            fontSize: 15,
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        shrinkWrap: true,
+        ],
       ),
     );
   }

@@ -6,10 +6,14 @@ import '../services/api_service.dart';
 class BalanceProvider with ChangeNotifier {
   DailySummary? _dailySummary;
   bool _isLoading = false;
+  bool _hasError = false;
+  String _errorMessage = '';
   final ApiService _apiService = ApiService();
 
   DailySummary? get dailySummary => _dailySummary;
   bool get isLoading => _isLoading;
+  bool get hasError => _hasError;
+  String get errorMessage => _errorMessage;
 
   Map<String, dynamic>? _fullBalanceData;
   Map<String, dynamic>? get fullBalanceData => _fullBalanceData;
@@ -89,12 +93,20 @@ class BalanceProvider with ChangeNotifier {
 
   Future<void> loadDailySummary(int clientId, String token) async {
     _isLoading = true;
+    _hasError = false;
+    _errorMessage = '';
     notifyListeners();
     try {
       final data = await _apiService.getDailySummary(clientId, token);
       _dailySummary = DailySummary.fromJson(data);
     } catch (e) {
-      print('Error loading summary in Provider: $e');
+      _hasError = true;
+      _errorMessage = e.toString().contains('connection') ||
+              e.toString().contains('timeout') ||
+              e.toString().contains('SocketException')
+          ? 'Sin conexión al servidor.\nVerifica que estés en la misma red.'
+          : 'Error al cargar datos. Toca para reintentar.';
+      debugPrint('Error loading summary: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

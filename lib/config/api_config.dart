@@ -5,7 +5,7 @@ class ApiConfig {
   // Configuración centralizada de URLs por plataforma
 
   // Cambia a false para usar el backend local (desarrollo)
-  static const bool useProduction = false;
+  static const bool useProduction = true;
 
   static String get baseUrl {
     if (useProduction) {
@@ -29,8 +29,8 @@ class ApiConfig {
 
   // Para dispositivos físicos Android, usa la IP de tu máquina
 
-  static const Duration connectTimeout = Duration(seconds: 15);
-  static const Duration receiveTimeout = Duration(seconds: 120);
+  static const Duration connectTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 30);
 
   // Función de ayuda para debugging
   static void printCurrentConfig() {

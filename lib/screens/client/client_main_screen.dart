@@ -287,6 +287,36 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           child: CircularProgressIndicator(),
                         ),
                       )
+                    else if (balanceProvider.hasError)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.wifi_off_rounded,
+                                  size: 56, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              Text(
+                                balanceProvider.errorMessage,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontSize: 15, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton.icon(
+                                onPressed: _loadDashboardData,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Reintentar'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2563EB),
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     else if (dailySummary != null) ...[ // Hero Section: Progreso del día
                       
                       // ✅ NUEVO: Bloqueo de Nutricionista

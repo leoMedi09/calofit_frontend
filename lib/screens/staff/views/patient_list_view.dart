@@ -157,10 +157,11 @@ class _PatientListViewState extends State<PatientListView> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // Handle
                   Center(
                     child: Container(
@@ -396,7 +397,8 @@ class _PatientListViewState extends State<PatientListView> {
                 ],
               ),
             ),
-          );
+          ),
+        );
         },
       ),
     );

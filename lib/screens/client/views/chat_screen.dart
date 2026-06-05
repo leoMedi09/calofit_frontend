@@ -7,6 +7,7 @@ import '../../../services/api_service.dart';
 import '../../../models/client.dart';
 import 'edit_profile_screen.dart';
 import 'mi_balance_screen.dart';
+import 'seguimiento_screen.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../models/assistant_response.dart';
@@ -139,8 +140,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   // ═══ PART A: Historial Persistente del Chat ═══
   Future<void> _loadChatHistory() async {
+    if (_chatSessionDirty) return;
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
+
+      // ── 1. Prioridad: historial local (SharedPreferences) ────────────────
       final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(key);
@@ -171,13 +175,33 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           }
         }
         if (loaded.isNotEmpty && mounted) {
-          if (_chatSessionDirty) {
-            return;
-          }
           setState(() => _messages = loaded);
           _jumpToBottom();
+          return; // local encontrado, no necesitamos servidor
         }
       }
+
+      // ── 2. Fallback: historial persistido en BD (nueva instalación / otro dispositivo) ─
+      if (auth.token == null || !mounted) return;
+      final serverMsgs = await _apiService.getHistorialChat(auth.token!);
+      if (serverMsgs.isEmpty || !mounted || _chatSessionDirty) return;
+
+      // Convertir a formato simple y agregar separador de memoria
+      final List<Map<String, dynamic>> fromServer = [
+        {
+          'role': 'assistant',
+          'content': 'Hola de nuevo. Recuerdo nuestra última conversación. '
+              '¿En qué te puedo ayudar hoy?',
+          'type': 'memory_restored', // tipo especial para UI
+        },
+        ...serverMsgs.map((m) => {
+          'role': m['role'] as String,
+          'content': m['content'] as String,
+          'type': 'text',
+        }),
+      ];
+      setState(() => _messages = fromServer);
+      _jumpToBottom();
     } catch (e) {
       debugPrint('Error cargando historial: $e');
     }
@@ -686,8 +710,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         if (index == 0) {
           Navigator.popUntil(context, (route) => route.isFirst);
         } else if (index == 2) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MiBalanceScreen()));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
         } else if (index == 3) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
+        } else if (index == 4) {
           final auth = Provider.of<AuthProvider>(context, listen: false);
           if (auth.userId == null || auth.token == null) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay una sesión activa.')));
@@ -695,7 +721,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           }
           try {
             final client = await _apiService.getClientProfile(auth.userId!, auth.token!);
-            if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => EditProfileScreen(client: client)));
+            if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)));
           } catch (e) {
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al obtener perfil: $e')));
           }
@@ -703,8 +729,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       },
       destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'), // Corrección aquí: label corregido de 'Asistente' a 'Chat' si se prefiere o dejarlo 'Asistente'
+        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
         NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );
@@ -722,6 +749,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         
         if (msg['type'] == 'registro_exitoso') {
           return _buildRichLogCard(msg);
+        } else if (msg['type'] == 'memory_restored') {
+          return _buildMemoryRestoredBubble(msg['content']);
         } else if (msg['role'] == 'assistant' && msg['response'] is AssistantResponse) {
           return AssistantMessageBubble(
             response: msg['response'],
@@ -730,7 +759,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         } else if (msg['role'] == 'user') {
           return _buildUserBubble(msg['content']);
         }
-        
+
         // Bubbles de texto simple (errores, etc)
         return _buildSimpleSystemBubble(msg['content'], isError: msg['type'] == 'error');
       },
@@ -901,6 +930,52 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           border: Border.all(color: isError ? Colors.red.shade100 : Colors.grey.shade200),
         ),
         child: Text(text ?? '...', style: TextStyle(color: isError ? Colors.red.shade800 : Colors.black87)),
+      ),
+    );
+  }
+
+  Widget _buildMemoryRestoredBubble(String? text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: Divider(color: Colors.blue.shade100, thickness: 1)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.history_rounded, size: 13, color: Colors.blue.shade300),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Memoria restaurada',
+                      style: TextStyle(fontSize: 11, color: Colors.blue.shade300, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: Divider(color: Colors.blue.shade100, thickness: 1)),
+            ],
+          ),
+          if (text != null && text.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                margin: const EdgeInsets.only(right: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: Text(text, style: TextStyle(color: Colors.blue.shade900, fontSize: 13)),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

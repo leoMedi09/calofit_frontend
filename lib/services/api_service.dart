@@ -596,6 +596,64 @@ class ApiService {
     return response.data as List<dynamic>;
   }
 
+  // ============ RESUMEN SEMANAL IA + HISTORIAL CHAT BD ============
+
+  Future<Map<String, dynamic>> getResumenSemanal(String token) async {
+    try {
+      final response = await _dio.get(
+        '/asistente/resumen-semanal',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Error obteniendo resumen semanal: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getHistorialChat(String token, {int limite = 30}) async {
+    try {
+      final response = await _dio.get(
+        '/asistente/historial',
+        queryParameters: {'limite': limite},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      return []; // Falla silenciosa — cae al historial local
+    }
+  }
+
+  // ============ SEGUIMIENTO SEMANAL E HISTÓRICO ============
+
+  Future<Map<String, dynamic>> getSeguimientoSemanal(String token, {int semanaOffset = 0}) async {
+    try {
+      final response = await _dio.get(
+        '/balance/semanal',
+        queryParameters: {'semana_offset': semanaOffset},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Error obteniendo seguimiento semanal: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getSeguimientoHistorico(String token, {int dias = 30}) async {
+    try {
+      final response = await _dio.get(
+        '/balance/historico',
+        queryParameters: {'dias': dias},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Error obteniendo historial: $e');
+    }
+  }
+
   // ============ DETALLE DE ALIMENTOS CON IA ============
 
   /// 🍎 Obtiene información nutricional completa de un alimento usando Groq IA

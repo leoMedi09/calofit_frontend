@@ -5,7 +5,7 @@ class ApiConfig {
   // Configuración centralizada de URLs por plataforma
 
   // Cambia a false para usar el backend local (desarrollo)
-  static const bool useProduction = true;
+  static const bool useProduction = false;
 
   static String get baseUrl {
     if (useProduction) {

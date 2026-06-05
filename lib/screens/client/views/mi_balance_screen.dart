@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import 'chat_screen.dart';
+import 'seguimiento_screen.dart'; // usado en bottom nav
 import '../../../providers/balance_provider.dart';
 import 'edit_profile_screen.dart';
 import '../../../widgets/app_components.dart';
@@ -953,8 +954,10 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         if (index == 0) {
           Navigator.popUntil(context, (route) => route.isFirst);
         } else if (index == 1) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ChatScreen()));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
         } else if (index == 3) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
+        } else if (index == 4) {
           _navigateToProfile();
         }
       },
@@ -962,6 +965,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
         NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
         NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );

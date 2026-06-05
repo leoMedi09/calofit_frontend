@@ -9,6 +9,7 @@ import '../auth/login_screen.dart';
 import 'views/edit_profile_screen.dart';
 import 'views/chat_screen.dart';
 import 'views/mi_balance_screen.dart';
+import 'views/seguimiento_screen.dart';
 import '../../widgets/plan_status_badge.dart';
 import '../../widgets/plan_alert_card.dart';
 
@@ -1531,7 +1532,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
           if (mounted) _loadDashboardData();
         } else if (index == 3) {
-          // Cargar perfil antes de navegar
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
+          if (mounted) _loadDashboardData();
+        } else if (index == 4) {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
           try {
             final client = await _apiService.getClientProfile(
@@ -1541,9 +1544,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
             if (mounted) {
               await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => EditProfileScreen(client: client),
-                ),
+                MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)),
               );
               if (mounted) _loadDashboardData();
             }
@@ -1571,6 +1572,11 @@ class _ClientMainScreenState extends State<ClientMainScreen>
           icon: Icon(Icons.assessment_outlined),
           selectedIcon: Icon(Icons.assessment),
           label: 'Balance',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.trending_up_rounded),
+          selectedIcon: Icon(Icons.trending_up),
+          label: 'Seguimiento',
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline),

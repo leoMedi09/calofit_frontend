@@ -6,6 +6,7 @@ import '../../../providers/balance_provider.dart';
 import '../../../services/api_service.dart';
 import 'chat_screen.dart';
 import 'mi_balance_screen.dart';
+import 'seguimiento_screen.dart';
 import '../client_main_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -709,15 +710,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildBottomNavigation() {
     return NavigationBar(
-      selectedIndex: 3,
+      selectedIndex: 4,
       onDestinationSelected: (index) {
         if (index == 0) {
-          // Ir al inicio y limpiar el stack
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const ClientMainScreen()), (route) => false);
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const ClientMainScreen()), (route) => false);
         } else if (index == 1) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ChatScreen()));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
         } else if (index == 2) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MiBalanceScreen()));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
+        } else if (index == 3) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
         }
       },
       backgroundColor: Colors.white,
@@ -725,6 +727,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
         NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
         NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );

@@ -157,6 +157,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
 
       await _apiService.updateClient(authProvider.userId!, updated, authProvider.token!);
       authProvider.updateUserName(_firstNameCtrl.text.trim());
+      await authProvider.markProfileComplete();
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(

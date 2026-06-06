@@ -245,6 +245,13 @@ class AuthProvider with ChangeNotifier {
   }
 
 
+  Future<void> markProfileComplete() async {
+    _isProfileComplete = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isProfileComplete', true);
+    notifyListeners();
+  }
+
   Future<void> updateUserName(String newName) async {
     _userName = newName;
     final prefs = await SharedPreferences.getInstance();

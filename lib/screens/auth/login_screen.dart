@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import '../../config/api_config.dart';
 import '../../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
 
@@ -19,6 +22,31 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _passwordVisible = false;
+  bool _backendWaking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _warmUpBackend();
+  }
+
+  Future<void> _warmUpBackend() async {
+    // Espera 2 segundos antes de mostrar el aviso (evita parpadeo en respuestas rápidas)
+    final timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _backendWaking = true);
+    });
+    try {
+      await http.get(
+        Uri.parse('${ApiConfig.prodUrl}/health'),
+        headers: const {'Connection': 'close'},
+      ).timeout(const Duration(seconds: 45));
+    } catch (_) {
+      // Silencioso — si falla el health check, el login mostrará el error normal
+    } finally {
+      timer.cancel();
+      if (mounted) setState(() => _backendWaking = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -166,6 +194,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 1.5),
               ),
               const SizedBox(height: 32),
+              if (_backendWaking)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.blue.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Iniciando servidor, espera un momento...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _buildField(
                 controller: _emailController,
                 label: 'Correo electrónico',

@@ -24,6 +24,10 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateMixin {
+  // Cache estático: sobrevive disposals del widget, evita recargar SharedPreferences en cada tab switch.
+  static List<Map<String, dynamic>>? _messagesCache;
+  static int? _cachedUserId;
+
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -52,7 +56,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   /// Si el usuario ya envió mensajes en esta sesión, no reemplazar la lista al terminar
   /// la carga asíncrona del historial (evita "borrar" el chat por condición de carrera).
-  bool _chatSessionDirty = false;
+
 
   // 🔄 ONE-STREAM: Una sola lista de mensajes (ahora persistente)
   List<Map<String, dynamic>> _messages = [
@@ -77,7 +81,20 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _initSpeech();
     _focusNode.addListener(_onFocusChange);
     _loadClientProfile();
-    _loadChatHistory();
+
+    // Si hay caché válida para este usuario (cambio de tab dentro de la misma sesión), usarla.
+    // Si no hay caché (primera apertura o app reiniciada), arrancar con el welcome message limpio.
+    // NUNCA cargar de SharedPreferences visualmente — el historial BD lo usa el LLM en silencio.
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (_messagesCache != null && _cachedUserId == auth.userId) {
+      _messages = _messagesCache!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _jumpToBottom();
+      });
+    } else {
+      _cachedUserId = auth.userId;
+      _messagesCache = _messages; // inicializar caché con el welcome message
+    }
   }
 
   Future<void> _initSpeech() async {
@@ -138,78 +155,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     return 'chat_history_default';
   }
 
-  // ═══ PART A: Historial Persistente del Chat ═══
-  Future<void> _loadChatHistory() async {
-    if (_chatSessionDirty) return;
-    try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
 
-      // ── 1. Prioridad: historial local (SharedPreferences) ────────────────
-      final key = _chatHistoryStorageKey(auth);
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString(key);
-      if (saved != null) {
-        final List decoded = jsonDecode(saved);
-        final List<Map<String, dynamic>> loaded = [];
-        for (final item in decoded) {
-          if (item['type'] == 'assistant_v3' && item['response_json'] != null) {
-            loaded.add({
-              'role': 'assistant',
-              'response': AssistantResponse.fromJson(item['response_json']),
-              'type': 'assistant_v3',
-            });
-          } else if (item['type'] == 'registro_exitoso') {
-            loaded.add({
-              'role': item['role'] ?? 'assistant',
-              'content': item['content'] ?? '',
-              'type': 'registro_exitoso',
-              'badge': item['badge'],
-              'data': item['data'],
-            });
-          } else {
-            loaded.add({
-              'role': item['role'] ?? 'user',
-              'content': item['content'] ?? '',
-              'type': item['type'] ?? 'text',
-            });
-          }
-        }
-        if (loaded.isNotEmpty && mounted) {
-          setState(() => _messages = loaded);
-          _jumpToBottom();
-          return; // local encontrado, no necesitamos servidor
-        }
-      }
-
-      // ── 2. Fallback: historial persistido en BD (nueva instalación / otro dispositivo) ─
-      if (auth.token == null || !mounted) return;
-      final serverMsgs = await _apiService.getHistorialChat(auth.token!);
-      if (serverMsgs.isEmpty || !mounted || _chatSessionDirty) return;
-
-      // Convertir a formato simple y agregar separador de memoria
-      final List<Map<String, dynamic>> fromServer = [
-        {
-          'role': 'assistant',
-          'content': 'Hola de nuevo. Recuerdo nuestra última conversación. '
-              '¿En qué te puedo ayudar hoy?',
-          'type': 'memory_restored', // tipo especial para UI
-        },
-        ...serverMsgs.map((m) => {
-          'role': m['role'] as String,
-          'content': m['content'] as String,
-          'type': 'text',
-        }),
-      ];
-      setState(() => _messages = fromServer);
-      _jumpToBottom();
-    } catch (e) {
-      debugPrint('Error cargando historial: $e');
-    }
-  }
 
   Future<void> _saveChatHistory() async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
+      _messagesCache = _messages; // Mantener caché sincronizada con la lista actual
       final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
 
@@ -267,8 +218,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(key);
+      _messagesCache = null; // El próximo initState hará carga limpia (SharedPreferences vacío → welcome)
       setState(() {
-        _chatSessionDirty = false;
         _messages = [
           {
             'role': 'assistant',
@@ -330,6 +281,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       String plainText = content
           .replaceAll(RegExp(r'\*+'), '')
           .replaceAll(RegExp(r'#+'), '')
+          // Reemplazos fonéticos para TTS en español
+          .replaceAll(RegExp(r'kcal', caseSensitive: false), 'kilocalorías')
+          .replaceAll(RegExp(r'\bkJ\b'), 'kilojulios')
+          .replaceAll(RegExp(r'\bg\b'), 'gramos')
+          .replaceAll(RegExp(r'\bmg\b'), 'miligramos')
+          .replaceAll(RegExp(r'~'), 'aproximadamente ')
+          .replaceAll(RegExp(r'×'), 'por')
+          .replaceAll(RegExp(r'[•\-–—]'), ',')
           .trim();
       await _flutterTts.speak(plainText);
     }
@@ -414,8 +373,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Future<void> _handleUnifiedSubmit({String? quickMessage}) async {
     final text = quickMessage ?? _inputController.text.trim();
     if (text.isEmpty) return;
-
-    _chatSessionDirty = true;
 
     // Capture providers before any async gap.
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -749,8 +706,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         
         if (msg['type'] == 'registro_exitoso') {
           return _buildRichLogCard(msg);
-        } else if (msg['type'] == 'memory_restored') {
-          return _buildMemoryRestoredBubble(msg['content']);
         } else if (msg['role'] == 'assistant' && msg['response'] is AssistantResponse) {
           return AssistantMessageBubble(
             response: msg['response'],
@@ -930,52 +885,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           border: Border.all(color: isError ? Colors.red.shade100 : Colors.grey.shade200),
         ),
         child: Text(text ?? '...', style: TextStyle(color: isError ? Colors.red.shade800 : Colors.black87)),
-      ),
-    );
-  }
-
-  Widget _buildMemoryRestoredBubble(String? text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(child: Divider(color: Colors.blue.shade100, thickness: 1)),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.history_rounded, size: 13, color: Colors.blue.shade300),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Memoria restaurada',
-                      style: TextStyle(fontSize: 11, color: Colors.blue.shade300, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(child: Divider(color: Colors.blue.shade100, thickness: 1)),
-            ],
-          ),
-          if (text != null && text.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                margin: const EdgeInsets.only(right: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.blue.shade100),
-                ),
-                child: Text(text, style: TextStyle(color: Colors.blue.shade900, fontSize: 13)),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

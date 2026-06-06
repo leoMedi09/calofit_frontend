@@ -43,7 +43,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   /// Evita callbacks viejos tras detener manualmente.
   int _speechSession = 0;
   /// Un solo envío por dictado (manual stop vs finalResult).
-  bool _speechSubmitHandled = false;
   
   bool _isTyping = false;
   bool _isListening = false;
@@ -313,7 +312,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
     if (!_isListening) {
       final session = ++_speechSession;
-      _speechSubmitHandled = false;
       // Evitar conflicto audio focus: al escuchar, detenemos TTS (pero NO activamos mute).
       try {
         await _flutterTts.stop();
@@ -327,17 +325,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             _inputController.text = val.recognizedWords;
           });
           if (val.finalResult) {
-            final text = val.recognizedWords.trim();
-            if (_speechSubmitHandled) return;
-            _speechSubmitHandled = true;
-            setState(() => _isListening = false);
             _speech.stop();
-            if (text.isNotEmpty) {
-              Future.delayed(const Duration(milliseconds: 200), () {
-                if (!mounted) return;
-                _handleUnifiedSubmit(quickMessage: text);
-              });
-            }
+            setState(() => _isListening = false);
+            // El texto queda en el campo — el usuario lo revisa y presiona enviar
           }
         },
         localeId: _speechLocaleId,
@@ -351,21 +341,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       );
     } else {
       _speechSession++;
-      final text = _inputController.text.trim();
       await _speech.stop();
       if (!mounted) return;
       setState(() => _isListening = false);
-      if (text.isNotEmpty && !_speechSubmitHandled) {
-        _speechSubmitHandled = true;
-        _handleUnifiedSubmit(quickMessage: text);
-      } else if (text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se captó texto. Habla cerca del mic o toca otra vez y dicta más fuerte.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
+      // El texto queda en el campo — el usuario lo revisa y presiona enviar
     }
   }
 

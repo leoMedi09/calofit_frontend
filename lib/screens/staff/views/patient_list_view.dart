@@ -146,9 +146,9 @@ class _PatientListViewState extends State<PatientListView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          final bottomInsets = MediaQuery.of(context).viewInsets.bottom;
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setModalState) {
+          final bottomInsets = MediaQuery.of(sheetContext).viewInsets.bottom;
           return Padding(
             padding: EdgeInsets.only(bottom: bottomInsets),
             child: Container(
@@ -268,7 +268,7 @@ class _PatientListViewState extends State<PatientListView> {
                   // ── Asignar Nutricionista (solo Admin) ──────────────────
                   if (isAdmin) ...[
                     _buildDropdownSelector(
-                      context: context,
+                      context: sheetContext,
                       label: 'Nutricionista',
                       icon: Icons.restaurant_menu_rounded,
                       color: const Color(0xFF1565C0),
@@ -282,7 +282,7 @@ class _PatientListViewState extends State<PatientListView> {
 
                   // ── Asignar Entrenador ───────────────────────────────────
                   _buildDropdownSelector(
-                    context: context,
+                    context: sheetContext,
                     label: 'Entrenador',
                     icon: Icons.fitness_center_rounded,
                     color: const Color(0xFF1E88E5),
@@ -351,11 +351,22 @@ class _PatientListViewState extends State<PatientListView> {
                                   assignedCoachId: selectedCoachId,
                                   assignedNutriId: isAdmin ? selectedNutriId : null,
                                 );
-                                if (context.mounted) Navigator.pop(context);
-                                messenger.showSnackBar(const SnackBar(
-                                  content: Text('¡Cliente registrado exitosamente!'),
-                                  backgroundColor: Color(0xFF2E7D32),
+                                if (sheetContext.mounted) {
+                                  Navigator.of(sheetContext, rootNavigator: true).pop();
+                                }
+                                messenger.showSnackBar(SnackBar(
+                                  content: const Row(
+                                    children: [
+                                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                      SizedBox(width: 10),
+                                      Text('¡Cliente registrado exitosamente!',
+                                          style: TextStyle(fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFF2E7D32),
                                   behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  duration: const Duration(seconds: 3),
                                 ));
                                 _loadPatients();
                               } catch (e) {

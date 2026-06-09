@@ -644,6 +644,45 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     );
   }
 
+  Widget _buildMacroMiniBar({
+    required String label,
+    required Color color,
+    required double value,
+    required double meta,
+  }) {
+    final pct = meta > 0 ? (value / meta).clamp(0.0, 1.0) : 0.0;
+    return Row(
+      children: [
+        SizedBox(
+          width: 10,
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: color),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: pct,
+              backgroundColor: color.withValues(alpha: 0.12),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                pct >= 1.0 ? color : color.withValues(alpha: 0.65),
+              ),
+              minHeight: 4,
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          '${value.toStringAsFixed(0)}g',
+          style: TextStyle(fontSize: 8, color: Colors.grey.shade400, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDayCard(Map<String, dynamic> d) {
     final hayRegistro = d['hay_registro'] as bool;
     final hayEjercicio = d['hay_ejercicio'] as bool;
@@ -651,6 +690,12 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     final esHoy = d['es_hoy'] as bool;
     final kcalObj = (d['kcal_objetivo'] as num).toDouble();
     final kcalCons = (d['kcal_consumidas'] as num).toDouble();
+    final protG = (d['proteinas_g'] as num? ?? 0).toDouble();
+    final carbG = (d['carbohidratos_g'] as num? ?? 0).toDouble();
+    final grasG = (d['grasas_g'] as num? ?? 0).toDouble();
+    final protMeta = (d['proteinas_meta_g'] as num? ?? 0).toDouble();
+    final carbMeta = (d['carbohidratos_meta_g'] as num? ?? 0).toDouble();
+    final grasMeta = (d['grasas_meta_g'] as num? ?? 0).toDouble();
 
     final Color statusColor = !hayRegistro
         ? Colors.grey.shade300
@@ -737,6 +782,14 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                     minHeight: 5,
                   ),
                 ),
+                if (hayRegistro) ...[
+                  const SizedBox(height: 6),
+                  _buildMacroMiniBar(label: 'P', color: AppColors.macroProtein, value: protG, meta: protMeta),
+                  const SizedBox(height: 3),
+                  _buildMacroMiniBar(label: 'C', color: AppColors.macroCarbs,   value: carbG, meta: carbMeta),
+                  const SizedBox(height: 3),
+                  _buildMacroMiniBar(label: 'G', color: AppColors.macroFat,     value: grasG, meta: grasMeta),
+                ],
               ],
             ),
           ),

@@ -82,8 +82,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _loadClientProfile();
 
     // Si hay caché válida para este usuario (cambio de tab dentro de la misma sesión), usarla.
-    // Si no hay caché (primera apertura o app reiniciada), arrancar con el welcome message limpio.
-    // NUNCA cargar de SharedPreferences visualmente — el historial BD lo usa el LLM en silencio.
+    // Si no hay caché (primera apertura, login nuevo o app reiniciada), recuperar el
+    // historial guardado en SharedPreferences; si no existe, arrancar con el welcome message.
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (_messagesCache != null && _cachedUserId == auth.userId) {
       _messages = _messagesCache!;
@@ -93,6 +93,50 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     } else {
       _cachedUserId = auth.userId;
       _messagesCache = _messages; // inicializar caché con el welcome message
+      _loadChatHistory(); // si hay historial persistido, reemplaza el welcome
+    }
+  }
+
+  Future<void> _loadChatHistory() async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final key = _chatHistoryStorageKey(auth);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) return;
+
+      final List<dynamic> decoded = jsonDecode(raw);
+      final loaded = decoded.map<Map<String, dynamic>>((item) {
+        final map = Map<String, dynamic>.from(item as Map);
+        if (map['type'] == 'assistant_v3' && map['response_json'] is Map) {
+          return {
+            'role': 'assistant',
+            'type': 'assistant_v3',
+            'response': AssistantResponse.fromJson(
+                Map<String, dynamic>.from(map['response_json'] as Map)),
+          };
+        }
+        return {
+          'role': map['role'],
+          'type': map['type'] ?? 'text',
+          'content': map['content'],
+          if (map.containsKey('badge')) 'badge': map['badge'],
+          if (map.containsKey('data')) 'data': map['data'],
+        };
+      }).toList();
+
+      if (loaded.isNotEmpty && mounted) {
+        setState(() {
+          _messages = loaded;
+          _messagesCache = _messages;
+          _cachedUserId = auth.userId;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _jumpToBottom();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando historial de chat: $e');
     }
   }
 

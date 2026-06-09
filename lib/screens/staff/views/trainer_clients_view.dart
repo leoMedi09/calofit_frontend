@@ -214,8 +214,13 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
               client['profile_picture_url'].toString().isEmpty
           ? Center(
               child: Text(
-                (client['full_name'] != null && client['full_name'].toString().trim().isNotEmpty)
-                    ? client['full_name'].toString().trim().substring(0, 1).toUpperCase()
+                (client['full_name'] != null &&
+                        client['full_name'].toString().trim().isNotEmpty)
+                    ? client['full_name']
+                        .toString()
+                        .trim()
+                        .substring(0, 1)
+                        .toUpperCase()
                     : 'A',
                 style: TextStyle(
                   color: (isMale ? Colors.blue.shade700 : Colors.pink.shade700),
@@ -336,7 +341,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
 
             const SizedBox(height: 40),
 
-            // 🚀 BASTÓN DE ACCIÓN: VER EXPEDIENTE COMPLETO
+            //  BASTÓN DE ACCIÓN: VER EXPEDIENTE COMPLETO
             SizedBox(
               width: double.infinity,
               height: 62,

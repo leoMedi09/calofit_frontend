@@ -14,7 +14,7 @@ class ApiConfig {
     if (kIsWeb) {
       return 'http://localhost:8000';
     } else if (Platform.isAndroid) {
-      return 'http://192.168.15.161:8000'; // IP local Wi-Fi
+      return 'http://192.168.15.195:8000'; // IP local Wi-Fi
     } else if (Platform.isIOS) {
       return 'http://localhost:8000';
     } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
@@ -25,7 +25,8 @@ class ApiConfig {
 
   // URLs alternativas para diferentes entornos
   static const String devUrl = 'http://192.168.15.144:8000'; // desarrollo local
-  static const String prodUrl = 'https://calofit-backend.onrender.com'; // producción Render
+  static const String prodUrl =
+      'https://calofit-backend.onrender.com'; // producción Render
 
   // Para dispositivos físicos Android, usa la IP de tu máquina
 

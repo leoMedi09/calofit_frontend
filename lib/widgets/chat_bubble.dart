@@ -79,7 +79,9 @@ class AssistantMessageBubble extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
+                          intent == 'POWER'
+                              ? "Rutina personalizada según tu perfil (Random Forest)"
+                              : "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -222,6 +224,7 @@ class _RegistrationPill extends StatelessWidget {
       v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 
   String? _alertaDieta() => datos['alerta_dieta'] as String?;
+  String? _advertenciaCantidad() => datos['advertencia_cantidad'] as String?;
 
   @override
   Widget build(BuildContext context) {
@@ -393,6 +396,27 @@ class _RegistrationPill extends StatelessWidget {
               ),
               child: Text(
                 _alertaDieta()!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF92400E),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+
+          // Advertencia de cantidad/porción excesiva
+          if (_advertenciaCantidad() != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFCD34D)),
+              ),
+              child: Text(
+                _advertenciaCantidad()!,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF92400E),

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../models/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/notification_service.dart';
 
 
 class AuthProvider with ChangeNotifier {
@@ -104,6 +105,11 @@ class AuthProvider with ChangeNotifier {
       // 4️⃣ PERSISTENCIA (En segundo plano pero esperado)
       await _saveSession(rememberMe);
 
+      // Registrar el token FCM para recordatorios push (solo clientes)
+      if (_userType != 'staff' && _userType != 'admin' && _token != null) {
+        NotificationService.instance.registrarToken(_token!);
+      }
+
       // 5️⃣ NOTIFICACIÓN (Esto dispara el redibujado de todas las pantallas)
       _showWelcomeMessage = true;
       notifyListeners();
@@ -190,6 +196,10 @@ class AuthProvider with ChangeNotifier {
 
     if (_token != null && _userId != null) {
       _validateSessionInBackground();
+
+      if (_userType != 'staff' && _userType != 'admin') {
+        NotificationService.instance.registrarToken(_token!);
+      }
     }
   }
 

@@ -24,7 +24,7 @@ class ApiConfig {
   }
 
   // URLs alternativas para diferentes entornos
-  static const String devUrl = 'http://192.168.15.144:8000'; // desarrollo local
+  static const String devUrl = 'http://localhost:8000'; // desarrollo local
   static const String prodUrl =
       'https://calofit-backend.onrender.com'; // producción Render
 

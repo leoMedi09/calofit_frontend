@@ -2,6 +2,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="CaloFit"
@@ -55,6 +56,11 @@
             </intent-filter>
 
         </activity>
+
+        <!-- ✅ Canal de notificaciones por defecto para Firebase Cloud Messaging -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="calofit_recordatorios" />
 
         <!-- ✅ Meta-data para deep linking -->
         <meta-data

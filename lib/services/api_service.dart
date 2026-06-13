@@ -232,6 +232,28 @@ class ApiService {
     }
   }
 
+  // ✅ Registrar/actualizar el token FCM del dispositivo para notificaciones push
+  Future<void> registrarFcmToken(String fcmToken, String token) async {
+    try {
+      await _dio.post(
+        '/notifications/fcm-token',
+        data: {'fcm_token': fcmToken},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } catch (e) {
+      print('⚠️ Error registrando FCM token: $e');
+    }
+  }
+
+  // ✅ Activar/desactivar recordatorios diarios push
+  Future<void> actualizarPreferenciaNotificaciones(bool activas, String token) async {
+    await _dio.put(
+      '/notifications/preferencias',
+      data: {'activas': activas},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
   // ✅ Guardar nota del entrenador en el expediente del cliente
   Future<void> saveCoachNote(int clientId, String note, String token) async {
     await _dio.put(

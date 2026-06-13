@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
+import 'services/notification_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/balance_provider.dart';
 import 'screens/auth/login_screen.dart';
@@ -77,6 +79,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await NotificationService.instance.initialize();
   } catch (e) {
     debugPrint("Error al inicializar Firebase: $e");
   }

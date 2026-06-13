@@ -1165,9 +1165,15 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               child: TextField(
                 controller: _inputController,
                 focusNode: _focusNode,
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
+                style: const TextStyle(fontSize: 15),
                 decoration: const InputDecoration(
                   hintText: 'Escribe o di "Comí..."',
                   border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
                   hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 textCapitalization: TextCapitalization.sentences,

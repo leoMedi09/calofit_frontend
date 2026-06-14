@@ -352,8 +352,8 @@ class _RegistrationPill extends StatelessWidget {
             ),
           const SizedBox(height: 8),
 
-          // kcal principal
-          if (kcal > 0)
+          // kcal principal (se muestra siempre, incluso 0 kcal — ej. café negro, agua)
+          if (kcal >= 0)
             Row(
               children: [
                 const Icon(Icons.local_fire_department_rounded,

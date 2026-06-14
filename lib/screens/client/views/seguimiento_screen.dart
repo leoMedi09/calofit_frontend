@@ -687,6 +687,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     final hayRegistro = d['hay_registro'] as bool;
     final hayEjercicio = d['hay_ejercicio'] as bool;
     final adherencia = (d['adherencia_pct'] as num).toDouble();
+    final porcentajeConsumo = (d['porcentaje_consumo'] as num? ?? adherencia).toDouble();
     final esHoy = d['es_hoy'] as bool;
     final kcalObj = (d['kcal_objetivo'] as num).toDouble();
     final kcalCons = (d['kcal_consumidas'] as num).toDouble();
@@ -699,11 +700,13 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
 
     final Color statusColor = !hayRegistro
         ? Colors.grey.shade300
-        : adherencia >= 80
-            ? const Color(0xFF43A047)
-            : adherencia >= 50
-                ? Colors.orange.shade400
-                : Colors.red.shade400;
+        : porcentajeConsumo > 100
+            ? Colors.red.shade400
+            : adherencia >= 80
+                ? const Color(0xFF43A047)
+                : adherencia >= 50
+                    ? Colors.orange.shade400
+                    : Colors.red.shade400;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -765,7 +768,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                     ),
                     if (hayRegistro)
                       Text(
-                        '${adherencia.toStringAsFixed(0)}%',
+                        '${porcentajeConsumo.toStringAsFixed(0)}%',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: statusColor),
                       ),
                   ],

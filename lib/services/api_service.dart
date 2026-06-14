@@ -188,8 +188,21 @@ class ApiService {
     }
   }
 
+  // ✅ Actualizar mi propio perfil (Nutri/Coach/Admin)
+  Future<Map<String, dynamic>> updateMyStaffProfile(Map<String, dynamic> data, String token) async {
+    try {
+      final response = await _dio.put('/usuarios/me',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      throw Exception('Error actualizando perfil: $errorMessage');
+    }
+  }
+
   // Clientes
-  
+
   // ✅ Crear Cliente Express (Nutricionista)
   Future<Map<String, dynamic>> createExpressClient(
     String email,
@@ -1116,6 +1129,24 @@ class ApiService {
         errorMessage = e.response?.statusMessage ?? 'Internal Server Error';
       }
       throw Exception('Error obteniendo progreso: $errorMessage');
+    }
+  }
+
+  /// 📋 Obtiene el registro detallado (comidas + ejercicios) de un paciente en una fecha dada
+  Future<Map<String, dynamic>> getNutricionistaClienteRegistroDiario(int clienteId, String token, {String? fecha}) async {
+    try {
+      final response = await _dio.get('/nutricionista/cliente/$clienteId/registro-diario',
+          queryParameters: fecha != null ? {'fecha': fecha} : null,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      String errorMessage = e.message ?? 'Error desconocido';
+      if (e.response?.data is Map) {
+        errorMessage = e.response?.data['detail'] ?? errorMessage;
+      } else if (e.response?.data is String) {
+        errorMessage = e.response?.statusMessage ?? 'Internal Server Error';
+      }
+      throw Exception('Error obteniendo registro diario: $errorMessage');
     }
   }
 

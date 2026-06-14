@@ -45,6 +45,13 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   bool _shouldRefreshList = false;
   bool _isDirty = false;
 
+  // 📋 Registro detallado del día (comidas + ejercicios)
+  Map<String, dynamic>? _dailyLog;
+  bool _isDailyLogLoading = true;
+  DateTime _selectedLogDate = DateTime.now();
+  bool _mostrarTodasComidas = false;
+  bool _mostrarTodosEjercicios = false;
+
   @override
   void initState() {
     super.initState();
@@ -149,6 +156,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       }
 
       setState(() { _isLoading = false; _isDirty = false; });
+      _loadDailyLog();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +164,41 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         );
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadDailyLog() async {
+    setState(() => _isDailyLogLoading = true);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token!;
+      final clientId = widget.patientData['id'];
+      final fechaStr =
+          '${_selectedLogDate.year.toString().padLeft(4, '0')}-${_selectedLogDate.month.toString().padLeft(2, '0')}-${_selectedLogDate.day.toString().padLeft(2, '0')}';
+
+      final data = await _apiService.getNutricionistaClienteRegistroDiario(clientId, token, fecha: fechaStr);
+      if (!mounted) return;
+      setState(() {
+        _dailyLog = data;
+        _isDailyLogLoading = false;
+      });
+    } catch (e) {
+      debugPrint('No se pudo cargar el registro diario: $e');
+      if (mounted) setState(() => _isDailyLogLoading = false);
+    }
+  }
+
+  Future<void> _seleccionarFechaRegistro() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedLogDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 90)),
+      lastDate: DateTime.now(),
+      helpText: 'Seleccionar fecha',
+    );
+    if (picked != null) {
+      setState(() => _selectedLogDate = picked);
+      _loadDailyLog();
     }
   }
 
@@ -407,6 +450,10 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               _buildTodayConsumption(),
               const SizedBox(height: 24),
 
+              // 📋 SECCIÓN NUEVA: REGISTRO DETALLADO DEL DÍA (comidas + ejercicios)
+              _buildDailyLogSection(),
+              const SizedBox(height: 24),
+
               _buildMetricsGrid(),
               const SizedBox(height: 24),
 
@@ -415,8 +462,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                 _buildValidationCard(),
                 const SizedBox(height: 24),
                 _buildStrategicGuideSection(),
-                const SizedBox(height: 24),
-                _buildAIInsightsSection(),
                 const SizedBox(height: 24),
               ],
 
@@ -1487,14 +1532,153 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     );
   }
 
-  Widget _buildAIInsightsSection() {
-    final alertas = (_fullData?['alertas_salud'] as List?) ?? [];
-    
+  static const int _itemsPreview = 4;
+
+  /// Muestra los primeros [_itemsPreview] ítems y un botón "Ver todos" para desplegar el resto.
+  Widget _buildExpandableItems({
+    required List items,
+    required bool expanded,
+    required VoidCallback onToggle,
+    required Widget Function(dynamic) itemBuilder,
+    required String emptyText,
+  }) {
+    if (items.isEmpty) {
+      return Text(emptyText, style: const TextStyle(color: Colors.grey, fontSize: 13));
+    }
+
+    final visibles = expanded ? items : items.take(_itemsPreview).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...visibles.map(itemBuilder),
+        if (items.length > _itemsPreview)
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Text(
+                    expanded ? 'Ver menos' : 'Ver todos (${items.length})',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blue.shade700),
+                  ),
+                  Icon(
+                    expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: Colors.blue.shade700,
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildComidaItem(dynamic c) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 44, child: Text(_formatHora(c['hora']), style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600))),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(c['nombre'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(
+                  '${(c['kcal'] ?? 0).round()} kcal · P:${(c['proteina_g'] ?? 0).toStringAsFixed(1)}g  C:${(c['carbohidratos_g'] ?? 0).toStringAsFixed(1)}g  G:${(c['grasas_g'] ?? 0).toStringAsFixed(1)}g',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          ),
+          if (c['momento'] != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+              child: Text(c['momento'].toString().toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEjercicioItem(dynamic e) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 44, child: Text(_formatHora(e['hora']), style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600))),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(e['ejercicio'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(
+                  '${e['series'] ?? '-'} series x ${e['reps'] ?? '-'} reps'
+                  '${e['peso_kg'] != null ? ' @ ${e['peso_kg']}kg' : ''}'
+                  '${e['calorias_quemadas'] != null ? ' · ${(e['calorias_quemadas'] as num).round()} kcal' : ''}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          ),
+          if (e['intensity'] != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+              child: Text(e['intensity'].toString().toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupLabel(String label, IconData icon) {
+    return Row(children: [
+      Icon(icon, size: 14, color: Colors.blueGrey.shade400),
+      const SizedBox(width: 6),
+      Text(label.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blueGrey.shade500, letterSpacing: 0.5)),
+    ]);
+  }
+
+  String _formatHora(dynamic raw) {
+    if (raw == null) return '';
+    try {
+      final dt = DateTime.parse(raw.toString());
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  bool _esMismoDia(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Widget _buildDailyLogSection() {
+    final comidas = (_dailyLog?['comidas'] as List?) ?? [];
+    final ejercicios = (_dailyLog?['ejercicios'] as List?) ?? [];
+    final esHoy = _esMismoDia(_selectedLogDate, DateTime.now());
+    final fechaLabel = esHoy
+        ? 'Hoy'
+        : '${_selectedLogDate.day.toString().padLeft(2, '0')}/${_selectedLogDate.month.toString().padLeft(2, '0')}/${_selectedLogDate.year}';
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(color: Colors.grey.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1502,41 +1686,51 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('HISTORIAL DE ALERTAS (IA)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF475569))),
-              Icon(Icons.history_toggle_off_rounded, color: Colors.blueGrey[300]),
+              const Text('REGISTRO DETALLADO DEL DÍA', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF475569))),
+              InkWell(
+                onTap: _seleccionarFechaRegistro,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: 14, color: Colors.blueGrey[400]),
+                      const SizedBox(width: 6),
+                      Text(fechaLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blueGrey[600])),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          if (alertas.isEmpty)
-            const Text('No hay alertas de salud detectadas recientemente.', style: TextStyle(color: Colors.grey, fontSize: 13))
-          else
-            ...alertas.map((a) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Icon(
-                    a['severidad'] == 'alto' ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
-                    color: a['severidad'] == 'alto' ? Colors.red : Colors.orange,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(a['descripcion'] ?? 'Sin descripción', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text(a['fecha']?.toString().split('T')[0] ?? '', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
-                    child: Text(a['tipo']?.toString().toUpperCase() ?? 'SINTOMA', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  ),
-                ],
-              ),
-            )),
+          if (_isDailyLogLoading)
+            const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 12), child: CircularProgressIndicator(strokeWidth: 2)))
+          else ...[
+            _buildGroupLabel('Comidas registradas', Icons.restaurant_outlined),
+            const SizedBox(height: 10),
+            _buildExpandableItems(
+              items: comidas,
+              expanded: _mostrarTodasComidas,
+              onToggle: () => setState(() => _mostrarTodasComidas = !_mostrarTodasComidas),
+              itemBuilder: _buildComidaItem,
+              emptyText: 'Sin comidas registradas en esta fecha.',
+            ),
+
+            const SizedBox(height: 16),
+            Divider(color: Colors.grey.shade200),
+            const SizedBox(height: 16),
+
+            _buildGroupLabel('Ejercicios registrados', Icons.fitness_center_outlined),
+            const SizedBox(height: 10),
+            _buildExpandableItems(
+              items: ejercicios,
+              expanded: _mostrarTodosEjercicios,
+              onToggle: () => setState(() => _mostrarTodosEjercicios = !_mostrarTodosEjercicios),
+              itemBuilder: _buildEjercicioItem,
+              emptyText: 'Sin ejercicios registrados en esta fecha.',
+            ),
+          ],
         ],
       ),
     );

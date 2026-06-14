@@ -31,12 +31,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   late TextEditingController _weightController;
   late TextEditingController _heightController;
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNamePaternalController;
+  late TextEditingController _lastNameMaternalController;
+  late TextEditingController _emailController;
 
   final List<String> _selectedConditions = [];
   String? _activityLevel;
   String? _goal;
   String? _workoutType;
   double? _sessionDuration;
+  String? _gender;
+  DateTime? _birthDate;
 
   // Grupos separados para mejor UX
   final List<String> _medicalOptions = [
@@ -57,6 +63,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _initControllers() {
     _weightController  = TextEditingController(text: widget.client.weight.toStringAsFixed(1));
     _heightController  = TextEditingController(text: widget.client.height.toStringAsFixed(0));
+    _firstNameController = TextEditingController(text: widget.client.firstName);
+    _lastNamePaternalController = TextEditingController(text: widget.client.lastNamePaternal);
+    _lastNameMaternalController = TextEditingController(text: widget.client.lastNameMaternal);
+    _emailController = TextEditingController(text: widget.client.email);
 
     _selectedConditions.clear();
     _selectedConditions.addAll(widget.client.medicalConditions);
@@ -70,6 +80,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _goal = widget.client.goal;
     _workoutType = widget.client.workoutType;
     _sessionDuration = widget.client.sessionDuration;
+    _gender = widget.client.gender;
+    _birthDate = widget.client.birthDate;
     _isInitialized = true;
   }
 
@@ -77,7 +89,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _weightController.dispose();
     _heightController.dispose();
+    _firstNameController.dispose();
+    _lastNamePaternalController.dispose();
+    _lastNameMaternalController.dispose();
+    _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _seleccionarFechaNacimiento() async {
+    final hoy = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime(hoy.year - 25, hoy.month, hoy.day),
+      firstDate: DateTime(hoy.year - 100),
+      lastDate: DateTime(hoy.year - 10, hoy.month, hoy.day),
+      helpText: 'Fecha de nacimiento',
+    );
+    if (picked != null) {
+      setState(() => _birthDate = picked);
+    }
   }
 
   /// Diálogo de confirmación: avisa que guardar cambios quita la aprobación del plan.
@@ -175,13 +205,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final current = widget.client;
       final updatedClient = Client(
         id: current.id,
-        firstName: current.firstName,
-        lastNamePaternal: current.lastNamePaternal,
-        lastNameMaternal: current.lastNameMaternal,
-        email: current.email,
+        firstName: _firstNameController.text.trim(),
+        lastNamePaternal: _lastNamePaternalController.text.trim(),
+        lastNameMaternal: _lastNameMaternalController.text.trim(),
+        email: _emailController.text.trim(),
         flutterUid: current.flutterUid,
-        gender: current.gender,
-        birthDate: current.birthDate,
+        gender: _gender ?? current.gender,
+        birthDate: _birthDate ?? current.birthDate,
         weight: double.tryParse(_weightController.text) ?? current.weight,
         height: double.tryParse(_heightController.text) ?? current.height,
         activityLevel: _activityLevel ?? current.activityLevel,
@@ -391,17 +421,82 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildSectionTitle('Información Personal'),
-                    _buildReadOnlyField('Nombre', widget.client.firstName, Icons.person_outline),
-                    _buildReadOnlyField('Apellido Paterno', widget.client.lastNamePaternal, Icons.person_outline),
-                    _buildReadOnlyField('Apellido Materno', widget.client.lastNameMaternal, Icons.person_outline),
+                    _buildTextField(_firstNameController, 'Nombre', Icons.person_outline),
+                    _buildTextField(_lastNamePaternalController, 'Apellido Paterno', Icons.person_outline),
+                    _buildTextField(_lastNameMaternalController, 'Apellido Materno', Icons.person_outline),
+                    _buildTextField(
+                      _emailController,
+                      'Correo electrónico',
+                      Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) return 'Requerido';
+                        final regex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[\w\.\-]+$');
+                        if (!regex.hasMatch(value.trim())) return 'Correo inválido';
+                        return null;
+                      },
+                    ),
                     Row(
                       children: [
-                        Expanded(child: _buildReadOnlyField('Género', widget.client.gender == 'M' ? 'Masculino' : 'Femenino', Icons.people_alt_outlined)),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: DropdownButtonFormField<String>(
+                              value: _gender,
+                              decoration: InputDecoration(
+                                labelText: 'Género',
+                                prefixIcon: Icon(Icons.people_alt_outlined, color: Colors.blue.shade300),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'M', child: Text('Masculino')),
+                                DropdownMenuItem(value: 'F', child: Text('Femenino')),
+                              ],
+                              onChanged: (v) => setState(() => _gender = v),
+                              validator: (v) => v == null ? 'Requerido' : null,
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildReadOnlyField('Edad', '${widget.client.age} años', Icons.cake_outlined)),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: FormField<DateTime>(
+                              validator: (_) => _birthDate == null ? 'Requerido' : null,
+                              builder: (state) => InkWell(
+                                onTap: () async {
+                                  await _seleccionarFechaNacimiento();
+                                  state.didChange(_birthDate);
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: InputDecorator(
+                                  decoration: InputDecoration(
+                                    labelText: 'Fecha de Nacimiento',
+                                    prefixIcon: Icon(Icons.cake_outlined, color: Colors.blue.shade300),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                                    errorText: state.errorText,
+                                  ),
+                                  child: Text(
+                                    _birthDate != null
+                                        ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
+                                        : 'Seleccionar',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 20),
                     _buildSectionTitle('Objetivo y Estilo de Vida'),
                     _buildDropdownField(
@@ -557,12 +652,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isNumber = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool isNumber = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: controller,
-        keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        keyboardType: keyboardType ?? (isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text),
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: Colors.blue.shade300),
@@ -581,32 +683,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
           ),
         ),
-        validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
-      ),
-    );
-  }
-
-  Widget _buildReadOnlyField(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: TextFormField(
-        initialValue: value,
-        enabled: false,
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: Colors.grey.shade400),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-        ),
+        validator: validator ?? (value) => value == null || value.isEmpty ? 'Requerido' : null,
       ),
     );
   }

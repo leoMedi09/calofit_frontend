@@ -204,8 +204,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
           return false;
         }
         final height = double.tryParse(_heightCtrl.text);
-        if (height == null || height <= 0 || height > 250) {
-          _showValidationError('Ingresa una altura válida en cm (ej: 170).');
+        if (height == null || height < 100 || height > 230) {
+          _showValidationError('Ingresa tu altura en centímetros, sin decimales (ej: 170).');
           return false;
         }
         return true;
@@ -451,7 +451,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             Row(children: [
               Expanded(child: _field(_weightCtrl, 'Peso (kg)', Icons.monitor_weight_outlined, isNumber: true)),
               const SizedBox(width: 16),
-              Expanded(child: _field(_heightCtrl, 'Altura (cm)', Icons.height_rounded, isNumber: true)),
+              Expanded(child: _field(_heightCtrl, 'Altura (cm)', Icons.height_rounded, isNumber: true, isInteger: true)),
             ]),
             const SizedBox(height: 16),
             _sectionTitle('Objetivo Principal', Icons.flag_rounded),
@@ -629,13 +629,15 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     ]);
   }
 
-  Widget _field(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, bool isPassword = false}) {
+  Widget _field(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, bool isPassword = false, bool isInteger = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: ctrl,
         obscureText: isPassword,
-        keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        keyboardType: isNumber
+            ? TextInputType.numberWithOptions(decimal: !isInteger)
+            : TextInputType.text,
         textCapitalization: isPassword ? TextCapitalization.none : TextCapitalization.words,
         decoration: InputDecoration(
           labelText: label,

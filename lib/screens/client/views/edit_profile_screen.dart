@@ -566,7 +566,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       children: [
                         Expanded(child: _buildTextField(_weightController, 'Peso (kg)', Icons.monitor_weight_outlined, isNumber: true)),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(_heightController, 'Altura (cm)', Icons.height_outlined, isNumber: true)),
+                        Expanded(child: _buildTextField(
+                          _heightController,
+                          'Altura (cm)',
+                          Icons.height_outlined,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            final h = double.tryParse(value ?? '');
+                            if (h == null || h < 100 || h > 230) {
+                              return 'Altura en cm, sin decimales (ej: 170)';
+                            }
+                            return null;
+                          },
+                        )),
                       ],
                     ),
                     

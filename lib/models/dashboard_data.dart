@@ -22,6 +22,8 @@ class DailySummary {
   final String? aiStrategicFocus;
   final String? nutriWeeklyNote;
   final bool isStrategyValidated;
+  final List<String> recommendedFoods;
+  final List<String> forbiddenFoods;
 
   DailySummary({
     required this.calorias,
@@ -42,6 +44,8 @@ class DailySummary {
     this.aiStrategicFocus,
     this.nutriWeeklyNote,
     this.isStrategyValidated = false,
+    this.recommendedFoods = const [],
+    this.forbiddenFoods = const [],
   });
 
   factory DailySummary.fromJson(Map<String, dynamic> json) {
@@ -91,6 +95,14 @@ class DailySummary {
       aiStrategicFocus: json['ai_strategic_focus'] as String?,
       nutriWeeklyNote: json['nutri_weekly_note'] as String?,
       isStrategyValidated: json['is_strategy_validated'] as bool? ?? false,
+      recommendedFoods: (json['recommended_foods'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      forbiddenFoods: (json['forbidden_foods'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 }

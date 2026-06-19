@@ -436,12 +436,16 @@ class _ClientMainScreenState extends State<ClientMainScreen>
 
                       _buildProgressHero(dailySummary),
                       if ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
-                          (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty)) ...[
+                          (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty) ||
+                          dailySummary.recommendedFoods.isNotEmpty ||
+                          dailySummary.forbiddenFoods.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         _buildStrategicMissionCard(
                           dailySummary.aiStrategicFocus,
                           dailySummary.isStrategyValidated,
                           nutriWeeklyNote: dailySummary.nutriWeeklyNote,
+                          recommendedFoods: dailySummary.recommendedFoods,
+                          forbiddenFoods: dailySummary.forbiddenFoods,
                         ),
                       ],
                       const SizedBox(height: 20),
@@ -798,9 +802,17 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     return Container(width: 1, height: 30, color: Colors.white12);
   }
 
-  Widget _buildStrategicMissionCard(String? mission, bool isValidated, {String? nutriWeeklyNote}) {
+  Widget _buildStrategicMissionCard(
+    String? mission,
+    bool isValidated, {
+    String? nutriWeeklyNote,
+    List<String> recommendedFoods = const [],
+    List<String> forbiddenFoods = const [],
+  }) {
     final hasNote = nutriWeeklyNote != null && nutriWeeklyNote.isNotEmpty;
     final hasMission = mission != null && mission.isNotEmpty;
+    final hasRecommended = recommendedFoods.isNotEmpty;
+    final hasForbidden = forbiddenFoods.isNotEmpty;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -939,6 +951,82 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                 ),
               ),
             ),
+          ],
+          if (hasRecommended || hasForbidden) ...[
+            if (hasMission || hasNote) ...[
+              const SizedBox(height: 16),
+              Divider(color: Colors.green.withValues(alpha: 0.25), height: 1),
+            ],
+            const SizedBox(height: 16),
+            if (hasRecommended) ...[
+              Row(
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, size: 14, color: Colors.green.shade700),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PRIORIZA ESTA SEMANA',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.green.shade800,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: recommendedFoods.map((food) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    food,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade900),
+                  ),
+                )).toList(),
+              ),
+            ],
+            if (hasForbidden) ...[
+              if (hasRecommended) const SizedBox(height: 14),
+              Row(
+                children: [
+                  Icon(Icons.block_rounded, size: 14, color: Colors.red.shade700),
+                  const SizedBox(width: 8),
+                  Text(
+                    'EVITA ESTA SEMANA',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.red.shade800,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: forbiddenFoods.map((food) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    food,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade900),
+                  ),
+                )).toList(),
+              ),
+            ],
           ],
         ],
       ),

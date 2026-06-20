@@ -40,6 +40,8 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   double _baselineHeight = 170.0;
   bool _dialogShown = false; // ✅ Para mostrar el popup solo una vez al entrar
   int? _assignedNutriId; // ✅ Verifica si tiene Nutri asignado
+  bool _showAllRecommended = false; // Expande la lista "Prioriza esta semana"
+  bool _showAllForbidden = false; // Expande la lista "Evita esta semana"
 
   @override
   void initState() {
@@ -435,6 +437,10 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                       const SizedBox(height: 4),
 
                       _buildProgressHero(dailySummary),
+                      const SizedBox(height: 20),
+
+                      // Macronutrientes en cards horizontales (siempre visibles sin scroll)
+                      _buildMacroCards(dailySummary),
                       if ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
                           (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty) ||
                           dailySummary.recommendedFoods.isNotEmpty ||
@@ -448,10 +454,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           forbiddenFoods: dailySummary.forbiddenFoods,
                         ),
                       ],
-                      const SizedBox(height: 20),
-                      
-                      // Macronutrientes en cards horizontales
-                      _buildMacroCards(dailySummary),
                       const SizedBox(height: 20),
 
                       // ✨ NUEVO: Panel de Micros & Salud (Si hay datos de micros)
@@ -978,18 +980,47 @@ class _ClientMainScreenState extends State<ClientMainScreen>
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: recommendedFoods.map((food) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    food,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade900),
-                  ),
-                )).toList(),
+                children: [
+                  ...(_showAllRecommended ? recommendedFoods : recommendedFoods.take(4))
+                      .map((food) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      food,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade900),
+                    ),
+                  )),
+                  if (recommendedFoods.length > 4)
+                    GestureDetector(
+                      onTap: () => setState(() => _showAllRecommended = !_showAllRecommended),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _showAllRecommended ? 'Ver menos' : '+${recommendedFoods.length - 4} más',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.green.shade800),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _showAllRecommended ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: Colors.green.shade800,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
             if (hasForbidden) ...[
@@ -1013,18 +1044,47 @@ class _ClientMainScreenState extends State<ClientMainScreen>
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: forbiddenFoods.map((food) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    food,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade900),
-                  ),
-                )).toList(),
+                children: [
+                  ...(_showAllForbidden ? forbiddenFoods : forbiddenFoods.take(4))
+                      .map((food) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      food,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade900),
+                    ),
+                  )),
+                  if (forbiddenFoods.length > 4)
+                    GestureDetector(
+                      onTap: () => setState(() => _showAllForbidden = !_showAllForbidden),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _showAllForbidden ? 'Ver menos' : '+${forbiddenFoods.length - 4} más',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.red.shade800),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _showAllForbidden ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: Colors.red.shade800,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ],

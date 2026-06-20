@@ -45,7 +45,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     'Hipertensión',
     'Asma',
     'Enfermedad Cardiovascular',
-    'Intolerancia a Lactosa',
+    'Intolerancia a la Lactosa',
     'Celíaco',
     'Vegano',
     'Vegetariano',

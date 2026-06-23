@@ -785,24 +785,8 @@ class ApiService {
     }
   }
 
-  // ============ REGISTRO INTELIGENTE POR VOZ/TEXTO (NLP) ============
-
-  /// 🎤 Registra alimentos o ejercicios usando lenguaje natural
-  /// Ejemplo: "Comí arroz con pollo" → Extrae automáticamente macros
-  /// Sistema aprende preferencias automáticamente
-  Future<Map<String, dynamic>> registrarPorVoz(String mensaje, String token) async {
-    try {
-      print('🎤 Registrando por voz: "$mensaje"');
-      final response = await _dio.post('/asistente/log-inteligente',
-          data: {'mensaje': mensaje},
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
-      print('✅ Registro exitoso: ${response.data}');
-      return response.data;
-    } catch (e) {
-      print('❌ Error en registro por voz: $e');
-      throw Exception('Error en registro por voz: $e');
-    }
-  }
+  // registrarPorVoz() (/asistente/log-inteligente, arquitectura vieja) se
+  // eliminó: sin callers en toda la app, todo el registro va por /consultar.
 
   // ============ REGISTRO MANUAL (ETIQUETA / MULTIMODAL) ============
   Future<Map<String, dynamic>> registrarManualAlimento({

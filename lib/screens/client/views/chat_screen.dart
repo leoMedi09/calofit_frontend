@@ -1128,30 +1128,45 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () => SmartMealRegistrySheet.show(
-              context,
-              onRegister: (msg) => _handleUnifiedSubmit(quickMessage: msg),
-            ),
+          PopupMenuButton<String>(
+            tooltip: 'Registro rápido',
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            onSelected: (value) {
+              if (value == 'comida') {
+                SmartMealRegistrySheet.show(
+                  context,
+                  onRegister: (msg) => _handleUnifiedSubmit(quickMessage: msg),
+                );
+              } else if (value == 'ejercicio') {
+                RoutineBuilderSheet.show(context);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'comida',
+                child: Row(children: [
+                  Icon(Icons.restaurant_menu_rounded, color: Colors.orange.shade400, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('Registrar comida'),
+                ]),
+              ),
+              PopupMenuItem(
+                value: 'ejercicio',
+                child: Row(children: [
+                  Icon(Icons.fitness_center_rounded, color: Colors.green.shade500, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('Registrar ejercicio'),
+                ]),
+              ),
+            ],
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: Colors.grey.shade100,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.restaurant_menu_rounded, color: Colors.orange.shade400),
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => RoutineBuilderSheet.show(context),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.fitness_center_rounded, color: Colors.green.shade500),
+              child: Icon(Icons.add_circle_outline_rounded, color: Colors.grey.shade700),
             ),
           ),
           const SizedBox(width: 10),

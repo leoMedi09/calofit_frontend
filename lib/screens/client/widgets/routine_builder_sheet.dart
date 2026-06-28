@@ -25,8 +25,10 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
   final TextEditingController _seriesController = TextEditingController();
   final TextEditingController _repsController   = TextEditingController();
   final TextEditingController _pesoController   = TextEditingController();
+  final TextEditingController _minutosController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isCardio  = false; // false = Fuerza (series/reps/kg), true = Cardio (minutos)
   String? _errorMessage;
 
   // Lista estática para persistir ejercicios entre rebuilds del sheet
@@ -34,10 +36,11 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
 
   // ── Agregar ejercicio ────────────────────────────────────────────────────
   Future<void> _addExercise() async {
-    final name   = _nameController.text.trim();
-    final series = int.tryParse(_seriesController.text.trim()) ?? 0;
-    final reps   = int.tryParse(_repsController.text.trim()) ?? 0;
-    final peso   = double.tryParse(_pesoController.text.trim().replaceAll(',', '.')) ?? 0.0;
+    final name    = _nameController.text.trim();
+    final series  = _isCardio ? 0 : (int.tryParse(_seriesController.text.trim()) ?? 0);
+    final reps    = _isCardio ? 0 : (int.tryParse(_repsController.text.trim()) ?? 0);
+    final peso    = _isCardio ? 0.0 : (double.tryParse(_pesoController.text.trim().replaceAll(',', '.')) ?? 0.0);
+    final minutos = _isCardio ? (double.tryParse(_minutosController.text.trim().replaceAll(',', '.')) ?? 0.0) : 0.0;
 
     setState(() => _errorMessage = null);
 
@@ -45,7 +48,12 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       setState(() => _errorMessage = 'Escribe el nombre del ejercicio');
       return;
     }
-    if (series <= 0 || reps <= 0) {
+    if (_isCardio) {
+      if (minutos <= 0) {
+        setState(() => _errorMessage = 'Ingresa los minutos');
+        return;
+      }
+    } else if (series <= 0 || reps <= 0) {
       setState(() => _errorMessage = 'Ingresa series y repeticiones');
       return;
     }
@@ -60,6 +68,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         series: series,
         reps: reps,
         pesoKg: peso,
+        duracionMin: minutos,
         token: auth.token!,
       );
 
@@ -71,15 +80,17 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             'series':      ex['series']     ?? series,
             'reps':        ex['reps']       ?? reps,
             'peso_kg':     ex['peso_kg']    ?? peso,
-            'duracion_min': ex['duracion_min'] ?? 10.0,
+            'duracion_min': ex['duracion_min'] ?? (minutos > 0 ? minutos : 10.0),
             'kcal':        (ex['calorias']  ?? 0.0).toDouble(),
             'met':         (ex['met']       ?? 5.0).toDouble(),
+            'is_cardio':   _isCardio,
           });
         });
         _nameController.clear();
         _seriesController.clear();
         _repsController.clear();
         _pesoController.clear();
+        _minutosController.clear();
       } else {
         setState(() => _errorMessage = 'No se encontró ese ejercicio. Prueba otro nombre.');
       }
@@ -135,6 +146,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     _seriesController.dispose();
     _repsController.dispose();
     _pesoController.dispose();
+    _minutosController.dispose();
     super.dispose();
   }
 
@@ -248,15 +260,29 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             ),
             const SizedBox(height: 12),
 
-            // ── Series | Reps | Kg | Botón + ─────────────────────────
+            // ── Toggle Fuerza / Cardio ────────────────────────────────
+            Row(
+              children: [
+                Expanded(child: _modeChip('Fuerza', Icons.fitness_center_rounded, !_isCardio, () => setState(() => _isCardio = false))),
+                const SizedBox(width: 8),
+                Expanded(child: _modeChip('Cardio', Icons.directions_run_rounded, _isCardio, () => setState(() => _isCardio = true))),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // ── Campos según modo | Botón + ───────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _numField(_seriesController, 'Series', '3'),
-                const SizedBox(width: 8),
-                _numField(_repsController, 'Reps', '10'),
-                const SizedBox(width: 8),
-                _numField(_pesoController, 'Kg', '70', isDecimal: true),
+                if (_isCardio)
+                  _numField(_minutosController, 'Minutos', '30', isDecimal: true)
+                else ...[
+                  _numField(_seriesController, 'Series', '3'),
+                  const SizedBox(width: 8),
+                  _numField(_repsController, 'Reps', '10'),
+                  const SizedBox(width: 8),
+                  _numField(_pesoController, 'Kg', '70', isDecimal: true),
+                ],
                 const SizedBox(width: 10),
                 SizedBox(
                   height: 56,
@@ -304,6 +330,32 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                   ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _modeChip(String label, IconData icon, bool selected, VoidCallback onTap) {
+    const accent = Color(0xFF10B981);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? accent : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? accent : const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: selected ? Colors.white : Colors.grey.shade500),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : Colors.grey.shade500,
+            )),
           ],
         ),
       ),
@@ -395,6 +447,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         final double durMin  = (item['duracion_min'] as num).toDouble();
         final double kcal    = (item['kcal'] as num).toDouble();
         final double met     = (item['met'] as num).toDouble();
+        final bool   isCardio = item['is_cardio'] == true;
 
         return Container(
           padding: const EdgeInsets.all(14),
@@ -424,11 +477,12 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                     // Series × Reps @Peso
                     Row(
                       children: [
-                        _badge(
-                          '$series × $reps${pesoKg > 0 ? " @${pesoKg.toStringAsFixed(pesoKg % 1 == 0 ? 0 : 1)}kg" : ""}',
-                          Colors.green,
-                        ),
-                        const SizedBox(width: 6),
+                        if (!isCardio)
+                          _badge(
+                            '$series × $reps${pesoKg > 0 ? " @${pesoKg.toStringAsFixed(pesoKg % 1 == 0 ? 0 : 1)}kg" : ""}',
+                            Colors.green,
+                          ),
+                        if (!isCardio) const SizedBox(width: 6),
                         _badge('~${durMin.toStringAsFixed(0)} min', Colors.blue),
                         const SizedBox(width: 6),
                         _badge('MET $met', Colors.purple),

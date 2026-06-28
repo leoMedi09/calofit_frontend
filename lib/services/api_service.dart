@@ -761,11 +761,15 @@ class ApiService {
     required int reps,
     required double pesoKg,
     required String token,
+    double duracionMin = 0.0,
   }) async {
     try {
       final response = await _dio.post(
         '/asistente/calcular-ejercicio',
-        data: {'nombre': nombre, 'series': series, 'reps': reps, 'peso_kg': pesoKg},
+        data: {
+          'nombre': nombre, 'series': series, 'reps': reps, 'peso_kg': pesoKg,
+          'duracion_min': duracionMin,
+        },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return response.data;

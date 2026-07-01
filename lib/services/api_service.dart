@@ -10,55 +10,60 @@ import '../config/api_config.dart';
 
 class ApiService {
   static bool _needsLogout = false;
-  
+
   // Estado global de sesion expirada.
   static bool get needsLogout => _needsLogout;
-  
+
   // Limpia el flag despues de procesar logout en UI.
   static void resetLogoutFlag() {
     _needsLogout = false;
   }
-  
+
   final Dio _dio = Dio(BaseOptions(
     baseUrl: ApiConfig.baseUrl,
     headers: {'Content-Type': 'application/json'},
     connectTimeout: ApiConfig.connectTimeout,
     receiveTimeout: ApiConfig.receiveTimeout,
-  ))..interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) {
-      // Evita cache de baseUrl durante hot reload.
-      options.baseUrl = ApiConfig.baseUrl; 
-      
-      // Logging de peticiones.
-      ApiConfig.printCurrentConfig();
-      print('📤 ${options.method} ${options.baseUrl}${options.path}');
-      return handler.next(options);
-    },
-    onError: (DioException e, handler) {
-      final statusCode = e.response?.statusCode;
-      final path = e.requestOptions.path;
-      print('❌ Error en petición [${statusCode ?? 'SIN CÓDIGO'}]: ${e.message}');
-      
-      // Token invalido/expirado: solo para requests autenticadas.
-      if (statusCode == 401 || statusCode == 403) {
-        final hasAuthHeader = e.requestOptions.headers.containsKey('Authorization');
-        final isAuthEndpoint = path.contains('/auth/login') || 
-                               path.contains('/auth/register') ||
-                               path.contains('/clientes/registrar') ||
-                               path.contains('/forgot-password');
-        
-        // No cerrar sesion por errores de endpoints publicos.
-        if (hasAuthHeader && !isAuthEndpoint) {
-          print('🔐 Token inválido o expirado en petición autenticada. Cerrando sesión...');
-          _needsLogout = true;
-        } else {
-          print('⚠️ Error 401/403 en endpoint público (credenciales incorrectas, no token expirado)');
+  ))
+    ..interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        // Evita cache de baseUrl durante hot reload.
+        options.baseUrl = ApiConfig.baseUrl;
+
+        // Logging de peticiones.
+        ApiConfig.printCurrentConfig();
+        print('📤 ${options.method} ${options.baseUrl}${options.path}');
+        return handler.next(options);
+      },
+      onError: (DioException e, handler) {
+        final statusCode = e.response?.statusCode;
+        final path = e.requestOptions.path;
+        print(
+            '❌ Error en petición [${statusCode ?? 'SIN CÓDIGO'}]: ${e.message}');
+
+        // Token invalido/expirado: solo para requests autenticadas.
+        if (statusCode == 401 || statusCode == 403) {
+          final hasAuthHeader =
+              e.requestOptions.headers.containsKey('Authorization');
+          final isAuthEndpoint = path.contains('/auth/login') ||
+              path.contains('/auth/register') ||
+              path.contains('/clientes/registrar') ||
+              path.contains('/forgot-password');
+
+          // No cerrar sesion por errores de endpoints publicos.
+          if (hasAuthHeader && !isAuthEndpoint) {
+            print(
+                '🔐 Token inválido o expirado en petición autenticada. Cerrando sesión...');
+            _needsLogout = true;
+          } else {
+            print(
+                '⚠️ Error 401/403 en endpoint público (credenciales incorrectas, no token expirado)');
+          }
         }
-      }
-      
-      return handler.next(e);
-    },
-  ));
+
+        return handler.next(e);
+      },
+    ));
 
   // Autenticacion
   Future<LoginResponse> login(LoginRequest request) async {
@@ -73,11 +78,11 @@ class ApiService {
     }
   }
 
-
   // Registro de Cliente
   Future<void> registerClient(ClientRegisterRequest request) async {
     try {
-      final response = await _dio.post('/clientes/registrar', data: request.toJson());
+      final response =
+          await _dio.post('/clientes/registrar', data: request.toJson());
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Error al registrar cliente');
       }
@@ -88,31 +93,33 @@ class ApiService {
   }
 
   // Registro de Staff (Admin/Nutri/Coach)
-  Future<void> registerStaff(Map<String, dynamic> staffData, String token) async {
+  Future<void> registerStaff(
+      Map<String, dynamic> staffData, String token) async {
     try {
       print('📤 Registrando nuevo personal: ${staffData['email']}');
-      final response = await _dio.post(
-        '/usuarios/registrar', 
-        data: staffData,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
-      );
-      
+      final response = await _dio.post('/usuarios/registrar',
+          data: staffData,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Error al registrar personal');
       }
       print('✅ Personal registrado exitosamente');
     } on DioException catch (e) {
       print('❌ Error en registro de staff: ${e.response?.data}');
-      throw Exception(e.response?.data['detail'] ?? 'Error al registrar personal');
+      throw Exception(
+          e.response?.data['detail'] ?? 'Error al registrar personal');
     }
   }
 
   // ✅ Subir Foto de Perfil (Modular)
-  Future<String> uploadProfilePicture(String token, String filePath, bool isStaff) async {
+  Future<String> uploadProfilePicture(
+      String token, String filePath, bool isStaff) async {
     try {
-      final String endpoint = isStaff ? '/usuarios/perfil/foto' : '/clientes/perfil/foto';
+      final String endpoint =
+          isStaff ? '/usuarios/perfil/foto' : '/clientes/perfil/foto';
       print('📤 Subiendo foto a $endpoint desde $filePath');
-      
+
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(filePath),
       });
@@ -134,12 +141,14 @@ class ApiService {
       }
     } on DioException catch (e) {
       print('❌ Error Dio al subir foto: ${e.response?.data}');
-      throw Exception(e.response?.data['detail'] ?? 'Error al conectar con el servidor');
+      throw Exception(
+          e.response?.data['detail'] ?? 'Error al conectar con el servidor');
     }
   }
-  
+
   // ✅ CAMBIO DE CONTRASEÑA
-  Future<void> changePassword(String token, String newPassword, String confirmPassword) async {
+  Future<void> changePassword(
+      String token, String newPassword, String confirmPassword) async {
     try {
       final response = await _dio.post(
         '/auth/change-password',
@@ -149,13 +158,14 @@ class ApiService {
         },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
+
       if (response.statusCode != 200) {
         throw Exception('Error al cambiar contraseña');
       }
     } on DioException catch (e) {
       print('❌ Error en cambio de contraseña: ${e.response?.data}');
-      throw Exception(e.response?.data['detail'] ?? 'Error al cambiar contraseña');
+      throw Exception(
+          e.response?.data['detail'] ?? 'Error al cambiar contraseña');
     }
   }
 
@@ -164,22 +174,25 @@ class ApiService {
     try {
       final response = await _dio.get('/admin/staff',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      return (response.data as List).map((json) => User.fromJson(json)).toList();
+      return (response.data as List)
+          .map((json) => User.fromJson(json))
+          .toList();
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error obteniendo usuarios: $errorMessage');
     } catch (e) {
       throw Exception('Error obteniendo usuarios: $e');
     }
   }
-  
+
   // ✅ Obtener perfil del personal (Nutri/Coach/Admin)
   Future<Map<String, dynamic>> getStaffProfile(String token) async {
     try {
       print('🔍 Obteniendo perfil de staff...');
       final response = await _dio.get('/usuarios/me',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      
+
       print('✅ Perfil de staff obtenido: ${response.data}');
       return response.data;
     } catch (e) {
@@ -189,14 +202,16 @@ class ApiService {
   }
 
   // ✅ Actualizar mi propio perfil (Nutri/Coach/Admin)
-  Future<Map<String, dynamic>> updateMyStaffProfile(Map<String, dynamic> data, String token) async {
+  Future<Map<String, dynamic>> updateMyStaffProfile(
+      Map<String, dynamic> data, String token) async {
     try {
       final response = await _dio.put('/usuarios/me',
           data: data,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return Map<String, dynamic>.from(response.data);
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error actualizando perfil: $errorMessage');
     }
   }
@@ -225,7 +240,8 @@ class ApiService {
       );
       return response.data;
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception('Error creando cliente express: $e');
@@ -259,7 +275,8 @@ class ApiService {
   }
 
   // ✅ Activar/desactivar recordatorios diarios push
-  Future<void> actualizarPreferenciaNotificaciones(bool activas, String token) async {
+  Future<void> actualizarPreferenciaNotificaciones(
+      bool activas, String token) async {
     await _dio.put(
       '/notifications/preferencias',
       data: {'activas': activas},
@@ -280,7 +297,9 @@ class ApiService {
     try {
       final response = await _dio.get('/clientes/',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      return (response.data as List).map((json) => Client.fromJson(json)).toList();
+      return (response.data as List)
+          .map((json) => Client.fromJson(json))
+          .toList();
     } catch (e) {
       throw Exception('Error obteniendo clientes: $e');
     }
@@ -304,10 +323,8 @@ class ApiService {
   // ✅ Check-in Semanal
   Future<Map<String, dynamic>> getCheckInStatus(String token) async {
     try {
-      final response = await _dio.get(
-        '/clientes/checkin-status',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
-      );
+      final response = await _dio.get('/clientes/checkin-status',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
       return response.data;
     } on DioException catch (e) {
       print('❌ Error obteniendo status de check-in: ${e.response?.data}');
@@ -317,19 +334,19 @@ class ApiService {
 
   Future<void> postCheckIn(String token, Map<String, dynamic> data) async {
     try {
-      await _dio.post(
-        '/clientes/checkin',
-        data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
-      );
+      await _dio.post('/clientes/checkin',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
     } on DioException catch (e) {
       print('❌ Error enviando check-in: ${e.response?.data}');
-      throw Exception(e.response?.data['detail'] ?? 'Error al guardar check-in');
+      throw Exception(
+          e.response?.data['detail'] ?? 'Error al guardar check-in');
     }
   }
 
   // ✅ Actualizar contraseña de un miembro del staff (Admin only)
-  Future<void> updateStaffPassword(int userId, String newPassword, String token) async {
+  Future<void> updateStaffPassword(
+      int userId, String newPassword, String token) async {
     try {
       final response = await _dio.put(
         '/admin/staff/$userId/password',
@@ -340,13 +357,15 @@ class ApiService {
         throw Exception('Error al actualizar contraseña');
       }
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error: $errorMessage');
     }
   }
 
   // ✅ Actualizar datos de un miembro del staff (Admin only)
-  Future<void> updateStaff(int userId, Map<String, dynamic> staffData, String token) async {
+  Future<void> updateStaff(
+      int userId, Map<String, dynamic> staffData, String token) async {
     try {
       print('📤 Actualizando datos de staff ID: $userId');
       final response = await _dio.put(
@@ -360,7 +379,8 @@ class ApiService {
       print('✅ Datos de staff actualizados exitosamente');
     } on DioException catch (e) {
       print('❌ Error al actualizar staff: ${e.response?.data}');
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error: $errorMessage');
     }
   }
@@ -372,7 +392,8 @@ class ApiService {
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return List<Map<String, dynamic>>.from(response.data);
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error: $errorMessage');
     }
   }
@@ -406,7 +427,9 @@ class ApiService {
     try {
       final response = await _dio.get('/ejercicios/',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      return (response.data as List).map((json) => Exercise.fromJson(json)).toList();
+      return (response.data as List)
+          .map((json) => Exercise.fromJson(json))
+          .toList();
     } catch (e) {
       throw Exception('Error obteniendo ejercicios: $e');
     }
@@ -417,7 +440,9 @@ class ApiService {
     try {
       final response = await _dio.get('/nutricion/',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      return (response.data as List).map((json) => NutritionPlan.fromJson(json)).toList();
+      return (response.data as List)
+          .map((json) => NutritionPlan.fromJson(json))
+          .toList();
     } catch (e) {
       throw Exception('Error obteniendo planes nutricionales: $e');
     }
@@ -429,18 +454,20 @@ class ApiService {
       final response = await _dio.post('/asistente/consultar',
           data: {'message': question},
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      return response.data['response'] ?? response.data['answer'] ?? 'Sin respuesta';
+      return response.data['response'] ??
+          response.data['answer'] ??
+          'Sin respuesta';
     } catch (e) {
       throw Exception('Error consultando asistente: $e');
     }
   }
 
-  Future<Map<String, dynamic>> getSugerenciaEstrategica(int clientId, String token) async {
+  Future<Map<String, dynamic>> getSugerenciaEstrategica(
+      int clientId, String token) async {
     try {
       final response = await _dio.get(
-        '/nutricionista/cliente/$clientId/sugerir-estrategia',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
-      );
+          '/nutricionista/cliente/$clientId/sugerir-estrategia',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
       return response.data;
     } catch (e) {
       throw Exception('Error al obtener sugerencia de la IA: $e');
@@ -449,9 +476,11 @@ class ApiService {
 
   // ============ ENDPOINTS DASHBOARD ============
 
-  Future<Map<String, dynamic>> getDailySummary(int clientId, String token) async {
+  Future<Map<String, dynamic>> getDailySummary(
+      int clientId, String token) async {
     try {
-      final response = await _dio.get('/dashboard/clientes/$clientId/resumen-diario',
+      final response = await _dio.get(
+          '/dashboard/clientes/$clientId/resumen-diario',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return response.data;
     } catch (e) {
@@ -459,9 +488,11 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getCaloriesTrend(int clientId, String token) async {
+  Future<List<Map<String, dynamic>>> getCaloriesTrend(
+      int clientId, String token) async {
     try {
-      final response = await _dio.get('/dashboard/clientes/$clientId/calorias-tendencia',
+      final response = await _dio.get(
+          '/dashboard/clientes/$clientId/calorias-tendencia',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
@@ -469,9 +500,11 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getWeightHistory(int clientId, String token) async {
+  Future<List<Map<String, dynamic>>> getWeightHistory(
+      int clientId, String token) async {
     try {
-      final response = await _dio.get('/dashboard/clientes/$clientId/peso-historial',
+      final response = await _dio.get(
+          '/dashboard/clientes/$clientId/peso-historial',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
@@ -479,9 +512,11 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getIMCHistory(int clientId, String token) async {
+  Future<List<Map<String, dynamic>>> getIMCHistory(
+      int clientId, String token) async {
     try {
-      final response = await _dio.get('/dashboard/clientes/$clientId/imc-historial',
+      final response = await _dio.get(
+          '/dashboard/clientes/$clientId/imc-historial',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
@@ -491,7 +526,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAIAnalysis(int clientId, String token) async {
     try {
-      final response = await _dio.get('/dashboard/clientes/$clientId/analisis-ia',
+      final response = await _dio.get(
+          '/dashboard/clientes/$clientId/analisis-ia',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return response.data;
     } catch (e) {
@@ -512,11 +548,13 @@ class ApiService {
       return response.data;
     } on DioException catch (e) {
       print('❌ Error al solicitar código: ${e.response?.data}');
-      throw Exception(e.response?.data['detail'] ?? 'Error al solicitar el código');
+      throw Exception(
+          e.response?.data['detail'] ?? 'Error al solicitar el código');
     }
   }
 
-  Future<Map<String, dynamic>> verifyResetCode(String email, String code) async {
+  Future<Map<String, dynamic>> verifyResetCode(
+      String email, String code) async {
     try {
       final response = await _dio.post(
         '/auth/verify-reset-code',
@@ -528,11 +566,15 @@ class ApiService {
       );
       return {'success': true, 'message': response.data['message']};
     } on DioException catch (e) {
-      return {'success': false, 'message': e.response?.data['detail'] ?? 'Error al validar el código'};
+      return {
+        'success': false,
+        'message': e.response?.data['detail'] ?? 'Error al validar el código'
+      };
     }
   }
 
-  Future<Map<String, dynamic>> resetPassword(String email, String code, String newPassword) async {
+  Future<Map<String, dynamic>> resetPassword(
+      String email, String code, String newPassword) async {
     try {
       final response = await _dio.post(
         '/auth/reset-password',
@@ -544,12 +586,17 @@ class ApiService {
       );
       return {'success': true, 'message': response.data['message']};
     } on DioException catch (e) {
-      return {'success': false, 'message': e.response?.data['detail'] ?? 'Error al actualizar contraseña'};
+      return {
+        'success': false,
+        'message':
+            e.response?.data['detail'] ?? 'Error al actualizar contraseña'
+      };
     }
   }
 
   /// 🍽️ Obtiene el plan nutricional/dieta de un cliente por su Firebase UID
-  Future<Map<String, dynamic>> getDietaPorUid(String firebaseUid, String token) async {
+  Future<Map<String, dynamic>> getDietaPorUid(
+      String firebaseUid, String token) async {
     try {
       print('🔍 Buscando dieta automática para UID: $firebaseUid');
       final response = await _dio.get('/clientes/por-uid/$firebaseUid',
@@ -566,7 +613,8 @@ class ApiService {
   /// 🧠 Obtiene recomendaciones personalizadas según preferencias del usuario
   /// - Usuario nuevo: Top alimentos populares según objetivo
   /// - Usuario con historial: Sus favoritos aprendidos
-  Future<Map<String, dynamic>> getRecomendacionesPersonalizadas(String token) async {
+  Future<Map<String, dynamic>> getRecomendacionesPersonalizadas(
+      String token) async {
     try {
       print('🔍 Obteniendo recomendaciones personalizadas...');
       final response = await _dio.get('/nutricion/recomendaciones',
@@ -583,7 +631,8 @@ class ApiService {
 
   /// 📊 Obtiene el balance calórico de un día específico (por defecto, hoy)
   /// Incluye: resumen, alimentos registrados, ejercicios registrados
-  Future<Map<String, dynamic>> getMiBalance(String token, {String? fecha}) async {
+  Future<Map<String, dynamic>> getMiBalance(String token,
+      {String? fecha}) async {
     try {
       print('🔍 Obteniendo balance del día ${fecha ?? "hoy"}...');
       final queryParams = fecha != null ? {'fecha': fecha} : null;
@@ -601,7 +650,9 @@ class ApiService {
   /// 🗑️ Elimina un registro de alimento o ejercicio
   /// tipo: "alimento" o "ejercicio"
   /// Recalcula automáticamente el balance después de eliminar
-  Future<Map<String, dynamic>> eliminarRegistro(int registroId, String tipo, String token, {int n = 0}) async {
+  Future<Map<String, dynamic>> eliminarRegistro(
+      int registroId, String tipo, String token,
+      {int n = 0}) async {
     try {
       final params = {'tipo': tipo, if (n > 0) 'n': n.toString()};
       final response = await _dio.delete('/balance/registro/$registroId',
@@ -648,7 +699,8 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getHistorialChat(String token, {int limite = 30}) async {
+  Future<List<Map<String, dynamic>>> getHistorialChat(String token,
+      {int limite = 30}) async {
     try {
       final response = await _dio.get(
         '/asistente/historial',
@@ -663,7 +715,8 @@ class ApiService {
 
   // ============ SEGUIMIENTO SEMANAL E HISTÓRICO ============
 
-  Future<Map<String, dynamic>> getSeguimientoSemanal(String token, {int semanaOffset = 0}) async {
+  Future<Map<String, dynamic>> getSeguimientoSemanal(String token,
+      {int semanaOffset = 0}) async {
     try {
       final response = await _dio.get(
         '/balance/semanal',
@@ -676,7 +729,8 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getSeguimientoHistorico(String token, {int dias = 30}) async {
+  Future<Map<String, dynamic>> getSeguimientoHistorico(String token,
+      {int dias = 30}) async {
     try {
       final response = await _dio.get(
         '/balance/historico',
@@ -693,14 +747,12 @@ class ApiService {
 
   /// 🍎 Obtiene información nutricional completa de un alimento usando Groq IA
   /// Genera: datos nutricionales, recomendaciones, porciones comunes, alternativas saludables
-  Future<Map<String, dynamic>> getDetalleAlimento(String alimento, int porcionGramos, String token) async {
+  Future<Map<String, dynamic>> getDetalleAlimento(
+      String alimento, int porcionGramos, String token) async {
     try {
       print('🔍 Obteniendo detalle de: $alimento ($porcionGramos g)');
       final response = await _dio.post('/alimentos/detalle',
-          data: {
-            'alimento': alimento,
-            'porcion_gramos': porcionGramos
-          },
+          data: {'alimento': alimento, 'porcion_gramos': porcionGramos},
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       print('✅ Detalle obtenido: ${response.data['nombre']}');
       return response.data;
@@ -713,7 +765,8 @@ class ApiService {
   // ============ SMART MEAL REGISTRY (CARRITO) ============
 
   /// 🛒 Parsea una cadena de ingredientes usando IA y devuelve los macros calculados
-  Future<Map<String, dynamic>> parseIngredients(String texto, String token) async {
+  Future<Map<String, dynamic>> parseIngredients(
+      String texto, String token) async {
     try {
       print('🛒 Parseando ingredientes: "$texto"');
       final response = await _dio.post('/api/v1/nutrition/parse_ingredients',
@@ -721,7 +774,8 @@ class ApiService {
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return response.data;
     } on DioException catch (e) {
-      final msg = e.response?.data != null ? e.response!.data.toString() : e.message;
+      final msg =
+          e.response?.data != null ? e.response!.data.toString() : e.message;
       print('❌ Error parseando ingredientes: $msg');
       throw Exception('Error: $msg');
     } catch (e) {
@@ -748,7 +802,8 @@ class ApiService {
       );
       return response.data;
     } on DioException catch (e) {
-      final msg = e.response?.data != null ? e.response!.data.toString() : e.message;
+      final msg =
+          e.response?.data != null ? e.response!.data.toString() : e.message;
       throw Exception('Error: $msg');
     }
   }
@@ -767,7 +822,10 @@ class ApiService {
       final response = await _dio.post(
         '/asistente/calcular-ejercicio',
         data: {
-          'nombre': nombre, 'series': series, 'reps': reps, 'peso_kg': pesoKg,
+          'nombre': nombre,
+          'series': series,
+          'reps': reps,
+          'peso_kg': pesoKg,
           'duracion_min': duracionMin,
         },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -778,7 +836,8 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> registrarRutinaManual(List<Map<String, dynamic>> ejercicios, String token) async {
+  Future<Map<String, dynamic>> registrarRutinaManual(
+      List<Map<String, dynamic>> ejercicios, String token) async {
     try {
       final response = await _dio.post('/asistente/log-rutina-manual',
           data: {'ejercicios': ejercicios},
@@ -828,7 +887,8 @@ class ApiService {
   }
 
   /// ✅ Confirma registro usando consulta_id (valores exactos de la card)
-  Future<Map<String, dynamic>> confirmarRegistroConId(String consultaId, String token) async {
+  Future<Map<String, dynamic>> confirmarRegistroConId(
+      String consultaId, String token) async {
     try {
       print('✅ Confirmando registro con consulta_id: $consultaId');
       final response = await _dio.post('/asistente/confirmar-registro',
@@ -842,7 +902,8 @@ class ApiService {
   }
 
   /// 🏋️ Inicia flujo guiado de fuerza (series/reps/peso) desde una card de ejercicio
-  Future<Map<String, dynamic>> iniciarWorkoutConId(String consultaId, String token) async {
+  Future<Map<String, dynamic>> iniciarWorkoutConId(
+      String consultaId, String token) async {
     try {
       print('🏋️ Iniciando workout con consulta_id: $consultaId');
       final response = await _dio.post(
@@ -904,7 +965,9 @@ class ApiService {
   /// 💬 Consulta al asistente IA con control adaptativo (fuzzy logic)
   /// El tono del asistente se adapta según adherencia y progreso.
   /// Se envía el historial para mantener el contexto de la conversación.
-  Future<Map<String, dynamic>> consultarAsistente(String mensaje, String token, {List<Map<String, dynamic>>? historial, Map<String, dynamic>? datosReales}) async {
+  Future<Map<String, dynamic>> consultarAsistente(String mensaje, String token,
+      {List<Map<String, dynamic>>? historial,
+      Map<String, dynamic>? datosReales}) async {
     try {
       final payload = {
         'mensaje': mensaje,
@@ -942,7 +1005,8 @@ class ApiService {
 
   /// 🩺 Consulta al Copiloto Clínico (Staff)
   /// Nueva ruta aislada para nutricionistas y admins.
-  Future<Map<String, dynamic>> consultarCopiloto(String mensaje, String token, {List<Map<String, dynamic>>? historial}) async {
+  Future<Map<String, dynamic>> consultarCopiloto(String mensaje, String token,
+      {List<Map<String, dynamic>>? historial}) async {
     try {
       final payload = {
         'mensaje': mensaje,
@@ -957,7 +1021,8 @@ class ApiService {
       return response.data;
     } on DioException catch (e) {
       debugPrint('❌ Error en Copiloto: ${e.message}');
-      throw Exception('Error en Copiloto: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error en Copiloto: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
@@ -978,7 +1043,8 @@ class ApiService {
   }
 
   /// 📋 Obtiene detalle de una alerta específica
-  Future<Map<String, dynamic>> getDetalleAlerta(int alertaId, String token) async {
+  Future<Map<String, dynamic>> getDetalleAlerta(
+      int alertaId, String token) async {
     try {
       final response = await _dio.get('/alertas/$alertaId',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
@@ -1003,7 +1069,8 @@ class ApiService {
   }
 
   /// 📝 Actualiza una alerta existente
-  Future<void> actualizarAlerta(int alertaId, Map<String, dynamic> data, String token) async {
+  Future<void> actualizarAlerta(
+      int alertaId, Map<String, dynamic> data, String token) async {
     try {
       await _dio.put('/alertas/$alertaId/actualizar',
           data: data,
@@ -1014,7 +1081,8 @@ class ApiService {
   }
 
   /// 🔍 Obtiene alertas de un cliente específico (staff)
-  Future<List<Map<String, dynamic>>> getAlertasCliente(int clienteId, String token) async {
+  Future<List<Map<String, dynamic>>> getAlertasCliente(
+      int clienteId, String token) async {
     try {
       final response = await _dio.get('/alertas/cliente/$clienteId',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
@@ -1035,11 +1103,11 @@ class ApiService {
         throw Exception('Error al cambiar el estado del staff');
       }
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error: $errorMessage');
     }
   }
-
 
   /// ✅ Eliminar permanentemente miembro del staff (Admin only)
   Future<void> deleteStaff(int userId, String token) async {
@@ -1052,7 +1120,8 @@ class ApiService {
         throw Exception('Error al eliminar personal');
       }
     } on DioException catch (e) {
-      final errorMessage = e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error: $errorMessage');
     }
   }
@@ -1060,7 +1129,8 @@ class ApiService {
   // ============ PANEL NUTRICIONISTA (Phase 2) ============
 
   /// 🏥 Obtiene la lista de clientes asignados al nutricionista/admin
-  Future<List<Map<String, dynamic>>> getNutricionistaClientes(String token) async {
+  Future<List<Map<String, dynamic>>> getNutricionistaClientes(
+      String token) async {
     try {
       print('🔍 Obteniendo pacientes asignados...');
       final response = await _dio.get('/nutricionista/clientes',
@@ -1078,7 +1148,8 @@ class ApiService {
   }
 
   /// 🎯 Actualiza la guía estratégica (foco, recomendados, prohibidos) del cliente (staff)
-  Future<void> actualizarGuiaEstrategica(int clienteId, Map<String, dynamic> data, String token) async {
+  Future<void> actualizarGuiaEstrategica(
+      int clienteId, Map<String, dynamic> data, String token) async {
     try {
       print('🎯 Actualizando guía estratégica para cliente $clienteId...');
       await _dio.post('/nutricionista/actualizar-guia-estrategica/$clienteId',
@@ -1087,7 +1158,8 @@ class ApiService {
       print('✅ Guía estratégica actualizada');
     } on DioException catch (e) {
       print('❌ Error actualizando guía: ${e.response?.data}');
-      throw Exception('Error actualizando guía: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error actualizando guía: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
@@ -1099,14 +1171,17 @@ class ApiService {
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return Map<String, dynamic>.from(response.data);
     } on DioException catch (e) {
-      throw Exception('Error al obtener estadísticas: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error al obtener estadísticas: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
   /// 📈 Obtiene el progreso histórico (peso/imc) de un paciente específico
-  Future<Map<String, dynamic>> getNutricionistaClienteProgreso(int clienteId, String token) async {
+  Future<Map<String, dynamic>> getNutricionistaClienteProgreso(
+      int clienteId, String token) async {
     try {
-      final response = await _dio.get('/nutricionista/cliente/$clienteId/progreso',
+      final response = await _dio.get(
+          '/nutricionista/cliente/$clienteId/progreso',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return Map<String, dynamic>.from(response.data);
     } on DioException catch (e) {
@@ -1121,9 +1196,12 @@ class ApiService {
   }
 
   /// 📋 Obtiene el registro detallado (comidas + ejercicios) de un paciente en una fecha dada
-  Future<Map<String, dynamic>> getNutricionistaClienteRegistroDiario(int clienteId, String token, {String? fecha}) async {
+  Future<Map<String, dynamic>> getNutricionistaClienteRegistroDiario(
+      int clienteId, String token,
+      {String? fecha}) async {
     try {
-      final response = await _dio.get('/nutricionista/cliente/$clienteId/registro-diario',
+      final response = await _dio.get(
+          '/nutricionista/cliente/$clienteId/registro-diario',
           queryParameters: fecha != null ? {'fecha': fecha} : null,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return Map<String, dynamic>.from(response.data);
@@ -1155,7 +1233,8 @@ class ApiService {
   }
 
   /// 🔗 Asigna especialistas (nutri/coach) a un cliente (Admin only)
-  Future<void> assignEspecialista(int clienteId, {int? nutriId, int? trainerId, required String token}) async {
+  Future<void> assignEspecialista(int clienteId,
+      {int? nutriId, int? trainerId, required String token}) async {
     try {
       await _dio.put(
         '/admin/clientes/$clienteId/asignar',
@@ -1166,7 +1245,8 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
-      throw Exception('Error al asignar especialistas: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error al asignar especialistas: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
@@ -1177,29 +1257,34 @@ class ApiService {
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return List<Map<String, dynamic>>.from(response.data);
     } on DioException catch (e) {
-      throw Exception('Error al obtener staff: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error al obtener staff: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
   /// 🍱 Obtiene el plan nutricional detallado de un paciente
-  Future<Map<String, dynamic>> getPatientPlan(int clienteId, String token) async {
+  Future<Map<String, dynamic>> getPatientPlan(
+      int clienteId, String token) async {
     try {
       final response = await _dio.get('/nutricionista/cliente/$clienteId/plan',
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       return Map<String, dynamic>.from(response.data);
     } on DioException catch (e) {
-      throw Exception('Error al obtener plan: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error al obtener plan: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
   /// 📝 Actualiza el plan nutricional de un paciente
-  Future<void> updatePatientPlan(int clienteId, Map<String, dynamic> planData, String token) async {
+  Future<void> updatePatientPlan(
+      int clienteId, Map<String, dynamic> planData, String token) async {
     try {
       await _dio.put('/nutricionista/cliente/$clienteId/plan',
           data: planData,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
     } on DioException catch (e) {
-      throw Exception('Error al actualizar plan: ${e.response?.data['detail'] ?? e.message}');
+      throw Exception(
+          'Error al actualizar plan: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
@@ -1226,7 +1311,8 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
-      throw Exception('Error al crear cliente: ${e.response?.data?['detail'] ?? e.message}');
+      throw Exception(
+          'Error al crear cliente: ${e.response?.data?['detail'] ?? e.message}');
     }
   }
 
@@ -1238,7 +1324,37 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Error al eliminar el cliente.');
+      throw Exception(
+          e.response?.data?['detail'] ?? 'Error al eliminar el cliente.');
+    }
+  }
+
+  /// Busca clientes con filtros (endpoint en desarrollo /nueva-funcion/).
+  Future<Map<String, dynamic>> buscarClientes({
+    String? gender,
+    String? goal,
+    String? activityLevel,
+    String? nombre,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/nueva-funcion/',
+        queryParameters: {
+          if (gender != null && gender.isNotEmpty) 'gender': gender,
+          if (goal != null && goal.isNotEmpty) 'goal': goal,
+          if (activityLevel != null && activityLevel.isNotEmpty) 'activity_level': activityLevel,
+          if (nombre != null && nombre.isNotEmpty) 'nombre': nombre,
+          'limit': limit.clamp(1, 100),
+          'offset': offset < 0 ? 0 : offset,
+        },
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['detail'] : e.message;
+      throw Exception('Error al buscar clientes: $errorMessage');
     }
   }
 }

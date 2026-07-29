@@ -1329,8 +1329,7 @@ class ApiService {
     }
   }
 
-  /// Busca clientes con filtros (endpoint en desarrollo /nueva-funcion/).
-  Future<Map<String, dynamic>> buscarClientes({
+  Future<Map<String, dynamic>> consultarHistorial({
     String? gender,
     String? goal,
     String? activityLevel,
@@ -1344,7 +1343,8 @@ class ApiService {
         queryParameters: {
           if (gender != null && gender.isNotEmpty) 'gender': gender,
           if (goal != null && goal.isNotEmpty) 'goal': goal,
-          if (activityLevel != null && activityLevel.isNotEmpty) 'activity_level': activityLevel,
+          if (activityLevel != null && activityLevel.isNotEmpty)
+            'activity_level': activityLevel,
           if (nombre != null && nombre.isNotEmpty) 'nombre': nombre,
           'limit': limit.clamp(1, 100),
           'offset': offset < 0 ? 0 : offset,
@@ -1355,6 +1355,24 @@ class ApiService {
       final errorMessage =
           e.response?.data is Map ? e.response?.data['detail'] : e.message;
       throw Exception('Error al buscar clientes: $errorMessage');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMiRacha(String token) async {
+    try {
+      final response = await _dio.get(
+        '/asistente/mi-racha',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data);
+    } catch (_) {
+      return {
+        'racha_actual': 0,
+        'mejor_racha': 0,
+        'dias_totales': 0,
+        'registrado_hoy': false,
+        'ultimos_7_dias': <Map<String, dynamic>>[],
+      };
     }
   }
 }

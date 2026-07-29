@@ -30,6 +30,8 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
   String? _errorHistorico;
   int _diasSeleccionados = 30;
 
+  Map<String, dynamic>? _rachaData;
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +41,17 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
         if (_historicoData == null && !_loadingHistorico) _loadHistorico();
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSemana());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSemana();
+      _loadRacha();
+    });
+  }
+
+  Future<void> _loadRacha() async {
+    try {
+      final data = await _api.getMiRacha(_token);
+      if (mounted) setState(() => _rachaData = data);
+    } catch (_) {}
   }
 
   @override
@@ -220,8 +232,119 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                 ),
               ],
             ),
+            if (_rachaData != null) ...[
+              const SizedBox(height: 16),
+              _buildRachaCard(),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRachaCard() {
+    final racha = _rachaData!['racha_actual'] as int? ?? 0;
+    final mejor = _rachaData!['mejor_racha'] as int? ?? 0;
+    final hoy   = _rachaData!['registrado_hoy'] as bool? ?? false;
+    // Usar los días de la semana visible (sincronizado con las flechas de navegación)
+    final dias7 = List<Map<String, dynamic>>.from(_semanaData?['dias'] ?? []);
+    String letraDia(String fechaIso) {
+      const l = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+      return l[DateTime.parse(fechaIso).weekday - 1];
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Text('🔥', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$racha ${racha == 1 ? 'día' : 'días'} de racha',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'Mejor racha: $mejor días',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hoy ? Colors.greenAccent.withOpacity(0.25) : Colors.white12,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  hoy ? '✓ Hoy registrado' : 'Aún sin registro hoy',
+                  style: TextStyle(
+                    color: hoy ? Colors.greenAccent : Colors.white60,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(7, (i) {
+              final registrado = i < dias7.length
+                  ? (dias7[i]['hay_registro'] as bool? ?? false)
+                  : false;
+              return Column(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: registrado
+                          ? Colors.orangeAccent
+                          : Colors.white.withOpacity(0.15),
+                      border: Border.all(
+                        color: registrado ? Colors.orangeAccent : Colors.white24,
+                        width: 2,
+                      ),
+                    ),
+                    child: registrado
+                        ? const Icon(Icons.check, color: Colors.white, size: 14)
+                        : null,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    i < dias7.length
+                        ? letraDia(dias7[i]['fecha'] as String)
+                        : '',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

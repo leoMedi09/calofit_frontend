@@ -42,6 +42,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   int? _assignedNutriId; // ✅ Verifica si tiene Nutri asignado
   bool _showAllRecommended = false; // Expande la lista "Prioriza esta semana"
   bool _showAllForbidden = false; // Expande la lista "Evita esta semana"
+  int _rachaActual = 0;
 
   @override
   void initState() {
@@ -205,6 +206,12 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       } catch (profileErr) {
         debugPrint('Error sincronizando perfil en dashboard: $profileErr');
       }
+
+      // Racha de registro
+      try {
+        final racha = await _apiService.getMiRacha(authProvider.token!);
+        if (mounted) setState(() => _rachaActual = racha['racha_actual'] as int? ?? 0);
+      } catch (_) {}
 
       // ✅ Mostrar Diálogo de Emergencia si hoy es necesario y no se ha mostrado
       if (_checkInNeeded && !_dialogShown && mounted) {
@@ -649,8 +656,42 @@ class _ClientMainScreenState extends State<ClientMainScreen>
           ),
         ),
       ),
-      actions: const [
-        SizedBox(width: 8),
+      actions: [
+        if (_rachaActual > 0)
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade700,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 5),
+                  Text(
+                    '$_rachaActual días',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          const SizedBox(width: 8),
       ],
     );
   }

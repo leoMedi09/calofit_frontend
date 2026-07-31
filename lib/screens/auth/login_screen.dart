@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/api_config.dart';
 import '../../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
+import 'terms_privacy_screen.dart';
 
 /// Un solo punto de entrada: email + contraseña.
 /// El backend resuelve si el usuario es cliente o personal del gimnasio (`user_type: auto`).
@@ -373,6 +374,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const TermsPrivacyScreen()),
+                  ),
+                  child: Text(
+                    'Términos y Condiciones · Política de Privacidad',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

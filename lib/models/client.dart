@@ -18,6 +18,7 @@ class Client {
   final String? profilePictureUrl;
   final int? assignedNutriId;
   final bool isProfileComplete;
+  final DateTime? termsAcceptedAt;
 
   Client({
     required this.id,
@@ -38,6 +39,7 @@ class Client {
     this.profilePictureUrl,
     this.assignedNutriId,
     this.isProfileComplete = false,
+    this.termsAcceptedAt,
   });
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
@@ -81,11 +83,14 @@ class Client {
       profilePictureUrl: json['profile_picture_url'] ?? json['profilePictureUrl'],
       assignedNutriId: json['assigned_nutri_id'],
       isProfileComplete: json['is_profile_complete'] ?? false,
+      termsAcceptedAt: json['terms_accepted_at'] != null
+          ? DateTime.parse(json['terms_accepted_at'])
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = {
       'first_name': firstName,
       'last_name_paternal': lastNamePaternal,
       'last_name_maternal': lastNameMaternal,
@@ -104,5 +109,11 @@ class Client {
       'assigned_nutri_id': assignedNutriId,
       'is_profile_complete': isProfileComplete,
     };
+    // Solo se envía si hay un valor real: evita que ediciones de perfil
+    // posteriores (que no conocen este campo) borren la aceptación ya guardada.
+    if (termsAcceptedAt != null) {
+      map['terms_accepted_at'] = termsAcceptedAt!.toIso8601String();
+    }
+    return map;
   }
 }

@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/client.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../auth/terms_privacy_screen.dart';
 import 'client_main_screen.dart';
 
 class OnboardingProfileScreen extends StatefulWidget {
@@ -55,6 +57,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   // Step 4 - Seguridad
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
+  bool _acceptedTerms = false;
 
   static const Color _navy = Color(0xFF1565C0);
   static const Color _navyLight = Color(0xFF1E88E5);
@@ -100,7 +103,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
       context: context,
       initialDate: DateTime(1995),
       firstDate: DateTime(1940),
-      lastDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+      lastDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
       builder: (context, child) => Theme(
         data: ThemeData.light().copyWith(colorScheme: const ColorScheme.light(primary: _navy)),
         child: child!,
@@ -123,6 +126,13 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Las contraseñas no coinciden'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debes aceptar los Términos y la Política de Privacidad'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -153,6 +163,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
         profilePictureUrl: widget.client.profilePictureUrl,
         assignedNutriId: widget.client.assignedNutriId,
         isProfileComplete: true,
+        termsAcceptedAt: widget.client.termsAcceptedAt ?? DateTime.now(),
       );
 
       await _apiService.updateClient(authProvider.userId!, updated, authProvider.token!);
@@ -241,6 +252,14 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     } else {
       _finishOnboarding();
     }
+  }
+
+  void _prevPage() {
+    if (_currentPage == 0) return;
+    _pageController.previousPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    setState(() => _currentPage--);
+    _animController.reset();
+    _animController.forward();
   }
 
   @override
@@ -583,39 +602,108 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
               child: Row(children: [
                 const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 28),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Usa al menos 6 caracteres. Te recomendamos combinar letras y números.', 
+                Expanded(child: Text('Usa al menos 6 caracteres. Te recomendamos combinar letras y números.',
                   style: TextStyle(color: Colors.blue.shade800, fontSize: 12))),
               ]),
             ),
+            const SizedBox(height: 20),
+            _buildTermsCheckbox(),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildTermsCheckbox() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: _acceptedTerms,
+            onChanged: (val) => setState(() => _acceptedTerms = val ?? false),
+            activeColor: _navy,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
+            behavior: HitTestBehavior.translucent,
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(color: Colors.grey.shade800, fontSize: 13, height: 1.4),
+                children: [
+                  const TextSpan(text: 'Al activar tu cuenta aceptas los '),
+                  TextSpan(
+                    text: 'Términos y Condiciones · Política de Privacidad',
+                    style: TextStyle(color: _navy, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                    recognizer: TapGestureRecognizer()..onTap = _openTermsPrivacy,
+                  ),
+                  const TextSpan(text: ' de CaloFit.'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openTermsPrivacy() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsPrivacyScreen()));
+  }
+
   Widget _buildBottomButton() {
     return Container(
       padding: EdgeInsets.only(left: 24, right: 24, bottom: MediaQuery.of(context).padding.bottom + 20, top: 16),
       decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -8))]),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: _isLoading ? null : _nextPage,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _navy,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            elevation: 6,
-            shadowColor: _navy.withValues(alpha: 0.4),
+      child: Row(
+        children: [
+          if (_currentPage > 0) ...[
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: OutlinedButton(
+                onPressed: _isLoading ? null : _prevPage,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(56, 56),
+                  maximumSize: const Size(56, 56),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  side: BorderSide(color: _navy.withValues(alpha: 0.3)),
+                ),
+                child: Icon(Icons.arrow_back_rounded, color: _navy, size: 22),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: SizedBox(
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _nextPage,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _navy,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  elevation: 6,
+                  shadowColor: _navy.withValues(alpha: 0.4),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text(_currentPage == 3 ? '¡Activar Cuenta!' : 'Continuar', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                        const SizedBox(width: 8),
+                        Icon(_currentPage == 3 ? Icons.verified_user_rounded : Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                      ]),
+              ),
+            ),
           ),
-          child: _isLoading
-              ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(_currentPage == 3 ? '¡Activar Cuenta!' : 'Continuar', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
-                  const SizedBox(width: 8),
-                  Icon(_currentPage == 3 ? Icons.verified_user_rounded : Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                ]),
-        ),
+        ],
       ),
     );
   }

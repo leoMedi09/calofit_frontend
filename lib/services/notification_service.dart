@@ -33,6 +33,7 @@ class NotificationService {
   /// Solicita permisos, configura el canal local y conecta los listeners
   /// de mensajes en foreground. Debe llamarse una sola vez (ej. en main()).
   Future<void> initialize() async {
+    if (kIsWeb) return;
     if (_initialized) return;
     _initialized = true;
 

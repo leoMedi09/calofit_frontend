@@ -246,8 +246,10 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     final racha = _rachaData!['racha_actual'] as int? ?? 0;
     final mejor = _rachaData!['mejor_racha'] as int? ?? 0;
     final hoy   = _rachaData!['registrado_hoy'] as bool? ?? false;
-    // Usar los días de la semana visible (sincronizado con las flechas de navegación)
-    final dias7 = List<Map<String, dynamic>>.from(_semanaData?['dias'] ?? []);
+    // Siempre los últimos 7 días reales (independiente de la semana que se
+    // esté navegando en la otra tarjeta) — la racha en sí no tiene tope de
+    // 7 días, esto es solo un vistazo rápido tipo Duolingo.
+    final dias7 = List<Map<String, dynamic>>.from(_rachaData!['ultimos_7_dias'] ?? []);
     String letraDia(String fechaIso) {
       const l = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
       return l[DateTime.parse(fechaIso).weekday - 1];
@@ -308,7 +310,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(7, (i) {
               final registrado = i < dias7.length
-                  ? (dias7[i]['hay_registro'] as bool? ?? false)
+                  ? (dias7[i]['registrado'] as bool? ?? false)
                   : false;
               return Column(
                 children: [

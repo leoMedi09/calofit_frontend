@@ -43,6 +43,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   double? _sessionDuration;
   String? _gender;
   DateTime? _birthDate;
+  // ponytail: el backend no expone el valor actual en ClientResponse, así
+  // que arrancamos en true (default real en BD); si el usuario ya lo había
+  // apagado antes (imposible hasta ahora, no existía este switch) se vería
+  // desincronizado hasta que lo toque una vez.
+  bool _notificacionesActivas = true;
+  bool _guardandoNotificaciones = false;
 
   // Grupos separados para mejor UX
   final List<String> _medicalOptions = [
@@ -255,6 +261,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleNotificaciones(bool value) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    setState(() {
+      _notificacionesActivas = value;
+      _guardandoNotificaciones = true;
+    });
+    try {
+      await _apiService.actualizarPreferenciaNotificaciones(
+        value,
+        authProvider.token!,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _notificacionesActivas = !value); // revertir en error
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo actualizar la preferencia. Intenta de nuevo.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _guardandoNotificaciones = false);
     }
   }
 
@@ -592,6 +624,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _buildGroupLabel('Preferencias Alimenticias', Icons.restaurant_outlined),
                     const SizedBox(height: 10),
                     _buildChipGroup(_dietaryOptions),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Notificaciones'),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        title: const Text(
+                          'Recordatorios y motivación diaria',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        subtitle: const Text(
+                          'Recibe un mensaje motivacional y un recordatorio si no registraste tus comidas',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: _notificacionesActivas,
+                        onChanged: _guardandoNotificaciones ? null : _toggleNotificaciones,
+                        activeColor: const Color(0xFF1E88E5),
+                      ),
+                    ),
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,

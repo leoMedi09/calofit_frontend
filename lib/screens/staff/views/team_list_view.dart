@@ -6,6 +6,8 @@ import '../../../services/url_service.dart';
 import '../../../models/user.dart';
 import 'staff_registration_form.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class TeamListView extends StatefulWidget {
   const TeamListView({super.key});
 
@@ -109,7 +111,7 @@ class _TeamListViewState extends State<TeamListView> {
               _buildRoleFilters(),
               Expanded(
                 child: _allMembers.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const AppLoading()
                     : _filteredMembers.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
@@ -581,8 +583,7 @@ class _TeamListViewState extends State<TeamListView> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: isLoading
-                  ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  ? AppButtonLoader(size: 20)
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -769,8 +770,7 @@ class _TeamListViewState extends State<TeamListView> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: isLoading
-                  ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  ? AppButtonLoader(size: 20)
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -834,10 +834,7 @@ class _TeamListViewState extends State<TeamListView> {
                     },
               style: ElevatedButton.styleFrom(
                   backgroundColor: isDisabling ? Colors.orange : Colors.green, foregroundColor: Colors.white),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(isDisabling ? 'Suspender' : 'Reactivar'),
+              child: isLoading ? AppButtonLoader(size: 20) : Text(isDisabling ? 'Suspender' : 'Reactivar'),
             ),
           ],
         ),
@@ -888,10 +885,7 @@ class _TeamListViewState extends State<TeamListView> {
                       }
                     },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Eliminar Definitivamente'),
+              child: isLoading ? AppButtonLoader(size: 20) : const Text('Eliminar Definitivamente'),
             ),
           ],
         ),

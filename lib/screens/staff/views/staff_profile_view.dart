@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class StaffProfileView extends StatefulWidget {
   final bool showBackButton;
   const StaffProfileView({super.key, this.showBackButton = true});
@@ -246,11 +248,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _loadingProfile
-                    ? const Center(
-                        child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
-                      ))
+                    ? const Padding(padding: EdgeInsets.all(16), child: AppLoading())
                     : _isEditing
                         ? _buildEditForm(role)
                         : Column(
@@ -349,8 +347,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               child: _isSaving
-                  ? const SizedBox(
-                      width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? AppButtonLoader(size: 22)
                   : const Text('GUARDAR CAMBIOS', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
             ),
           ),

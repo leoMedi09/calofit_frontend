@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:calofit_frontend/services/api_service.dart';
 
+import '../../widgets/app_loading.dart';
+
 class VerifyCodeScreen extends StatefulWidget {
   final String? email;
 
@@ -258,7 +260,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> with SingleTickerPr
                 SizedBox(
                   height: 52,
                   child: _isVerifyingCode
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const AppLoading()
                       : FilledButton(
                           onPressed: () => _verifyCode(email),
                           style: FilledButton.styleFrom(
@@ -324,7 +326,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> with SingleTickerPr
                         SizedBox(
                           height: 52,
                           child: _isUpdatingPassword
-                              ? const Center(child: CircularProgressIndicator())
+                              ? const AppLoading()
                               : FilledButton(
                                   onPressed: () => _updatePassword(email),
                                   style: FilledButton.styleFrom(

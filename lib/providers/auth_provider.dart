@@ -6,6 +6,8 @@ import '../models/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/notification_service.dart';
 
+import '../services/client_cache.dart';
+
 class AuthProvider with ChangeNotifier {
   static GlobalKey<NavigatorState>? navigatorKey;
   String? _token;
@@ -216,6 +218,7 @@ class AuthProvider with ChangeNotifier {
     _userId = null;
     _userIdFirebase = null;
     _isProfileComplete = true;
+    ClientCache.clear();
 
     await _removeSession();
 

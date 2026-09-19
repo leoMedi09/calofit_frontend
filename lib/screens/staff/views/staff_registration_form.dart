@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class StaffRegistrationForm extends StatefulWidget {
   final BuildContext parentContext;
   const StaffRegistrationForm({super.key, required this.parentContext});
@@ -161,10 +163,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
                           elevation: 0,
                         ),
                         child: _isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            ? AppButtonLoader(size: 24)
                             : const Text('Registrar Profesional',
                                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),

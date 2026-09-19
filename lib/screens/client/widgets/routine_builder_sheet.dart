@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class RoutineBuilderSheet extends StatefulWidget {
   const RoutineBuilderSheet({Key? key}) : super(key: key);
 
@@ -289,10 +291,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                       elevation: 0,
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        ? AppButtonLoader(size: 22)
                         : const Icon(Icons.add_rounded, color: Colors.white, size: 28),
                   ),
                 ),

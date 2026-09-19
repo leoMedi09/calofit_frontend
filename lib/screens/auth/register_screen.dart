@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/auth.dart';
 import '../../services/api_service.dart';
 
+import '../../widgets/app_loading.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -107,25 +109,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         lastNamePaternal: _lastNamePaternalController.text.trim(),
         lastNameMaternal: _lastNameMaternalController.text.trim(),
         email: _emailController.text.trim(),
-
         password: _passwordController.text.trim(),
-
         weight: double.parse(_weightController.text),
-
-        // Todo el sistema usa cm
         height: double.parse(_heightController.text),
-
         medicalConditionsText: _medicalConditionsController.text.trim(),
         activityLevel: _selectedActivityLevel,
         goal: _selectedGoal,
         birthDate: _birthDateController.text,
-
         gender: _selectedGender == 'Masculino'
             ? 'M'
             : _selectedGender == 'Femenino'
                 ? 'F'
                 : 'M',
-
         flutterUid: firebaseUid,
         assignedCoachId: 1,
         assignedNutriId: 1,
@@ -173,7 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoading()
           : Padding(
               padding: const EdgeInsets.all(24.0),
               child: Form(
@@ -351,7 +346,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 30),
                     _isLoading
-                        ? const Center(child: CircularProgressIndicator())
+                        ? const AppLoading()
                         : ElevatedButton(
                             onPressed: _register,
                             style: ElevatedButton.styleFrom(

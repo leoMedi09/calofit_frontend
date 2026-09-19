@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class AuditView extends StatefulWidget {
   const AuditView({super.key});
 
@@ -82,7 +84,7 @@ class _AuditViewState extends State<AuditView> {
             future: _auditFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+                return const SliverFillRemaining(child: AppLoading());
               }
               if (snapshot.hasError) {
                 return SliverFillRemaining(child: Center(child: _buildErrorState(snapshot.error.toString())));

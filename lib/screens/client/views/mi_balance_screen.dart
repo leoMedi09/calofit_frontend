@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
 import '../../../providers/auth_provider.dart';
-import 'chat_screen.dart';
-import 'seguimiento_screen.dart';
 import '../../../providers/balance_provider.dart';
-import 'edit_profile_screen.dart';
 import '../../../widgets/app_components.dart';
 import '../../../app_theme.dart';
+import '../../../widgets/app_loading.dart';
+
+import '../../../widgets/client_bottom_nav.dart';
 
 class MiBalanceScreen extends StatefulWidget {
   const MiBalanceScreen({Key? key}) : super(key: key);
@@ -21,7 +21,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   late TabController _tabController;
   late AnimationController _animController;
 
-  bool isLocalLoading = false;
+  bool isLocalLoading = true;
   String? errorMessage;
   DateTime? _selectedDate;
 
@@ -41,16 +41,31 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   void _loadData() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final balance = Provider.of<BalanceProvider>(context, listen: false);
-    if (auth.token != null) {
-      String? dateParam;
-      if (_selectedDate != null) {
-        dateParam =
-            "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+    if (auth.token == null) {
+      setState(() => isLocalLoading = false);
+      return;
+    }
+    String? dateParam;
+    if (_selectedDate != null) {
+      dateParam =
+          "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+    }
+    final teniaDatos = balance.fullBalanceData != null;
+    if (teniaDatos) _animController.forward(from: 0);
+    balance.fetchFavoritos(auth.token!);
+    try {
+      await balance.fetchFullBalance(auth.token!, fecha: dateParam);
+      if (mounted) {
+        setState(() => isLocalLoading = false);
+        if (!teniaDatos) _animController.forward(from: 0);
       }
-      balance.fetchFullBalance(auth.token!, fecha: dateParam).then((_) {
-        if (mounted) _animController.forward(from: 0);
-      });
-      balance.fetchFavoritos(auth.token!);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          errorMessage = e.toString();
+          isLocalLoading = false;
+        });
+      }
     }
   }
 
@@ -268,20 +283,36 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   }
 
   Widget _buildLoadingState() {
-    return Center(
+    return SingleChildScrollView(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation(AppColors.primary),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text('Cargando tu balance...', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+          _buildHeroHeader(0, 0, 0, 0, loading: true),
+          SkeletonBlocks.macroPills(),
+          Padding(padding: const EdgeInsets.fromLTRB(20, 6, 20, 0), child: _buildTabBarCard()),
+          SkeletonBlocks.cards(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBarCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        labelColor: AppColors.primaryDark,
+        unselectedLabelColor: Colors.grey.shade400,
+        indicatorColor: AppColors.primary,
+        indicatorWeight: 3,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+        tabs: const [
+          Tab(text: 'Comidas'),
+          Tab(text: 'Ejercicios'),
         ],
       ),
     );
@@ -349,29 +380,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         ],
         body: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade100),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: AppColors.primaryDark,
-                  unselectedLabelColor: Colors.grey.shade400,
-                  indicatorColor: AppColors.primary,
-                  indicatorWeight: 3,
-                  indicatorSize: TabBarIndicatorSize.label,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                  tabs: const [
-                    Tab(text: 'Comidas'),
-                    Tab(text: 'Ejercicios'),
-                  ],
-                ),
-              ),
-            ),
+            Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0), child: _buildTabBarCard()),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -390,7 +399,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildHeroHeader(double consumidas, double quemadas, double objetivo, double restantes) {
+  Widget _buildHeroHeader(double consumidas, double quemadas, double objetivo, double restantes,
+      {bool loading = false}) {
     final progreso = objetivo > 0 ? (consumidas / objetivo).clamp(0.0, 1.5) : 0.0;
 
     return Container(
@@ -502,85 +512,89 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               ],
             ),
             const SizedBox(height: 20),
-            AnimatedBuilder(
-              animation: _animController,
-              builder: (context, child) {
-                return Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              restantes.toStringAsFixed(0),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w900,
-                                height: 1.1,
-                                letterSpacing: -1,
+            if (loading)
+              SkeletonBlocks.heroData()
+            else ...[
+              AnimatedBuilder(
+                animation: _animController,
+                builder: (context, child) {
+                  return Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                restantes.toStringAsFixed(0),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.1,
+                                  letterSpacing: -1,
+                                ),
                               ),
-                            ),
-                            Text(
-                              'kcal restantes',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                              Text(
+                                'kcal restantes',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '${(progreso * 100).toStringAsFixed(1)}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        height: 8,
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.2),
-                              blurRadius: 10,
-                              spreadRadius: 2,
+                          Text(
+                            '${(progreso * 100).toStringAsFixed(1)}%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
                             ),
-                          ],
-                        ),
-                        child: LinearProgressIndicator(
-                          value: progreso * _animController.value,
-                          backgroundColor: Colors.white.withOpacity(0.15),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            progreso > 1.0 ? Colors.orange.shade300 : Colors.white,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.2),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: LinearProgressIndicator(
+                            value: progreso * _animController.value,
+                            backgroundColor: Colors.white.withOpacity(0.15),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              progreso > 1.0 ? Colors.orange.shade300 : Colors.white,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildHeaderStat('Meta', objetivo.toStringAsFixed(0), Icons.flag_rounded),
-                _buildVerticalDivider(),
-                _buildHeaderStat('Comido', consumidas.toStringAsFixed(0), Icons.restaurant_rounded),
-                _buildVerticalDivider(),
-                _buildHeaderStat('Quemado', quemadas.toStringAsFixed(0), Icons.local_fire_department_rounded),
-              ],
-            ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildHeaderStat('Meta', objetivo.toStringAsFixed(0), Icons.flag_rounded),
+                  _buildVerticalDivider(),
+                  _buildHeaderStat('Comido', consumidas.toStringAsFixed(0), Icons.restaurant_rounded),
+                  _buildVerticalDivider(),
+                  _buildHeaderStat('Quemado', quemadas.toStringAsFixed(0), Icons.local_fire_department_rounded),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -964,45 +978,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   }
 
   Widget _buildBottomNavigation() {
-    return NavigationBar(
-      selectedIndex: 2,
-      onDestinationSelected: (index) {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 1) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
-        } else if (index == 3) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
-        } else if (index == 4) {
-          _navigateToProfile();
-        }
-      },
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(
-            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(
-            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
-        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
-      ],
-    );
-  }
-
-  Future<void> _navigateToProfile() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.userId == null || authProvider.token == null) return;
-
-    try {
-      final client = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
-      if (!mounted) return;
-      Navigator.push(context, MaterialPageRoute(builder: (context) => EditProfileScreen(client: client)));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al abrir perfil: $e')));
-      }
-    }
+    return const ClientBottomNav(selectedIndex: 2);
   }
 
   Widget _buildErrorView() {

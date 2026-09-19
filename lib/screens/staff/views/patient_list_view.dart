@@ -6,6 +6,8 @@ import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 import 'patient_record_view.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class PatientListView extends StatefulWidget {
   const PatientListView({super.key});
 
@@ -91,7 +93,7 @@ class _PatientListViewState extends State<PatientListView> {
               _buildSearchHeader(),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const AppLoading()
                     : _filteredPatients.isEmpty
                         ? _buildEmptyState()
                         : _buildPatientList(),
@@ -339,10 +341,7 @@ class _PatientListViewState extends State<PatientListView> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         child: isSubmitting
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                            ? AppButtonLoader(size: 24)
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -1024,7 +1023,7 @@ class _PatientListViewState extends State<PatientListView> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => const AppLoading(),
     );
 
     try {

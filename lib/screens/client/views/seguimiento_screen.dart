@@ -4,9 +4,11 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../app_theme.dart';
-import 'chat_screen.dart';
-import 'mi_balance_screen.dart';
-import 'edit_profile_screen.dart';
+import '../../../widgets/app_loading.dart';
+
+import '../../../widgets/client_bottom_nav.dart';
+
+import '../../../services/client_cache.dart';
 
 class SeguimientoScreen extends StatefulWidget {
   const SeguimientoScreen({Key? key}) : super(key: key);
@@ -34,6 +36,10 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
+    ClientCache.bindUser(Provider.of<AuthProvider>(context, listen: false).userId);
+    _semanaData = ClientCache.semanaActual;
+    _loadingSemana = _semanaData == null;
+    _rachaData = ClientCache.racha;
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging && _tabController.index == 1) {
@@ -49,6 +55,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
   Future<void> _loadRacha() async {
     try {
       final data = await _api.getMiRacha(_token);
+      ClientCache.racha = data;
       if (mounted) setState(() => _rachaData = data);
     } catch (_) {}
   }
@@ -62,17 +69,19 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
   String get _token => Provider.of<AuthProvider>(context, listen: false).token ?? '';
 
   Future<void> _loadSemana() async {
+    final offset = _semanaOffset;
     setState(() {
-      _loadingSemana = true;
+      _loadingSemana = _semanaData == null;
       _errorSemana = null;
     });
     try {
-      final data = await _api.getSeguimientoSemanal(_token, semanaOffset: _semanaOffset);
-      if (mounted) setState(() => _semanaData = data);
+      final data = await _api.getSeguimientoSemanal(_token, semanaOffset: offset);
+      if (offset == 0) ClientCache.semanaActual = data;
+      if (mounted && offset == _semanaOffset) setState(() => _semanaData = data);
     } catch (e) {
-      if (mounted) setState(() => _errorSemana = e.toString());
+      if (mounted && offset == _semanaOffset && _semanaData == null) setState(() => _errorSemana = e.toString());
     } finally {
-      if (mounted) setState(() => _loadingSemana = false);
+      if (mounted && offset == _semanaOffset) setState(() => _loadingSemana = false);
     }
   }
 
@@ -81,7 +90,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
     if (nuevo > 0 || nuevo < -12) return;
     setState(() {
       _semanaOffset = nuevo;
-      _semanaData = null;
+      _semanaData = nuevo == 0 ? ClientCache.semanaActual : null;
     });
     _loadSemana();
   }
@@ -207,32 +216,34 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildHeaderStat(
-                  'Adherencia',
-                  '${adherencia.toStringAsFixed(0)}%',
-                  Icons.track_changes_rounded,
-                ),
-                _buildVDivider(),
-                _buildHeaderStat(
-                  'Días registrados',
-                  '${resumen?['dias_con_registro'] ?? 0}/7',
-                  Icons.calendar_today_rounded,
-                ),
-                _buildVDivider(),
-                _buildHeaderStat(
-                  'Con ejercicio',
-                  '${resumen?['dias_con_ejercicio'] ?? 0} días',
-                  Icons.fitness_center_rounded,
-                ),
-              ],
+            AppSkeleton(
+              loading: _semanaData == null,
+              onDark: true,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildHeaderStat(
+                    'Adherencia',
+                    '${adherencia.toStringAsFixed(0)}%',
+                    Icons.track_changes_rounded,
+                  ),
+                  _buildVDivider(),
+                  _buildHeaderStat(
+                    'Días registrados',
+                    '${resumen?['dias_con_registro'] ?? 0}/7',
+                    Icons.calendar_today_rounded,
+                  ),
+                  _buildVDivider(),
+                  _buildHeaderStat(
+                    'Con ejercicio',
+                    '${resumen?['dias_con_ejercicio'] ?? 0} días',
+                    Icons.fitness_center_rounded,
+                  ),
+                ],
+              ),
             ),
-            if (_rachaData != null) ...[
-              const SizedBox(height: 16),
-              _buildRachaCard(),
-            ],
+            const SizedBox(height: 16),
+            if (_rachaData != null) _buildRachaCard() else SkeletonBlocks.racha(),
           ],
         ),
       ),
@@ -352,7 +363,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
 
   Widget _buildSemanaTab() {
     if (_loadingSemana) {
-      return const Center(child: CircularProgressIndicator());
+      return SingleChildScrollView(child: SkeletonBlocks.weekTab());
     }
     if (_errorSemana != null) {
       return _buildError(_errorSemana!, _loadSemana);
@@ -886,7 +897,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
         _buildRangeSelector(),
         const SizedBox(height: 16),
         if (_loadingHistorico)
-          const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+          SkeletonBlocks.historico()
         else if (_errorHistorico != null)
           _buildError(_errorHistorico!, _loadHistorico)
         else if (_historicoData != null) ...[
@@ -896,7 +907,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
           const SizedBox(height: 16),
           _buildResumenHistorico(),
         ] else
-          const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+          SkeletonBlocks.historico(),
       ],
     );
   }
@@ -1324,36 +1335,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTicker
   }
 
   Widget _buildBottomNav() {
-    return NavigationBar(
-      selectedIndex: 3,
-      onDestinationSelected: (index) async {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 1) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
-        } else if (index == 2) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
-        } else if (index == 4) {
-          final auth = Provider.of<AuthProvider>(context, listen: false);
-          if (auth.userId == null || auth.token == null) return;
-          try {
-            final client = await _api.getClientProfile(auth.userId!, auth.token!);
-            if (mounted) {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)));
-            }
-          } catch (_) {}
-        }
-      },
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(
-            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(
-            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
-        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
-      ],
-    );
+    return const ClientBottomNav(selectedIndex: 3);
   }
 }

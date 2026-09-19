@@ -4,6 +4,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/balance_provider.dart';
 import '../../../services/api_service.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class SmartMealRegistrySheet extends StatefulWidget {
   final void Function(String mensaje)? onRegister;
   final List<Map<String, dynamic>>? initialIngredients;
@@ -364,10 +366,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                       elevation: 0,
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        ? AppButtonLoader(size: 22)
                         : const Icon(Icons.add_rounded, color: Colors.white, size: 26),
                   ),
                 ),
@@ -541,8 +540,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? const SizedBox(
-                        width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    ? AppButtonLoader(size: 22)
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

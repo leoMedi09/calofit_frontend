@@ -5,6 +5,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class CoachDashboardView extends StatefulWidget {
   const CoachDashboardView({super.key});
 
@@ -58,9 +60,7 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (_isLoading)
-                    const Center(
-                        child: Padding(
-                            padding: EdgeInsets.all(50), child: CircularProgressIndicator(color: Colors.orange)))
+                    const Padding(padding: EdgeInsets.all(50), child: AppLoading())
                   else ...[
                     _buildStatsRow(),
                     const SizedBox(height: 24),

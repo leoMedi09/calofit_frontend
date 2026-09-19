@@ -7,6 +7,8 @@ import '../../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
 import 'terms_privacy_screen.dart';
 
+import '../../widgets/app_loading.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -192,14 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.blue.shade600,
-                        ),
-                      ),
+                      AppButtonLoader(size: 16, color: Colors.blue.shade600),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -304,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               const SizedBox(height: 28),
               _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const AppLoading()
                   : SizedBox(
                       height: 52,
                       child: FilledButton(

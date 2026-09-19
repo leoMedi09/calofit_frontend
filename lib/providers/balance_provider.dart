@@ -3,12 +3,28 @@ import '../models/dashboard_data.dart';
 import '../models/suggestion.dart';
 import '../services/api_service.dart';
 
+import '../services/client_cache.dart';
+
 class BalanceProvider with ChangeNotifier {
   DailySummary? _dailySummary;
   bool _isLoading = false;
   bool _hasError = false;
   String _errorMessage = '';
   final ApiService _apiService = ApiService();
+
+  BalanceProvider() {
+    ClientCache.alCambiarUsuario(_limpiar);
+  }
+
+  void _limpiar() {
+    _dailySummary = null;
+    _fullBalanceData = null;
+    _isLoading = false;
+    _hasError = false;
+    _errorMessage = '';
+    _suggestions = [];
+    _favoritos = [];
+  }
 
   DailySummary? get dailySummary => _dailySummary;
   bool get isLoading => _isLoading;

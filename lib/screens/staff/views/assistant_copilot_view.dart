@@ -5,6 +5,8 @@ import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class AssistantCopilotView extends StatefulWidget {
   const AssistantCopilotView({super.key});
 
@@ -237,11 +239,7 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Color(0xFF5C6BC0))),
-            ),
+            const AppButtonLoader(size: 12, color: Color(0xFF5C6BC0)),
             const SizedBox(width: 8),
             Text(
               'Copiloto analizando...',

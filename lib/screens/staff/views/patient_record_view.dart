@@ -5,6 +5,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../widgets/profile_avatar.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class PatientRecordView extends StatefulWidget {
   final Map<String, dynamic> patientData;
 
@@ -434,7 +436,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ],
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const AppLoading()
             : ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
@@ -1210,7 +1212,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               ),
               const SizedBox(width: 12),
               _isAILoading
-                  ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
+                  ? const AppButtonLoader.primary(size: 32)
                   : GestureDetector(
                       onTap: _askAICopilot,
                       child: Container(
@@ -1701,9 +1703,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
           const SizedBox(height: 16),
           if (_isDailyLogLoading)
-            const Center(
-                child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12), child: CircularProgressIndicator(strokeWidth: 2)))
+            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: AppLoading(size: 28))
           else ...[
             _buildGroupLabel('Comidas registradas', Icons.restaurant_outlined),
             const SizedBox(height: 10),

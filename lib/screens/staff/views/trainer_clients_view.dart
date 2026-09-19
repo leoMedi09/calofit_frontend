@@ -5,6 +5,8 @@ import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 import 'patient_record_view.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class TrainerClientsView extends StatefulWidget {
   const TrainerClientsView({super.key});
 
@@ -75,7 +77,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
             _buildSearchBox(),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const AppLoading()
                   : _filteredClients.isEmpty
                       ? _buildEmptyState()
                       : _buildClientList(),

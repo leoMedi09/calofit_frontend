@@ -4,10 +4,12 @@ import '../../../models/client.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/balance_provider.dart';
 import '../../../services/api_service.dart';
-import 'chat_screen.dart';
-import 'mi_balance_screen.dart';
-import 'seguimiento_screen.dart';
-import '../client_main_screen.dart';
+
+import '../../../widgets/app_loading.dart';
+
+import '../../../widgets/client_bottom_nav.dart';
+
+import '../../../services/client_cache.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Client client;
@@ -234,6 +236,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         updatedClient,
         authProvider.token!,
       );
+      ClientCache.perfil = updatedClient;
 
       if (mounted) {
         await balanceProvider.fetchFullBalance(authProvider.token!);
@@ -669,7 +672,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           shadowColor: const Color(0xFF1A237E).withOpacity(0.5),
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const AppButtonLoader()
                             : const Text(
                                 'GUARDAR CAMBIOS',
                                 style: TextStyle(
@@ -864,32 +867,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildBottomNavigation() {
-    return NavigationBar(
-      selectedIndex: 4,
-      onDestinationSelected: (index) {
-        if (index == 0) {
-          Navigator.pushAndRemoveUntil(
-              context, MaterialPageRoute(builder: (_) => const ClientMainScreen()), (route) => false);
-        } else if (index == 1) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
-        } else if (index == 2) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
-        } else if (index == 3) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
-        }
-      },
-      backgroundColor: Colors.white,
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(
-            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(
-            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
-        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
-      ],
-    );
+    return const ClientBottomNav(selectedIndex: 4, backgroundColor: Colors.white);
   }
 
   Widget _buildMLBadge() {

@@ -7,6 +7,8 @@ import '../../services/api_service.dart';
 import '../auth/terms_privacy_screen.dart';
 import 'client_main_screen.dart';
 
+import '../../widgets/app_loading.dart';
+
 class OnboardingProfileScreen extends StatefulWidget {
   final Client client;
   const OnboardingProfileScreen({super.key, required this.client});
@@ -705,7 +707,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> with 
                   shadowColor: _navy.withValues(alpha: 0.4),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                    ? const AppButtonLoader()
                     : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Text(_currentPage == 3 ? '¡Activar Cuenta!' : 'Continuar',
                             style: const TextStyle(

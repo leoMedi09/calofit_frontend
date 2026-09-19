@@ -5,9 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../models/client.dart';
-import 'edit_profile_screen.dart';
-import 'mi_balance_screen.dart';
-import 'seguimiento_screen.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../models/assistant_response.dart';
@@ -15,6 +12,10 @@ import '../../../widgets/chat_bubble.dart';
 import '../../../providers/balance_provider.dart';
 import '../widgets/smart_meal_registry_sheet.dart';
 import '../widgets/routine_builder_sheet.dart';
+
+import '../../../widgets/app_loading.dart';
+
+import '../../../widgets/client_bottom_nav.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -553,11 +554,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      titleSpacing: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
-        onPressed: () => Navigator.pop(context),
-      ),
+      automaticallyImplyLeading: false,
+      titleSpacing: 16,
       title: Row(
         children: [
           CircleAvatar(
@@ -641,42 +639,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildBottomNavigation() {
-    return NavigationBar(
-      selectedIndex: 1,
-      onDestinationSelected: (index) async {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 2) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
-        } else if (index == 3) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
-        } else if (index == 4) {
-          final auth = Provider.of<AuthProvider>(context, listen: false);
-          if (auth.userId == null || auth.token == null) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay una sesión activa.')));
-            return;
-          }
-          try {
-            final client = await _apiService.getClientProfile(auth.userId!, auth.token!);
-            if (mounted)
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)));
-          } catch (e) {
-            if (mounted)
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al obtener perfil: $e')));
-          }
-        }
-      },
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(
-            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(
-            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
-        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
-      ],
-    );
+    return const ClientBottomNav(selectedIndex: 1);
   }
 
   Widget _buildMessageList() {
@@ -879,7 +842,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2)),
+            const AppButtonLoader.primary(size: 15),
             const SizedBox(width: 10),
             Text('Procesando...', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
           ],
@@ -898,14 +861,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.red.shade700,
-                ),
-              ),
+              AppButtonLoader(size: 18, color: Colors.red.shade700),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(

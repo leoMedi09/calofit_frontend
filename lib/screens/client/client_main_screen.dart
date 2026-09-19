@@ -6,17 +6,21 @@ import '../../services/api_service.dart';
 import '../../services/url_service.dart';
 import '../../models/dashboard_data.dart';
 import '../auth/login_screen.dart';
-import 'views/edit_profile_screen.dart';
 import 'views/chat_screen.dart';
-import 'views/mi_balance_screen.dart';
-import 'views/seguimiento_screen.dart';
 import '../../widgets/plan_status_badge.dart';
 import '../../widgets/plan_alert_card.dart';
 
 import '../../providers/balance_provider.dart';
 import '../../widgets/checkin_card.dart';
+import '../../widgets/app_loading.dart';
 import 'views/checkin_wizard_screen.dart';
 import 'onboarding_profile_screen.dart';
+
+import '../../widgets/client_bottom_nav.dart';
+
+import '../../services/client_cache.dart';
+
+import '../../services/route_observer.dart';
 
 class ClientMainScreen extends StatefulWidget {
   const ClientMainScreen({super.key});
@@ -25,7 +29,7 @@ class ClientMainScreen extends StatefulWidget {
   State<ClientMainScreen> createState() => _ClientMainScreenState();
 }
 
-class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerProviderStateMixin {
+class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerProviderStateMixin, RouteAware {
   final ApiService _apiService = ApiService();
   AnimationController? _progressController;
 
@@ -41,10 +45,29 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   bool _showAllRecommended = false;
   bool _showAllForbidden = false;
   int _rachaActual = 0;
+  bool _cargandoInicial = true;
+  bool _perfilCargado = false;
+
+  void _aplicarCheckIn(Map<String, dynamic> status) {
+    _checkInNeeded = status['needed'] ?? false;
+    _precisionScore = status['precision_score'] ?? 100;
+    _daysUntilCheckin = status['days_until_checkin'] ?? 0;
+    _nutriUpdatesPending = status['nutri_updates_pending'] ?? false;
+    _lastUpdateDate = status['last_update_date'];
+  }
 
   @override
   void initState() {
     super.initState();
+    ClientCache.bindUser(Provider.of<AuthProvider>(context, listen: false).userId);
+    final perfilGuardado = ClientCache.perfil;
+    if (perfilGuardado != null) {
+      _assignedNutriId = perfilGuardado.assignedNutriId;
+      _perfilCargado = true;
+    }
+    final checkInGuardado = ClientCache.checkIn;
+    if (checkInGuardado != null) _aplicarCheckIn(checkInGuardado);
+    _rachaActual = (ClientCache.racha?['racha_actual'] as int?) ?? 0;
     _progressController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -56,6 +79,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       if (authProvider.userId != null && authProvider.token != null) {
         try {
           final client = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
+          ClientCache.perfil = client;
           if (!client.isProfileComplete && mounted) {
             Navigator.pushReplacement(
               context,
@@ -130,7 +154,20 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ruta = ModalRoute.of(context);
+    if (ruta != null) routeObserver.subscribe(this, ruta);
+  }
+
+  @override
+  void didPopNext() {
+    _loadDashboardData();
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _progressController?.dispose();
     super.dispose();
   }
@@ -139,19 +176,30 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
 
-    if (!authProvider.isAuthenticated) return;
+    if (!authProvider.isAuthenticated) {
+      _terminarCargaInicial();
+      return;
+    }
 
     if (ApiService.needsLogout) {
       ApiService.resetLogoutFlag();
+      _terminarCargaInicial();
       await _handleSessionExpired(authProvider);
       return;
     }
 
     try {
-      await balanceProvider.loadDailySummary(
-        authProvider.userId!,
-        authProvider.token!,
-      );
+      final token = authProvider.token!;
+      final userId = authProvider.userId!;
+      final checkInFut = _apiService.getCheckInStatus(token);
+      final profileFut = _apiService.getClientProfile(userId, token);
+      final rachaFut = _apiService.getMiRacha(token);
+      for (final f in [checkInFut, profileFut, rachaFut]) {
+        f.ignore();
+      }
+
+      await balanceProvider.loadDailySummary(userId, token);
+      _terminarCargaInicial();
 
       if (!mounted) return;
 
@@ -161,27 +209,24 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       }
 
       try {
-        final checkInStatus = await _apiService.getCheckInStatus(authProvider.token!);
-        setState(() {
-          _checkInNeeded = checkInStatus['needed'] ?? false;
-          _precisionScore = checkInStatus['precision_score'] ?? 100;
-          _daysUntilCheckin = checkInStatus['days_until_checkin'] ?? 0;
-          _nutriUpdatesPending = checkInStatus['nutri_updates_pending'] ?? false;
-          _lastUpdateDate = checkInStatus['last_update_date'];
-        });
+        final checkInStatus = await checkInFut;
+        ClientCache.checkIn = checkInStatus;
+        setState(() => _aplicarCheckIn(checkInStatus));
       } catch (checkInErr) {
         debugPrint('Error cargando status de check-in: $checkInErr');
       }
 
       try {
-        final profile = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
+        final profile = await profileFut;
 
         if (profile.profilePictureUrl != null && profile.profilePictureUrl != authProvider.profilePictureUrl) {
           authProvider.updateProfilePictureUrl(profile.profilePictureUrl!);
         }
 
+        ClientCache.perfil = profile;
         setState(() {
           _assignedNutriId = profile.assignedNutriId;
+          _perfilCargado = true;
         });
 
         if (_checkInNeeded) {
@@ -195,7 +240,8 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       }
 
       try {
-        final racha = await _apiService.getMiRacha(authProvider.token!);
+        final racha = await rachaFut;
+        ClientCache.racha = racha;
         if (mounted) setState(() => _rachaActual = racha['racha_actual'] as int? ?? 0);
       } catch (_) {}
 
@@ -205,7 +251,13 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       }
     } catch (e) {
       debugPrint('Error cargando dashboard via provider: $e');
+    } finally {
+      _terminarCargaInicial();
     }
+  }
+
+  void _terminarCargaInicial() {
+    if (mounted && _cargandoInicial) setState(() => _cargandoInicial = false);
   }
 
   Future<void> _handleSessionExpired(AuthProvider authProvider) async {
@@ -269,14 +321,10 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    if (balanceProvider.isLoading)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(50.0),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (balanceProvider.hasError)
+                    if (dailySummary == null &&
+                        (balanceProvider.isLoading || (_cargandoInicial && !balanceProvider.hasError)))
+                      SkeletonBlocks.dashboard(padded: false)
+                    else if (balanceProvider.hasError && dailySummary == null)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.all(40.0),
@@ -305,7 +353,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                         ),
                       )
                     else if (dailySummary != null) ...[
-                      if (_assignedNutriId == null)
+                      if (_assignedNutriId == null && _perfilCargado)
                         Container(
                           margin: const EdgeInsets.only(bottom: 20),
                           padding: const EdgeInsets.all(20),
@@ -386,7 +434,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                                   ],
                                 ),
                               ),
-                            if (_nutriUpdatesPending)
+                            if (_nutriUpdatesPending && _planValidado(dailySummary))
                               Container(
                                 margin: const EdgeInsets.only(right: 12, bottom: 16, top: 4),
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -416,14 +464,15 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                       _buildProgressHero(dailySummary),
                       const SizedBox(height: 20),
                       _buildMacroCards(dailySummary),
-                      if ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
-                          (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty) ||
-                          dailySummary.recommendedFoods.isNotEmpty ||
-                          dailySummary.forbiddenFoods.isNotEmpty) ...[
+                      if (_planValidado(dailySummary) &&
+                          ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
+                              (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty) ||
+                              dailySummary.recommendedFoods.isNotEmpty ||
+                              dailySummary.forbiddenFoods.isNotEmpty)) ...[
                         const SizedBox(height: 20),
                         _buildStrategicMissionCard(
                           dailySummary.aiStrategicFocus,
-                          dailySummary.isStrategyValidated,
+                          _planValidado(dailySummary),
                           nutriWeeklyNote: dailySummary.nutriWeeklyNote,
                           recommendedFoods: dailySummary.recommendedFoods,
                           forbiddenFoods: dailySummary.forbiddenFoods,
@@ -478,7 +527,6 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                   context,
                   MaterialPageRoute(builder: (_) => const ChatScreen()),
                 );
-                if (mounted) _loadDashboardData();
               },
               backgroundColor: const Color(0xFF1E88E5),
               elevation: 4,
@@ -601,7 +649,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (dailySummary?.isStrategyValidated == true) ...[
+                              if (_planValidado(dailySummary)) ...[
                                 const SizedBox(width: 8),
                                 const Icon(Icons.verified, color: Colors.lightBlueAccent, size: 24),
                               ],
@@ -800,6 +848,8 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   Widget _buildVerticalDivider() {
     return Container(width: 1, height: 30, color: Colors.white12);
   }
+
+  bool _planValidado(DailySummary? resumen) => resumen?.planObjetivo?.estadoPlan == 'validado';
 
   Widget _buildStrategicMissionCard(
     String? mission,
@@ -1662,69 +1712,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   }
 
   Widget _buildBottomNavigation() {
-    return NavigationBar(
-      selectedIndex: 0,
-      onDestinationSelected: (index) async {
-        if (index == 1) {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
-          if (mounted) _loadDashboardData();
-        } else if (index == 2) {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const MiBalanceScreen()));
-          if (mounted) _loadDashboardData();
-        } else if (index == 3) {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const SeguimientoScreen()));
-          if (mounted) _loadDashboardData();
-        } else if (index == 4) {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          try {
-            final client = await _apiService.getClientProfile(
-              authProvider.userId!,
-              authProvider.token!,
-            );
-            if (mounted) {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)),
-              );
-              if (mounted) _loadDashboardData();
-            }
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error cargando perfil: $e')),
-              );
-            }
-          }
-        }
-      },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Inicio',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.chat_bubble_outline),
-          selectedIcon: Icon(Icons.chat_bubble),
-          label: 'Asistente',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.assessment_outlined),
-          selectedIcon: Icon(Icons.assessment),
-          label: 'Balance',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.trending_up_rounded),
-          selectedIcon: Icon(Icons.trending_up),
-          label: 'Seguimiento',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'Perfil',
-        ),
-      ],
-    );
+    return const ClientBottomNav(selectedIndex: 0);
   }
 
   Widget _buildValidationBadge() {

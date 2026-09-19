@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 
+import '../../../widgets/app_loading.dart';
+
 class CheckInWizardScreen extends StatefulWidget {
   final double currentWeight;
   final double currentHeight;
@@ -107,7 +109,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
                   elevation: 5,
                 ),
                 child: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const AppButtonLoader()
                     : Text(
                         _currentStep == 1 ? 'FINALIZAR CALIBRACIÓN' : 'CONTINUAR',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),

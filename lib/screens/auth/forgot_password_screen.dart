@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:calofit_frontend/services/api_service.dart';
 
+import '../../widgets/app_loading.dart';
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -141,7 +143,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 28),
               _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const AppLoading()
                   : SizedBox(
                       height: 52,
                       child: FilledButton(

@@ -19,13 +19,13 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   bool _isLoading = true;
   Map<String, dynamic>? _fullData;
   Map<String, dynamic>? _currentPlan;
-  
+
   late TextEditingController _caloriesController;
   late TextEditingController _proteinController;
   late TextEditingController _carbsController;
   late TextEditingController _fatsController;
   late TextEditingController _obsController;
-  
+
   late TextEditingController _strategicFocusController;
   late TextEditingController _recInputController;
   late TextEditingController _forInputController;
@@ -56,15 +56,21 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     _carbsController = TextEditingController();
     _fatsController = TextEditingController();
     _obsController = TextEditingController();
-    
+
     _strategicFocusController = TextEditingController();
     _recInputController = TextEditingController();
     _forInputController = TextEditingController();
     _weeklyNoteController = TextEditingController();
     _coachNotesController = TextEditingController();
     for (final ctrl in [
-      _caloriesController, _proteinController, _carbsController, _fatsController,
-      _obsController, _strategicFocusController, _weeklyNoteController, _coachNotesController,
+      _caloriesController,
+      _proteinController,
+      _carbsController,
+      _fatsController,
+      _obsController,
+      _strategicFocusController,
+      _weeklyNoteController,
+      _coachNotesController,
     ]) {
       ctrl.addListener(_markDirty);
     }
@@ -104,13 +110,13 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       final clientId = widget.patientData['id'];
 
       final progressData = await _apiService.getNutricionistaClienteProgreso(clientId, token);
-      
+
       setState(() {
         _fullData = progressData;
         _strategicFocusController.text = progressData['ai_strategic_focus'] ?? '';
         _weeklyNoteController.text = progressData['nutri_weekly_note'] ?? '';
         _coachNotesController.text = progressData['coach_notes'] ?? '';
-        
+
         _recommendedList = List<String>.from(progressData['recommended_foods'] ?? []);
         _forbiddenList = List<String>.from(progressData['forbidden_foods'] ?? []);
         _medicalConditionsList = List<String>.from(progressData['medical_conditions'] ?? []);
@@ -141,15 +147,18 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       } catch (e) {
         debugPrint("No se encontró plan: $e");
         if (progressData['metabolismo_estimado'] != null) {
-            final est = progressData['metabolismo_estimado'];
-            _caloriesController.text = (est['calorias_objetivo'] ?? '').toString();
-            _proteinController.text = (est['proteinas_g'] ?? '').toString();
-            _carbsController.text = (est['carbohidratos_g'] ?? '').toString();
-            _fatsController.text = (est['grasas_g'] ?? '').toString();
+          final est = progressData['metabolismo_estimado'];
+          _caloriesController.text = (est['calorias_objetivo'] ?? '').toString();
+          _proteinController.text = (est['proteinas_g'] ?? '').toString();
+          _carbsController.text = (est['carbohidratos_g'] ?? '').toString();
+          _fatsController.text = (est['grasas_g'] ?? '').toString();
         }
       }
 
-      setState(() { _isLoading = false; _isDirty = false; });
+      setState(() {
+        _isLoading = false;
+        _isDirty = false;
+      });
       _loadDailyLog();
     } catch (e) {
       if (mounted) {
@@ -242,38 +251,30 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token!;
       final clientId = widget.patientData['id'];
-      
-      final List<Map<String, dynamic>> dailyUpdates = List.generate(7, (index) => {
-        "calorias_dia": double.tryParse(_caloriesController.text) ?? 2000,
-        "proteinas_g": double.tryParse(_proteinController.text) ?? 150,
-        "carbohidratos_g": double.tryParse(_carbsController.text) ?? 200,
-        "grasas_g": double.tryParse(_fatsController.text) ?? 60,
-        "estado": "oficial"
-      });
 
-      await _apiService.updatePatientPlan(
-        clientId, 
-        {
-          "observaciones": _obsController.text,
-          "detalles_diarios": dailyUpdates,
-          "status": "validado"
-        }, 
-        token
-      );
+      final List<Map<String, dynamic>> dailyUpdates = List.generate(
+          7,
+          (index) => {
+                "calorias_dia": double.tryParse(_caloriesController.text) ?? 2000,
+                "proteinas_g": double.tryParse(_proteinController.text) ?? 150,
+                "carbohidratos_g": double.tryParse(_carbsController.text) ?? 200,
+                "grasas_g": double.tryParse(_fatsController.text) ?? 60,
+                "estado": "oficial"
+              });
+
+      await _apiService.updatePatientPlan(clientId,
+          {"observaciones": _obsController.text, "detalles_diarios": dailyUpdates, "status": "validado"}, token);
 
       await _apiService.actualizarGuiaEstrategica(
-        clientId,
-        {
-          "ai_strategic_focus": _strategicFocusController.text.trim(),
-          "recommended_foods": _recommendedList,
-          "forbidden_foods": _forbiddenList,
-          "medical_conditions": _medicalConditionsList,
-          "nutri_weekly_note": _weeklyNoteController.text.trim().isEmpty
-              ? null
-              : _weeklyNoteController.text.trim(),
-        },
-        token
-      );
+          clientId,
+          {
+            "ai_strategic_focus": _strategicFocusController.text.trim(),
+            "recommended_foods": _recommendedList,
+            "forbidden_foods": _forbiddenList,
+            "medical_conditions": _medicalConditionsList,
+            "nutri_weekly_note": _weeklyNoteController.text.trim().isEmpty ? null : _weeklyNoteController.text.trim(),
+          },
+          token);
 
       if (mounted) {
         _shouldRefreshList = true;
@@ -294,7 +295,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
 
   Future<void> _deleteClient() async {
     final patientName = widget.patientData['full_name'] ?? 'este paciente';
-    final clientId   = widget.patientData['id'] as int;
+    final clientId = widget.patientData['id'] as int;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -313,15 +314,21 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.red.shade200)),
+              decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200)),
               child: Row(children: [
                 const Icon(Icons.person, color: Colors.red),
                 const SizedBox(width: 10),
-                Expanded(child: Text(patientName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+                Expanded(
+                    child: Text(patientName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
               ]),
             ),
             const SizedBox(height: 12),
-            const Text('⚠️ Esta acción es IRREVERSIBLE. Se eliminarán todos sus datos, historial y su cuenta de Firebase.', style: TextStyle(fontSize: 12, color: Colors.red)),
+            const Text(
+                '⚠️ Esta acción es IRREVERSIBLE. Se eliminarán todos sus datos, historial y su cuenta de Firebase.',
+                style: TextStyle(fontSize: 12, color: Colors.red)),
           ],
         ),
         actions: [
@@ -331,7 +338,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: const Text('Sí, ELIMINAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
@@ -368,112 +376,100 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         return false;
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF263238)),
-          onPressed: () async {
-            final salir = await _confirmarSalida();
-            if (salir && context.mounted) Navigator.pop(context, _shouldRefreshList);
-          },
-        ),
-        actions: [
-          if (_esEntrenador()) ...[
-            TextButton.icon(
-              onPressed: _isDirty ? _saveCoachNotes : null,
-              icon: const Icon(Icons.save_outlined, size: 18),
-              label: const Text('Guardar Nota',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF1E88E5)),
-            ),
-            const SizedBox(width: 4),
-          ],
-          if (!_esEntrenador()) ...[
-            Tooltip(
-              message: _planStatus == 'validado'
-                  ? 'Guarda cambios en kcal/macros y guía estratégica'
-                  : 'Guarda y valida el plan nutricional del paciente',
-              child: TextButton.icon(
-                onPressed: _savePlan,
-                icon: Icon(
-                  _planStatus == 'validado'
-                      ? Icons.save_outlined
-                      : Icons.check_circle_outline_rounded,
-                  size: 18,
-                ),
-                label: Text(
-                  _planStatus == 'validado' ? 'Guardar Plan' : 'Guardar y Validar',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: _planStatus == 'validado'
-                      ? const Color(0xFF1E88E5)
-                      : const Color(0xFF2E7D32),
-                ),
-              ),
-            ),
-            Tooltip(
-              message: 'Da de baja al paciente.\nElimina todos sus datos permanentemente.',
-              child: TextButton.icon(
-                onPressed: _deleteClient,
-                icon: const Icon(Icons.person_remove_outlined, size: 18),
-                label: const Text(
-                  'Dar de baja',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
-        ],
-      ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              _buildHeaderCard(),
-              const SizedBox(height: 24),
-              
-              _buildTodayConsumption(),
-              const SizedBox(height: 24),
-
-              _buildDailyLogSection(),
-              const SizedBox(height: 24),
-
-              _buildMetricsGrid(),
-              const SizedBox(height: 24),
-
-              if (!_esEntrenador()) ...[
-                _buildValidationCard(),
-                const SizedBox(height: 24),
-                _buildStrategicGuideSection(),
-                const SizedBox(height: 24),
-              ],
-
-              _buildProgressCharts(),
-              const SizedBox(height: 24),
-              _buildNutritionalPlanSection(),
-              const SizedBox(height: 24),
-              
-              _buildCoachNotesSection(),
-
-              const SizedBox(height: 80),
-            ],
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF263238)),
+            onPressed: () async {
+              final salir = await _confirmarSalida();
+              if (salir && context.mounted) Navigator.pop(context, _shouldRefreshList);
+            },
           ),
+          actions: [
+            if (_esEntrenador()) ...[
+              TextButton.icon(
+                onPressed: _isDirty ? _saveCoachNotes : null,
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('Guardar Nota', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                style: TextButton.styleFrom(foregroundColor: const Color(0xFF1E88E5)),
+              ),
+              const SizedBox(width: 4),
+            ],
+            if (!_esEntrenador()) ...[
+              Tooltip(
+                message: _planStatus == 'validado'
+                    ? 'Guarda cambios en kcal/macros y guía estratégica'
+                    : 'Guarda y valida el plan nutricional del paciente',
+                child: TextButton.icon(
+                  onPressed: _savePlan,
+                  icon: Icon(
+                    _planStatus == 'validado' ? Icons.save_outlined : Icons.check_circle_outline_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _planStatus == 'validado' ? 'Guardar Plan' : 'Guardar y Validar',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _planStatus == 'validado' ? const Color(0xFF1E88E5) : const Color(0xFF2E7D32),
+                  ),
+                ),
+              ),
+              Tooltip(
+                message: 'Da de baja al paciente.\nElimina todos sus datos permanentemente.',
+                child: TextButton.icon(
+                  onPressed: _deleteClient,
+                  icon: const Icon(Icons.person_remove_outlined, size: 18),
+                  label: const Text(
+                    'Dar de baja',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  _buildHeaderCard(),
+                  const SizedBox(height: 24),
+                  _buildTodayConsumption(),
+                  const SizedBox(height: 24),
+                  _buildDailyLogSection(),
+                  const SizedBox(height: 24),
+                  _buildMetricsGrid(),
+                  const SizedBox(height: 24),
+                  if (!_esEntrenador()) ...[
+                    _buildValidationCard(),
+                    const SizedBox(height: 24),
+                    _buildStrategicGuideSection(),
+                    const SizedBox(height: 24),
+                  ],
+                  _buildProgressCharts(),
+                  const SizedBox(height: 24),
+                  _buildNutritionalPlanSection(),
+                  const SizedBox(height: 24),
+                  _buildCoachNotesSection(),
+                  const SizedBox(height: 80),
+                ],
+              ),
       ),
     );
   }
 
   static const _goalLabels = {
-    'perder peso':  'Perder peso (Agresivo)',
-    'perder_leve':  'Perder peso (Definición)',
-    'mantener peso':'Mantener peso',
-    'ganar_leve':   'Ganar masa (Limpio)',
-    'ganar masa':   'Ganar masa (Volumen)',
+    'perder peso': 'Perder peso (Agresivo)',
+    'perder_leve': 'Perder peso (Definición)',
+    'mantener peso': 'Mantener peso',
+    'ganar_leve': 'Ganar masa (Limpio)',
+    'ganar masa': 'Ganar masa (Volumen)',
   };
 
   String _formatGoal(String? raw) {
@@ -484,7 +480,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   Widget _buildHeaderCard() {
     final bool isMale = widget.patientData['gender']?.toString().toLowerCase() == 'm';
     final String? photoUrl = widget.patientData['profile_picture_url'] ?? widget.patientData['profilePictureUrl'];
-    
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -504,10 +500,9 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                 radius: 30,
                 backgroundColor: isMale ? const Color(0xFFE3F2FD) : const Color(0xFFFCE4EC),
                 textStyle: TextStyle(
-                  fontSize: 24, 
-                  fontWeight: FontWeight.w800, 
-                  color: isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)
-                ),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: isMale ? const Color(0xFF1E88E5) : const Color(0xFFD81B60)),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -535,23 +530,26 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                 children: [
                   const Divider(),
                   const SizedBox(height: 12),
-                  const Text('CONDICIONES MÉDICAS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.redAccent)),
+                  const Text('CONDICIONES MÉDICAS',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.redAccent)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: (_fullData!['medical_conditions'] as List).map<Widget>((c) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.red[100]!),
-                      ),
-                      child: Text(
-                        c.toString(),
-                        style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    )).toList(),
+                    children: (_fullData!['medical_conditions'] as List)
+                        .map<Widget>((c) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.red[50],
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.red[100]!),
+                              ),
+                              child: Text(
+                                c.toString(),
+                                style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ))
+                        .toList(),
                   ),
                 ],
               ),
@@ -565,7 +563,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     final weightRaw = _fullData?['current_weight'];
     final weight = weightRaw is num ? weightRaw.toStringAsFixed(1) : '--';
     final height = _fullData?['current_height']?.toString() ?? '--';
-    
+
     final gastoEstimadoRaw = _fullData?['metabolismo_estimado']?['calorias_objetivo'];
     final gastoEstimado = gastoEstimadoRaw != null ? '$gastoEstimadoRaw kcal' : '--';
 
@@ -598,15 +596,17 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: isPremium ? color.withOpacity(0.2) : Colors.grey[100]!),
-          boxShadow: isPremium ? [
-            BoxShadow(color: color.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-          ] : null,
+          boxShadow: isPremium
+              ? [BoxShadow(color: color.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]
+              : null,
         ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 12),
-            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isPremium ? color : const Color(0xFF263238))),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w800, color: isPremium ? color : const Color(0xFF263238))),
             Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600)),
           ],
         ),
@@ -619,12 +619,14 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       double w = double.parse(weightStr);
       double h = double.parse(heightStr) / 100;
       return (w / (h * h)).toStringAsFixed(1);
-    } catch (_) { return '--'; }
+    } catch (_) {
+      return '--';
+    }
   }
 
   Widget _buildProgressCharts() {
     final historialPeso = (_fullData?['historial_peso'] as List?) ?? [];
-    
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -640,10 +642,9 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'EVOLUCIÓN MENSUAL', 
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2, color: Color(0xFF455A64))
-              ),
+              const Text('EVOLUCIÓN MENSUAL',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2, color: Color(0xFF455A64))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -667,7 +668,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                   children: [
                     Icon(Icons.show_chart_rounded, color: Colors.grey, size: 40),
                     SizedBox(height: 8),
-                    Text('Aún no hay registros de peso para graficar', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text('Aún no hay registros de peso para graficar',
+                        style: TextStyle(color: Colors.grey, fontSize: 12)),
                   ],
                 ),
               ),
@@ -708,19 +710,19 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                         getTitlesWidget: (value, meta) {
                           int index = value.toInt();
                           if (index >= 0 && index < historialPeso.length) {
-                             String fecha = historialPeso[index]['fecha']?.toString() ?? '';
-                             if (fecha.isNotEmpty) {
-                               try {
-                                 DateTime dt = DateTime.parse(fecha);
-                                 return Padding(
-                                   padding: const EdgeInsets.only(top: 8.0),
-                                   child: Text(
-                                     '${dt.day}/${dt.month}',
-                                     style: TextStyle(color: Colors.grey[500], fontSize: 9, fontWeight: FontWeight.bold),
-                                   ),
-                                 );
-                               } catch (_) {}
-                             }
+                            String fecha = historialPeso[index]['fecha']?.toString() ?? '';
+                            if (fecha.isNotEmpty) {
+                              try {
+                                DateTime dt = DateTime.parse(fecha);
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    '${dt.day}/${dt.month}',
+                                    style: TextStyle(color: Colors.grey[500], fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                );
+                              } catch (_) {}
+                            }
                           }
                           return const Text('');
                         },
@@ -797,23 +799,28 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('CONFIGURACIÓN DEL PLAN', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.2, color: Colors.blueGrey)),
+              const Text('CONFIGURACIÓN DEL PLAN',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.2, color: Colors.blueGrey)),
               if (isCoach)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(8)),
-                  child: const Text('SOLO LECTURA', style: TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold)),
+                  child: const Text('SOLO LECTURA',
+                      style: TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold)),
                 )
               else
                 const Icon(Icons.edit_note_rounded, color: Colors.blue),
             ],
           ),
           const SizedBox(height: 24),
-          _buildEditField('Calorías Diarias', _caloriesController, Icons.local_fire_department_rounded, 'kcal', isNumber: true, readOnly: isCoach),
+          _buildEditField('Calorías Diarias', _caloriesController, Icons.local_fire_department_rounded, 'kcal',
+              isNumber: true, readOnly: isCoach),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildEditField('Proteína', _proteinController, null, 'g', isNumber: true, readOnly: isCoach)),
+              Expanded(
+                  child: _buildEditField('Proteína', _proteinController, null, 'g', isNumber: true, readOnly: isCoach)),
               const SizedBox(width: 12),
               Expanded(child: _buildEditField('Carbs', _carbsController, null, 'g', isNumber: true, readOnly: isCoach)),
               const SizedBox(width: 12),
@@ -826,18 +833,19 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   Widget _buildTodayConsumption() {
-    final ingesta = _fullData?['today_summary'] ?? {
-      'calorias_consumidas': _fullData?['current_day_calories'] ?? 0,
-      'proteinas': _fullData?['current_day_protein'] ?? 0,
-      'carbos': _fullData?['current_day_carbs'] ?? 0,
-      'grasas': _fullData?['current_day_fats'] ?? 0,
-      'calorias_quemadas': _fullData?['current_day_burned'] ?? 0,
-    };
+    final ingesta = _fullData?['today_summary'] ??
+        {
+          'calorias_consumidas': _fullData?['current_day_calories'] ?? 0,
+          'proteinas': _fullData?['current_day_protein'] ?? 0,
+          'carbos': _fullData?['current_day_carbs'] ?? 0,
+          'grasas': _fullData?['current_day_fats'] ?? 0,
+          'calorias_quemadas': _fullData?['current_day_burned'] ?? 0,
+        };
 
     final int consumido = (ingesta['calorias_consumidas'] ?? 0).toInt();
     final int quemado = (ingesta['calorias_quemadas'] ?? 0).toInt();
     final int neto = consumido - quemado;
-    
+
     final double objetivoCal = double.tryParse(_caloriesController.text) ?? 2000;
     final double progress = (objetivoCal > 0) ? (consumido / objetivoCal) : 0;
 
@@ -860,41 +868,49 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('RESUMEN ENERGÉTICO HOY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.5)),
+              Text('RESUMEN ENERGÉTICO HOY',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.5)),
               Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
             ],
           ),
           const SizedBox(height: 20),
-          
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$consumido', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
-                  const Text('INGERIDAS', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text('$consumido',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  const Text('INGERIDAS',
+                      style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
                 ],
               ),
               Container(height: 30, width: 1, color: Colors.white24),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Text('$quemado', style: const TextStyle(color: Color(0xFFFFCC80), fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
-                   const Text('QUEMADAS', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text('$quemado',
+                      style: const TextStyle(
+                          color: Color(0xFFFFCC80), fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  const Text('QUEMADAS',
+                      style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
                 ],
               ),
               Container(height: 30, width: 1, color: Colors.white24),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('$neto', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
-                  const Text('BALANCE NETO', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text('$neto',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  const Text('BALANCE NETO',
+                      style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
                 ],
               ),
             ],
           ),
-
           const SizedBox(height: 24),
           Row(
             children: [
@@ -910,10 +926,10 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                 ),
               ),
               const SizedBox(width: 12),
-              Text('${(progress * 100).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
+              Text('${(progress * 100).toInt()}%',
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
             ],
           ),
-          
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -983,11 +999,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               SizedBox(width: 8),
               Text(
                 'NOTAS DEL ENTRENADOR',
-                style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    letterSpacing: 1,
-                    color: Color(0xFF263238)),
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1, color: Color(0xFF263238)),
               ),
             ],
           ),
@@ -1010,18 +1022,13 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                     fillColor: isCoach ? Colors.white : const Color(0xFFF1F5F9),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: isCoach
-                            ? BorderSide(color: Colors.blue.shade200)
-                            : BorderSide.none),
+                        borderSide: isCoach ? BorderSide(color: Colors.blue.shade200) : BorderSide.none),
                     enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: isCoach
-                            ? BorderSide(color: Colors.blue.shade200)
-                            : BorderSide.none),
+                        borderSide: isCoach ? BorderSide(color: Colors.blue.shade200) : BorderSide.none),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5), width: 2)),
+                        borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1038,10 +1045,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                         isCoach
                             ? 'Solo tú puedes editar esta sección. Usa el botón "Guardar Nota".'
                             : 'Solo editable por el entrenador.',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.blueGrey,
-                            fontStyle: FontStyle.italic),
+                        style: const TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic),
                       ),
                     ),
                   ],
@@ -1053,7 +1057,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       ),
     );
   }
-
 
   Future<void> _askAICopilot() async {
     setState(() => _isAILoading = true);
@@ -1146,8 +1149,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                 const SizedBox(height: 2),
                 Text(
                   isValidado
-                    ? (dateStr.isNotEmpty ? 'Última validación: $dateStr' : 'Plan aprobado')
-                    : 'El plan nutricional aún no ha sido validado',
+                      ? (dateStr.isNotEmpty ? 'Última validación: $dateStr' : 'Plan aprobado')
+                      : 'El plan nutricional aún no ha sido validado',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
@@ -1186,7 +1189,11 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                         Flexible(
                           child: Text(
                             'GUÍA ESTRATÉGICA MENSUAL (IA)',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5, color: Color(0xFF1E88E5)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                letterSpacing: 0.5,
+                                color: Color(0xFF1E88E5)),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 2,
                           ),
@@ -1239,34 +1246,28 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             ],
           ),
           const SizedBox(height: 24),
-          
           _buildEditField(
-            'Misión de la Semana (Enfoque IA)', 
-            _strategicFocusController, 
-            Icons.center_focus_strong_rounded, 
-            '', 
-            isNumber: false,
-            maxLines: 5,
-            hint: 'Misión: Priorizar saciedad y control glucémico...'
-          ),
-
+              'Misión de la Semana (Enfoque IA)', _strategicFocusController, Icons.center_focus_strong_rounded, '',
+              isNumber: false, maxLines: 5, hint: 'Misión: Priorizar saciedad y control glucémico...'),
           const SizedBox(height: 16),
-          
           const SizedBox(height: 24),
           _buildReadOnlyMedicalConditions(),
-          
           const Divider(height: 48),
-          
           _buildChipInput(
             label: 'Alimentos Recomendados',
             items: _recommendedList,
             controller: _recInputController,
             icon: Icons.check_circle_outline_rounded,
             color: Colors.green,
-            onAdd: (val) => setState(() { _recommendedList.add(val); _isDirty = true; }),
-            onRemove: (idx) => setState(() { _recommendedList.removeAt(idx); _isDirty = true; }),
+            onAdd: (val) => setState(() {
+              _recommendedList.add(val);
+              _isDirty = true;
+            }),
+            onRemove: (idx) => setState(() {
+              _recommendedList.removeAt(idx);
+              _isDirty = true;
+            }),
           ),
-          
           const SizedBox(height: 24),
           _buildChipInput(
             label: 'Alimentos Prohibidos',
@@ -1274,10 +1275,15 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             controller: _forInputController,
             icon: Icons.block_flipped,
             color: Colors.red,
-            onAdd: (val) => setState(() { _forbiddenList.add(val); _isDirty = true; }),
-            onRemove: (idx) => setState(() { _forbiddenList.removeAt(idx); _isDirty = true; }),
+            onAdd: (val) => setState(() {
+              _forbiddenList.add(val);
+              _isDirty = true;
+            }),
+            onRemove: (idx) => setState(() {
+              _forbiddenList.removeAt(idx);
+              _isDirty = true;
+            }),
           ),
-          
           const SizedBox(height: 16),
           const Row(
             children: [
@@ -1324,7 +1330,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               if (items.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text('Presiona "+" para añadir alimentos', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                  child: Text('Presiona "+" para añadir alimentos',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                 ),
               if (items.isNotEmpty)
                 Wrap(
@@ -1344,12 +1351,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                             Flexible(
                               child: Text(
                                 entry.value,
-                                style: TextStyle(
-                                  fontSize: 13, 
-                                  fontWeight: FontWeight.bold, 
-                                  color: color,
-                                  height: 1.2
-                                ),
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color, height: 1.2),
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -1406,7 +1408,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     );
   }
 
-  Widget _buildEditField(String label, TextEditingController controller, IconData? icon, String unit, {bool isNumber = true, int maxLines = 1, String? hint, bool readOnly = false}) {
+  Widget _buildEditField(String label, TextEditingController controller, IconData? icon, String unit,
+      {bool isNumber = true, int maxLines = 1, String? hint, bool readOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1444,7 +1447,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           runSpacing: 8,
           children: [
             const Text(
-              'CONDICIONES MÉDICAS (DEL PERFIL)', 
+              'CONDICIONES MÉDICAS (DEL PERFIL)',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
             ),
             Container(
@@ -1471,39 +1474,40 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             border: Border.all(color: Colors.blueGrey.withOpacity(0.1)),
           ),
           child: _medicalConditionsList.isEmpty
-            ? const Text('El cliente no ha registrado condiciones médicas.', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic))
-            : Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ..._medicalConditionsList.map((c) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blueGrey.withOpacity(0.1)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.health_and_safety_rounded, size: 14, color: Colors.redAccent),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            c, 
-                            style: const TextStyle(
-                              fontSize: 12, 
-                              fontWeight: FontWeight.bold, 
-                              color: Color(0xFF334155),
-                              height: 1.2,
-                            ),
+              ? const Text('El cliente no ha registrado condiciones médicas.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic))
+              : Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ..._medicalConditionsList.map((c) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blueGrey.withOpacity(0.1)),
                           ),
-                        ),
-                      ],
-                    ),
-                  )),
-                ],
-              ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.health_and_safety_rounded, size: 14, color: Colors.redAccent),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  c,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF334155),
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -1564,7 +1568,10 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 44, child: Text(_formatHora(c['hora']), style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600))),
+          SizedBox(
+              width: 44,
+              child: Text(_formatHora(c['hora']),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600))),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1582,7 +1589,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
-              child: Text(c['momento'].toString().toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              child: Text(c['momento'].toString().toUpperCase(),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
             ),
         ],
       ),
@@ -1595,7 +1603,10 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 44, child: Text(_formatHora(e['hora']), style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600))),
+          SizedBox(
+              width: 44,
+              child: Text(_formatHora(e['hora']),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600))),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1615,7 +1626,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
-              child: Text(e['intensity'].toString().toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              child: Text(e['intensity'].toString().toUpperCase(),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
             ),
         ],
       ),
@@ -1626,7 +1638,9 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     return Row(children: [
       Icon(icon, size: 14, color: Colors.blueGrey.shade400),
       const SizedBox(width: 6),
-      Text(label.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blueGrey.shade500, letterSpacing: 0.5)),
+      Text(label.toUpperCase(),
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blueGrey.shade500, letterSpacing: 0.5)),
     ]);
   }
 
@@ -1640,8 +1654,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     }
   }
 
-  bool _esMismoDia(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+  bool _esMismoDia(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
   Widget _buildDailyLogSection() {
     final comidas = (_dailyLog?['comidas'] as List?) ?? [];
@@ -1667,7 +1680,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('REGISTRO DETALLADO DEL DÍA', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF475569))),
+              const Text('REGISTRO DETALLADO DEL DÍA',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF475569))),
               InkWell(
                 onTap: _seleccionarFechaRegistro,
                 borderRadius: BorderRadius.circular(8),
@@ -1677,7 +1691,8 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                     children: [
                       Icon(Icons.calendar_today_rounded, size: 14, color: Colors.blueGrey[400]),
                       const SizedBox(width: 6),
-                      Text(fechaLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blueGrey[600])),
+                      Text(fechaLabel,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blueGrey[600])),
                     ],
                   ),
                 ),
@@ -1686,7 +1701,9 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
           const SizedBox(height: 16),
           if (_isDailyLogLoading)
-            const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 12), child: CircularProgressIndicator(strokeWidth: 2)))
+            const Center(
+                child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12), child: CircularProgressIndicator(strokeWidth: 2)))
           else ...[
             _buildGroupLabel('Comidas registradas', Icons.restaurant_outlined),
             const SizedBox(height: 10),
@@ -1697,11 +1714,9 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               itemBuilder: _buildComidaItem,
               emptyText: 'Sin comidas registradas en esta fecha.',
             ),
-
             const SizedBox(height: 16),
             Divider(color: Colors.grey.shade200),
             const SizedBox(height: 16),
-
             _buildGroupLabel('Ejercicios registrados', Icons.fitness_center_outlined),
             const SizedBox(height: 10),
             _buildExpandableItems(

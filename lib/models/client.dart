@@ -48,8 +48,7 @@ class Client {
     if (birthDate == null) return 0;
     final today = DateTime.now();
     int age = today.year - birthDate!.year;
-    if (today.month < birthDate!.month ||
-        (today.month == birthDate!.month && today.day < birthDate!.day)) {
+    if (today.month < birthDate!.month || (today.month == birthDate!.month && today.day < birthDate!.day)) {
       age--;
     }
     return age;
@@ -65,15 +64,11 @@ class Client {
       lastNameMaternal: json['last_name_maternal'] ?? '',
       email: json['email'] ?? '',
       flutterUid: json['flutter_uid'] ?? '',
-      birthDate: json['birth_date'] != null
-          ? DateTime.parse(json['birth_date'])
-          : null,
+      birthDate: json['birth_date'] != null ? DateTime.parse(json['birth_date']) : null,
       weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
       height: (json['height'] as num?)?.toDouble() ?? 0.0,
       gender: json['gender'] ?? 'M',
-      medicalConditions: conditionsData != null
-          ? List<String>.from(conditionsData)
-          : [],
+      medicalConditions: conditionsData != null ? List<String>.from(conditionsData) : [],
       activityLevel: json['activity_level'] ?? 'Sedentario',
       goal: json['goal'] ?? 'Mantener peso',
       workoutType: json['workout_type'] ?? 'Cardio',
@@ -81,9 +76,7 @@ class Client {
       profilePictureUrl: json['profile_picture_url'] ?? json['profilePictureUrl'],
       assignedNutriId: json['assigned_nutri_id'],
       isProfileComplete: json['is_profile_complete'] ?? false,
-      termsAcceptedAt: json['terms_accepted_at'] != null
-          ? DateTime.parse(json['terms_accepted_at'])
-          : null,
+      termsAcceptedAt: json['terms_accepted_at'] != null ? DateTime.parse(json['terms_accepted_at']) : null,
     );
   }
 

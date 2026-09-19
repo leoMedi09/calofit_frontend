@@ -28,12 +28,8 @@ class Suggestion {
       id: json['id'] ?? 0,
       tipo: json['tipo'] ?? 'comida',
       nombre: json['nombre'] ?? '',
-      ingredientes: json['ingredientes'] != null 
-          ? List<String>.from(json['ingredientes']) 
-          : [],
-      preparacion: json['preparacion'] != null 
-          ? List<String>.from(json['preparacion']) 
-          : [],
+      ingredientes: json['ingredientes'] != null ? List<String>.from(json['ingredientes']) : [],
+      preparacion: json['preparacion'] != null ? List<String>.from(json['preparacion']) : [],
       macros: json['macros'] ?? '',
       nota: json['nota'] ?? '',
       completada: json['completada'] ?? false,

@@ -30,29 +30,21 @@ class StaffMenuView extends StatelessWidget {
             backgroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-              title: const Text(
-                'Panel de Control', 
-                style: TextStyle(
-                  color: Color(0xFF1A237E), 
-                  fontWeight: FontWeight.w900, 
-                  fontSize: 20,
-                  letterSpacing: -0.5
-                )
-              ),
+              title: const Text('Panel de Control',
+                  style: TextStyle(
+                      color: Color(0xFF1A237E), fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5)),
               background: Container(color: Colors.white),
             ),
             actions: const [
               SizedBox(width: 8),
             ],
           ),
-
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _buildUserInfoCard(authProvider),
                 const SizedBox(height: 32),
-                
                 if (isAdmin) ...[
                   _buildSectionHeader('GESTIÓN ADMINISTRATIVA'),
                   const SizedBox(height: 16),
@@ -75,7 +67,6 @@ class StaffMenuView extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                 ],
-
                 _buildSectionHeader('CONFIGURACIÓN PERSONAL'),
                 const SizedBox(height: 16),
                 _buildMenuCard(
@@ -140,9 +131,10 @@ class StaffMenuView extends StatelessWidget {
                 radius: 35,
                 backgroundColor: Colors.white,
                 backgroundImage: photoUrl != null ? NetworkImage(UrlService.formatImageUrl(photoUrl)) : null,
-                child: photoUrl == null 
-                  ? Text(initials, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: Color(0xFF1A237E)))
-                  : null,
+                child: photoUrl == null
+                    ? Text(initials,
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: Color(0xFF1A237E)))
+                    : null,
               ),
             ),
           ),
@@ -157,7 +149,8 @@ class StaffMenuView extends StatelessWidget {
                 ),
                 Text(
                   auth.userName ?? 'Usuario',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
                 ),
                 const SizedBox(height: 6),
                 Container(
@@ -168,7 +161,8 @@ class StaffMenuView extends StatelessWidget {
                   ),
                   child: Text(
                     (auth.userRole ?? 'Staff').toUpperCase(),
-                    style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                    style: const TextStyle(
+                        fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
                   ),
                 ),
               ],
@@ -184,17 +178,13 @@ class StaffMenuView extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 12, 
-          fontWeight: FontWeight.w900, 
-          letterSpacing: 1.5, 
-          color: Color(0xFF7986CB)
-        ),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Color(0xFF7986CB)),
       ),
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildMenuCard(
+      BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -230,15 +220,15 @@ class StaffMenuView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title, 
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1A237E), letterSpacing: -0.3)
-                      ),
+                      Text(title,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: Color(0xFF1A237E),
+                              letterSpacing: -0.3)),
                       const SizedBox(height: 2),
-                      Text(
-                        subtitle, 
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500)
-                      ),
+                      Text(subtitle,
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ),

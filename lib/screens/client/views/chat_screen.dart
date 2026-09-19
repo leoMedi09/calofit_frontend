@@ -30,7 +30,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
-  
+
   final ApiService _apiService = ApiService();
   final FlutterTts _flutterTts = FlutterTts();
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -38,13 +38,13 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   bool _speechReady = false;
   String _speechLocaleId = 'es_ES';
   int _speechSession = 0;
-  
+
   bool _isTyping = false;
   bool _isListening = false;
   bool _isKeyboardVisible = false;
-  bool _isMuted = false; 
-  String? _speakingMessageId; 
-  Client? _clientProfile; 
+  bool _isMuted = false;
+  String? _speakingMessageId;
+  Client? _clientProfile;
   String? _latestFuzzyHint;
   bool _showHelpBanner = true;
 
@@ -52,13 +52,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     {
       'role': 'assistant',
       'response': AssistantResponse(
-        usuario: '',
-        dataCientifica: ScientificData(progresoDiario: {}),
-        respuestaEstructurada: StructuredResponse(
-          textoConversacional: '¡Hola! Soy CaloFit. 🤖\nPuedes preguntarme sobre nutrición o simplemente decirme "Comí arroz con pollo" para registrarlo.',
-          secciones: []
-        )
-      ),
+          usuario: '',
+          dataCientifica: ScientificData(progresoDiario: {}),
+          respuestaEstructurada: StructuredResponse(
+              textoConversacional:
+                  '¡Hola! Soy CaloFit. 🤖\nPuedes preguntarme sobre nutrición o simplemente decirme "Comí arroz con pollo" para registrarlo.',
+              secciones: [])),
       'type': 'assistant_v3',
     },
   ];
@@ -99,8 +98,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           return {
             'role': 'assistant',
             'type': 'assistant_v3',
-            'response': AssistantResponse.fromJson(
-                Map<String, dynamic>.from(map['response_json'] as Map)),
+            'response': AssistantResponse.fromJson(Map<String, dynamic>.from(map['response_json'] as Map)),
           };
         }
         return {
@@ -183,8 +181,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     return 'chat_history_default';
   }
 
-
-
   Future<void> _saveChatHistory() async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -192,9 +188,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
 
-      final toSave = _messages.length > 50
-          ? _messages.sublist(_messages.length - 50)
-          : _messages;
+      final toSave = _messages.length > 50 ? _messages.sublist(_messages.length - 50) : _messages;
 
       final serialized = toSave.map((msg) {
         if (msg['type'] == 'assistant_v3' && msg['response'] is AssistantResponse) {
@@ -444,7 +438,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       } catch (e) {
         setState(() {
           _isTyping = false;
-          _messages.add({'role': 'assistant', 'content': 'Error iniciando registro de entrenamiento: $e', 'type': 'error'});
+          _messages
+              .add({'role': 'assistant', 'content': 'Error iniciando registro de entrenamiento: $e', 'type': 'error'});
         });
         _saveChatHistory();
       }
@@ -467,17 +462,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 .sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
                 .where((m) => m['type'] != 'registro_exitoso')
                 .map((m) {
-                  String content = "";
-                  if (m['role'] == 'user') {
-                    content = m['content'];
-                  } else if (m['response'] is AssistantResponse) {
-                    content = (m['response'] as AssistantResponse)
-                        .respuestaEstructurada.textoConversacional;
-                  } else {
-                    content = m['content'] ?? "";
-                  }
-                  return {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': content};
-                }).toList()
+                String content = "";
+                if (m['role'] == 'user') {
+                  content = m['content'];
+                } else if (m['response'] is AssistantResponse) {
+                  content = (m['response'] as AssistantResponse).respuestaEstructurada.textoConversacional;
+                } else {
+                  content = m['content'] ?? "";
+                }
+                return {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': content};
+              }).toList()
             : null;
 
         final result = await _apiService.consultarAsistente(text, token, historial: history);
@@ -485,8 +479,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
         balance.updateFromAssistant(responseObj.dataCientifica.progresoDiario);
         if (result['balance_actualizado'] != null) {
-          balance.updateFromAssistant(
-              Map<String, dynamic>.from(result['balance_actualizado'] as Map));
+          balance.updateFromAssistant(Map<String, dynamic>.from(result['balance_actualizado'] as Map));
           balance.fetchFullBalance(token).catchError((e) => null);
         }
 
@@ -544,7 +537,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           children: [
             if (_showHelpBanner) _buildHelpBanner(),
             Expanded(child: _buildMessageList()),
-            
             if (_isTyping) _buildTypingIndicator(),
             if (!_isTyping && !isLandscape) _buildQuickActions(),
             if (_isListening) _buildListeningBanner(),
@@ -577,9 +569,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Asistente CaloFit', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('Asistente CaloFit',
+                    style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
                 Text(
-                  _latestFuzzyHint ?? 'En línea', 
+                  _latestFuzzyHint ?? 'En línea',
                   style: TextStyle(color: Colors.green.shade600, fontSize: 11),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -623,10 +616,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       builder: (context, provider, _) {
         final summary = provider.dailySummary;
         if (summary == null) return const SizedBox.shrink();
-        
+
         final meta = summary.planObjetivo?.caloriasObjetivo ?? 2000;
         final restante = (meta - summary.calorias + summary.caloriasQuemadas).clamp(0.0, 5000.0);
-        
+
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -665,17 +658,22 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           }
           try {
             final client = await _apiService.getClientProfile(auth.userId!, auth.token!);
-            if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)));
+            if (mounted)
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => EditProfileScreen(client: client)));
           } catch (e) {
-            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al obtener perfil: $e')));
+            if (mounted)
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al obtener perfil: $e')));
           }
         }
       },
       destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
+        NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
+        NavigationDestination(
+            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(
+            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );
@@ -689,7 +687,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final msg = _messages[_messages.length - 1 - index];
-        
+
         if (msg['type'] == 'registro_exitoso') {
           return _buildRichLogCard(msg);
         } else if (msg['role'] == 'assistant' && msg['response'] is AssistantResponse) {
@@ -710,7 +708,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final isFood = msg['badge'] == 'comida' || msg['badge'] == 'alimento';
     final data = msg['data'] ?? {};
     final kcal = data['calorias'] ?? 0;
-    
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -735,14 +733,15 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: Icon(isFood ? Icons.restaurant_menu_rounded : Icons.directions_run_rounded, 
-                      color: isFood ? Colors.orange : Colors.green, size: 20),
+                    child: Icon(isFood ? Icons.restaurant_menu_rounded : Icons.directions_run_rounded,
+                        color: isFood ? Colors.orange : Colors.green, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      isFood ? "Comida Registrada" : "Ejercicio Registrado", 
-                      style: TextStyle(fontWeight: FontWeight.bold, color: isFood ? Colors.orange.shade800 : Colors.green.shade800),
+                      isFood ? "Comida Registrada" : "Ejercicio Registrado",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: isFood ? Colors.orange.shade800 : Colors.green.shade800),
                     ),
                   ),
                 ],
@@ -776,33 +775,38 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       children: [
                         _buildMiniStat(Icons.flash_on_rounded, "$kcal kcal", Colors.orange, isMain: true),
                         const SizedBox(height: 12),
-                        
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if (isFood && (data['proteinas_g'] ?? 0) > 0) 
-                              _buildMiniStat(Icons.fitness_center_rounded, "${data['proteinas_g']}g Prot", Colors.red.shade400),
+                            if (isFood && (data['proteinas_g'] ?? 0) > 0)
+                              _buildMiniStat(
+                                  Icons.fitness_center_rounded, "${data['proteinas_g']}g Prot", Colors.red.shade400),
                             if (isFood && (data['carbohidratos_g'] ?? 0) > 0)
-                              _buildMiniStat(Icons.grain_rounded, "${data['carbohidratos_g']}g Carb", Colors.orange.shade400),
+                              _buildMiniStat(
+                                  Icons.grain_rounded, "${data['carbohidratos_g']}g Carb", Colors.orange.shade400),
                             if (isFood && (data['grasas_g'] ?? 0) > 0)
-                              _buildMiniStat(Icons.water_drop_rounded, "${data['grasas_g']}g Gras", Colors.blue.shade400),
+                              _buildMiniStat(
+                                  Icons.water_drop_rounded, "${data['grasas_g']}g Gras", Colors.blue.shade400),
                           ],
                         ),
-                        
                         const SizedBox(height: 8),
-                        
-                        if (isFood) 
+                        if (isFood)
                           Wrap(
                             spacing: 8,
                             runSpacing: 4,
                             children: [
-                               if ((data['azucar_g'] ?? 0) > 0) 
-                                 _buildMiniStat(Icons.icecream_rounded, "${data['azucar_g']}g Azú", Colors.purple.shade300, isMicro: true),
-                               if ((data['fibra_g'] ?? 0) > 0)
-                                 _buildMiniStat(Icons.eco_rounded, "${data['fibra_g']}g Fib", Colors.green.shade600, isMicro: true),
-                               if ((data['sodio_mg'] ?? 0) > 0)
-                                 _buildMiniStat(Icons.opacity_rounded, "${data['sodio_mg']}mg Sod", Colors.blueGrey.shade400, isMicro: true),
+                              if ((data['azucar_g'] ?? 0) > 0)
+                                _buildMiniStat(
+                                    Icons.icecream_rounded, "${data['azucar_g']}g Azú", Colors.purple.shade300,
+                                    isMicro: true),
+                              if ((data['fibra_g'] ?? 0) > 0)
+                                _buildMiniStat(Icons.eco_rounded, "${data['fibra_g']}g Fib", Colors.green.shade600,
+                                    isMicro: true),
+                              if ((data['sodio_mg'] ?? 0) > 0)
+                                _buildMiniStat(
+                                    Icons.opacity_rounded, "${data['sodio_mg']}mg Sod", Colors.blueGrey.shade400,
+                                    isMicro: true),
                             ],
                           ),
                       ],
@@ -815,21 +819,18 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildMiniStat(IconData icon, String text, Color color, {bool isMain = false, bool isMicro = false}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: isMain ? 16 : 14, color: color),
         const SizedBox(width: 4),
-        Text(
-          text, 
-          style: TextStyle(
-            fontSize: isMain ? 14 : (isMicro ? 11 : 12), 
-            fontWeight: isMain ? FontWeight.bold : FontWeight.w600, 
-            color: isMicro ? Colors.grey.shade600 : Colors.grey.shade800
-          )
-        )
+        Text(text,
+            style: TextStyle(
+                fontSize: isMain ? 14 : (isMicro ? 11 : 12),
+                fontWeight: isMain ? FontWeight.bold : FontWeight.w600,
+                color: isMicro ? Colors.grey.shade600 : Colors.grey.shade800))
       ],
     );
   }
@@ -856,7 +857,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSimpleSystemBubble(String? text, {bool isError = false}) {
-     return Align(
+    return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12, right: 50),
@@ -982,20 +983,47 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: "Nombre (ej: Gaseosa)")),
-                TextField(controller: kcalCtrl, decoration: const InputDecoration(labelText: "Calorías (por porción)"), keyboardType: TextInputType.number),
+                TextField(
+                    controller: kcalCtrl,
+                    decoration: const InputDecoration(labelText: "Calorías (por porción)"),
+                    keyboardType: TextInputType.number),
                 Row(children: [
-                  Expanded(child: TextField(controller: pCtrl, decoration: const InputDecoration(labelText: "P (g)"), keyboardType: TextInputType.number)),
+                  Expanded(
+                      child: TextField(
+                          controller: pCtrl,
+                          decoration: const InputDecoration(labelText: "P (g)"),
+                          keyboardType: TextInputType.number)),
                   const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: cCtrl, decoration: const InputDecoration(labelText: "C (g)"), keyboardType: TextInputType.number)),
+                  Expanded(
+                      child: TextField(
+                          controller: cCtrl,
+                          decoration: const InputDecoration(labelText: "C (g)"),
+                          keyboardType: TextInputType.number)),
                   const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: gCtrl, decoration: const InputDecoration(labelText: "G (g)"), keyboardType: TextInputType.number)),
+                  Expanded(
+                      child: TextField(
+                          controller: gCtrl,
+                          decoration: const InputDecoration(labelText: "G (g)"),
+                          keyboardType: TextInputType.number)),
                 ]),
-                TextField(controller: porcionCtrl, decoration: const InputDecoration(labelText: "Gramos por porción (ej: 500)"), keyboardType: TextInputType.number),
-                TextField(controller: categoriaCtrl, decoration: const InputDecoration(labelText: "Categoría (ej: bebida/snack)")),
+                TextField(
+                    controller: porcionCtrl,
+                    decoration: const InputDecoration(labelText: "Gramos por porción (ej: 500)"),
+                    keyboardType: TextInputType.number),
+                TextField(
+                    controller: categoriaCtrl,
+                    decoration: const InputDecoration(labelText: "Categoría (ej: bebida/snack)")),
                 Row(children: [
-                  Expanded(child: TextField(controller: unidadCtrl, decoration: const InputDecoration(labelText: "Unidad opcional (botella/vaso)"))),
+                  Expanded(
+                      child: TextField(
+                          controller: unidadCtrl,
+                          decoration: const InputDecoration(labelText: "Unidad opcional (botella/vaso)"))),
                   const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: gramosUnidadCtrl, decoration: const InputDecoration(labelText: "g por unidad"), keyboardType: TextInputType.number)),
+                  Expanded(
+                      child: TextField(
+                          controller: gramosUnidadCtrl,
+                          decoration: const InputDecoration(labelText: "g por unidad"),
+                          keyboardType: TextInputType.number)),
                 ]),
               ],
             ),
@@ -1041,7 +1069,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       setState(() {
         _isTyping = false;
         if (!ok) {
-          _messages.add({'role': 'assistant', 'content': result['mensaje'] ?? 'No pude registrar manual.', 'type': 'error'});
+          _messages
+              .add({'role': 'assistant', 'content': result['mensaje'] ?? 'No pude registrar manual.', 'type': 'error'});
         } else {
           _messages.add({
             'role': 'assistant',
@@ -1082,8 +1111,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 color: _isListening ? Colors.red.shade100 : Colors.grey.shade100,
                 shape: BoxShape.circle,
               ),
-              child: Icon(_isListening ? Icons.mic : Icons.mic_none_rounded, 
-                color: _isListening ? Colors.red : Colors.grey.shade700),
+              child: Icon(_isListening ? Icons.mic : Icons.mic_none_rounded,
+                  color: _isListening ? Colors.red : Colors.grey.shade700),
             ),
           ),
           const SizedBox(width: 10),
@@ -1176,6 +1205,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     if (q.contains('baja')) return Colors.red;
     return Colors.grey;
   }
+
   Widget _buildHelpBanner() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),

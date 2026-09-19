@@ -216,8 +216,7 @@ class CardStepRow extends StatelessWidget {
   final String text;
   final Color color;
 
-  const CardStepRow(this.index, this.text, this.color, {Key? key})
-      : super(key: key);
+  const CardStepRow(this.index, this.text, this.color, {Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -232,14 +231,12 @@ class CardStepRow extends StatelessWidget {
           ),
           child: Text(
             '$index',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, color: color, fontSize: 11),
+            style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 11),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child:
-              Text(text, style: const TextStyle(fontSize: 13.5, height: 1.45)),
+          child: Text(text, style: const TextStyle(fontSize: 13.5, height: 1.45)),
         ),
       ]),
     );
@@ -250,8 +247,7 @@ class CardNoteBox extends StatelessWidget {
   final String nota;
   final MaterialColor accent;
 
-  const CardNoteBox({Key? key, required this.nota, required this.accent})
-      : super(key: key);
+  const CardNoteBox({Key? key, required this.nota, required this.accent}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -338,8 +334,7 @@ class MiniChip extends StatelessWidget {
           ],
           Text(
             label,
-            style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
           ),
         ],
       ),
@@ -377,15 +372,13 @@ class EmptyStateView extends StatelessWidget {
                   color: Colors.blue.withOpacity(0.05),
                   shape: BoxShape.circle,
                 ),
-                child:
-                    Icon(icon, size: 64, color: Colors.blue.withOpacity(0.3)),
+                child: Icon(icon, size: 64, color: Colors.blue.withOpacity(0.3)),
               ),
               const SizedBox(height: 24),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 16, color: Colors.grey, height: 1.5),
+                style: const TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
               ),
               if (onAction != null) ...[
                 const SizedBox(height: 24),
@@ -396,8 +389,7 @@ class EmptyStateView extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ],

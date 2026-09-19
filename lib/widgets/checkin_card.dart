@@ -16,9 +16,7 @@ class CheckInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color statusColor = precisionScore > 70 
-        ? Colors.green 
-        : (precisionScore > 30 ? Colors.orange : Colors.red);
+    Color statusColor = precisionScore > 70 ? Colors.green : (precisionScore > 30 ? Colors.orange : Colors.red);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

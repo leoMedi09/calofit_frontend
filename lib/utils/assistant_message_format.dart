@@ -1,4 +1,3 @@
-
 final _reBulletSplit = RegExp(r'\s*[•·]\s+');
 
 bool _lineLooksLikeFoodOrRecipeList(String line) {
@@ -20,13 +19,8 @@ String expandInlineBulletsForMarkdown(String text) {
       out.add(rawLine);
       continue;
     }
-    final normalized =
-        line.trimLeft().replaceFirst(RegExp(r'^[•·]\s*'), '');
-    final parts = normalized
-        .split(_reBulletSplit)
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final normalized = line.trimLeft().replaceFirst(RegExp(r'^[•·]\s*'), '');
+    final parts = normalized.split(_reBulletSplit).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (parts.length < 2) {
       out.add(rawLine);
       continue;
@@ -67,11 +61,7 @@ List<String> expandBulletSeparatedLines(List<String> items) {
       continue;
     }
     final norm = t.replaceFirst(RegExp(r'^[•·]\s*'), '');
-    final chunks = norm
-        .split(_reBulletSplit)
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final chunks = norm.split(_reBulletSplit).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (chunks.length >= 2) {
       out.addAll(chunks);
     } else {

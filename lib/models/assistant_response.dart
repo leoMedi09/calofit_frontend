@@ -26,8 +26,7 @@ class AssistantResponse {
     return AssistantResponse(
       usuario: json['usuario'] ?? '',
       dataCientifica: ScientificData.fromJson(json['data_cientifica'] ?? {}),
-      respuestaEstructurada:
-          StructuredResponse.fromJson(json['respuesta_estructurada'] ?? {}),
+      respuestaEstructurada: StructuredResponse.fromJson(json['respuesta_estructurada'] ?? {}),
       intencion: json['intencion'],
       tipoPregunta: json['tipo_pregunta'],
       alertaSalud: json['alerta_salud'] as bool?,
@@ -44,8 +43,7 @@ class AssistantResponse {
       'data_cientifica': dataCientifica.progresoDiario,
       'respuesta_estructurada': {
         'texto_conversacional': respuestaEstructurada.textoConversacional,
-        if (respuestaEstructurada.schemaVersion != null)
-          'schema_version': respuestaEstructurada.schemaVersion,
+        if (respuestaEstructurada.schemaVersion != null) 'schema_version': respuestaEstructurada.schemaVersion,
         'secciones': respuestaEstructurada.secciones.map((s) => s.toMap()).toList(),
       },
       'alerta_salud': alertaSalud,
@@ -105,8 +103,7 @@ class MacrosNormalizados {
 
   bool get hasUsableKcal => kcal > 0;
 
-  bool get hasUsableMacros =>
-      kcal > 0 || proteinasG > 0 || carbohidratosG > 0 || grasasG > 0;
+  bool get hasUsableMacros => kcal > 0 || proteinasG > 0 || carbohidratosG > 0 || grasasG > 0;
 
   factory MacrosNormalizados.fromJson(Map<String, dynamic> json) {
     double r(String key) {
@@ -159,9 +156,9 @@ class Section {
   factory Section.fromJson(Map<String, dynamic> json) {
     List<String> items = [];
     List<String> pasos = [];
-    
+
     String tipo = json['tipo'] ?? 'general';
-    
+
     if (tipo == 'ejercicio') {
       items = List<String>.from(json['ejercicios'] ?? []);
       final rawInst = json['instrucciones'];
@@ -173,20 +170,14 @@ class Section {
       } else {
         final blob = (rawInst ?? rawTec)?.toString().trim() ?? '';
         if (blob.isNotEmpty) {
-          pasos = blob
-              .split(RegExp(r'(?:\n\s*)|(?:\.\s+)'))
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
+          pasos = blob.split(RegExp(r'(?:\n\s*)|(?:\.\s+)')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
         }
       }
     } else {
-      items = expandBulletSeparatedLines(
-          List<String>.from(json['ingredientes'] ?? []));
-      pasos = expandBulletSeparatedLines(
-          List<String>.from(json['preparacion'] ?? []));
+      items = expandBulletSeparatedLines(List<String>.from(json['ingredientes'] ?? []));
+      pasos = expandBulletSeparatedLines(List<String>.from(json['preparacion'] ?? []));
     }
-    
+
     final rawImg = json['imagen_referencia']?.toString().trim();
 
     MacrosNormalizados? macrosNorm;
@@ -194,19 +185,14 @@ class Section {
     if (rawMn is Map<String, dynamic>) {
       macrosNorm = MacrosNormalizados.fromJson(rawMn);
     } else if (rawMn is Map) {
-      macrosNorm =
-          MacrosNormalizados.fromJson(Map<String, dynamic>.from(rawMn));
+      macrosNorm = MacrosNormalizados.fromJson(Map<String, dynamic>.from(rawMn));
     }
 
     return Section(
       tipo: tipo,
       nombre: json['nombre'] ?? json['plato'] ?? '',
       justificacion: (json['justificacion'] ?? '').toString(),
-      macros: (json['macros'] ??
-              json['gasto_calorico_estimado'] ??
-              json['estimacion_calorica'] ??
-              '')
-          .toString(),
+      macros: (json['macros'] ?? json['gasto_calorico_estimado'] ?? json['estimacion_calorica'] ?? '').toString(),
       ingredientes: items,
       preparacion: pasos,
       nota: (json['nota'] ?? '').toString(),
@@ -224,8 +210,7 @@ class Section {
       'nota': nota,
       'consulta_id': consultaId,
       if (imagenReferencia != null) 'imagen_referencia': imagenReferencia,
-      if (macrosNormalizados != null)
-        'macros_normalizados': macrosNormalizados!.toMap(),
+      if (macrosNormalizados != null) 'macros_normalizados': macrosNormalizados!.toMap(),
     };
     if (tipo == 'ejercicio') {
       base['ejercicios'] = ingredientes;

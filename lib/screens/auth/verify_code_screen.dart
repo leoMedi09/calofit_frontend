@@ -10,8 +10,7 @@ class VerifyCodeScreen extends StatefulWidget {
   State<VerifyCodeScreen> createState() => _VerifyCodeScreenState();
 }
 
-class _VerifyCodeScreenState extends State<VerifyCodeScreen>
-    with SingleTickerProviderStateMixin {
+class _VerifyCodeScreenState extends State<VerifyCodeScreen> with SingleTickerProviderStateMixin {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -92,8 +91,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
 
     setState(() => _isUpdatingPassword = true);
     try {
-      final response = await _apiService.resetPassword(
-          email, _codeController.text.trim(), password);
+      final response = await _apiService.resetPassword(email, _codeController.text.trim(), password);
       if (!mounted) return;
 
       if (response['success'] == true) {
@@ -126,11 +124,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Column(
           children: [
-            Icon(Icons.check_circle_outline_rounded,
-                color: Colors.green, size: 60),
+            Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 60),
             SizedBox(height: 16),
-            Text('¡Todo listo!',
-                style: TextStyle(fontWeight: FontWeight.w900)),
+            Text('¡Todo listo!', style: TextStyle(fontWeight: FontWeight.w900)),
           ],
         ),
         content: const Text(
@@ -142,15 +138,12 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                  context, '/login', (route) => false),
+              onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
               style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: const Text('IR AL LOGIN',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('IR AL LOGIN', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -160,14 +153,12 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final String email = widget.email ??
-        ModalRoute.of(context)!.settings.arguments as String;
+    final String email = widget.email ?? ModalRoute.of(context)!.settings.arguments as String;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Verificación',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Verificación', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -180,7 +171,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-
               Center(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
@@ -200,7 +190,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                 ),
               ),
               const SizedBox(height: 28),
-
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: Text(
@@ -216,12 +205,10 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                 ),
               ),
               const SizedBox(height: 12),
-
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: TextStyle(
-                      color: Colors.grey[600], fontSize: 14, height: 1.5),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.5),
                   children: [
                     TextSpan(
                       text: _codeVerified
@@ -230,15 +217,12 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                     ),
                     TextSpan(
                       text: email,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[700]),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700]),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
-
               TextField(
                 controller: _codeController,
                 keyboardType: TextInputType.number,
@@ -254,36 +238,22 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                 decoration: InputDecoration(
                   counterText: '',
                   hintText: '······',
-                  hintStyle: TextStyle(
-                      color: Colors.grey[300],
-                      fontSize: 28,
-                      letterSpacing: 12),
-                  suffixIcon: _codeVerified
-                      ? const Icon(Icons.check_circle_rounded,
-                          color: Colors.green)
-                      : null,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(color: Colors.grey[300], fontSize: 28, letterSpacing: 12),
+                  suffixIcon: _codeVerified ? const Icon(Icons.check_circle_rounded, color: Colors.green) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!)),
+                      borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: Colors.blue[700]!, width: 2)),
+                      borderSide: BorderSide(color: Colors.blue[700]!, width: 2)),
                   disabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: Colors.green, width: 2)),
+                      borderSide: const BorderSide(color: Colors.green, width: 2)),
                   filled: true,
-                  fillColor: _codeVerified
-                      ? Colors.green.shade50
-                      : Colors.grey[50],
+                  fillColor: _codeVerified ? Colors.green.shade50 : Colors.grey[50],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               if (!_codeVerified)
                 SizedBox(
                   height: 52,
@@ -292,19 +262,14 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                       : FilledButton(
                           onPressed: () => _verifyCode(email),
                           style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: const Text(
                             'VERIFICAR CÓDIGO',
-                            style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.2),
                           ),
                         ),
                 ),
-
               if (_codeVerified)
                 FadeTransition(
                   opacity: _fadeAnim,
@@ -314,83 +279,60 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Padding(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Row(children: [
-                            Expanded(
-                                child: Divider(color: Colors.grey[200])),
+                            Expanded(child: Divider(color: Colors.grey[200])),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
                               child: Text(
                                 'Nueva contraseña',
-                                style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600),
+                                style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w600),
                               ),
                             ),
-                            Expanded(
-                                child: Divider(color: Colors.grey[200])),
+                            Expanded(child: Divider(color: Colors.grey[200])),
                           ]),
                         ),
                         const SizedBox(height: 8),
-
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscureText,
                           decoration: InputDecoration(
                             labelText: 'Nueva Contraseña',
-                            prefixIcon:
-                                const Icon(Icons.lock_outline_rounded),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
-                              icon: Icon(_obscureText
-                                  ? Icons.visibility_rounded
-                                  : Icons.visibility_off_rounded),
-                              onPressed: () => setState(
-                                  () => _obscureText = !_obscureText),
+                              icon: Icon(_obscureText ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                              onPressed: () => setState(() => _obscureText = !_obscureText),
                             ),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             filled: true,
                             fillColor: Colors.grey[50],
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         TextField(
                           controller: _confirmPasswordController,
                           obscureText: _obscureText,
                           decoration: InputDecoration(
                             labelText: 'Confirmar Contraseña',
-                            prefixIcon:
-                                const Icon(Icons.lock_clock_outlined),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(Icons.lock_clock_outlined),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             filled: true,
                             fillColor: Colors.grey[50],
                           ),
                         ),
                         const SizedBox(height: 28),
-
                         SizedBox(
                           height: 52,
                           child: _isUpdatingPassword
-                              ? const Center(
-                                  child: CircularProgressIndicator())
+                              ? const Center(child: CircularProgressIndicator())
                               : FilledButton(
                                   onPressed: () => _updatePassword(email),
                                   style: FilledButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                   child: const Text(
                                     'ACTUALIZAR CONTRASEÑA',
-                                    style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.2),
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.2),
                                   ),
                                 ),
                         ),
@@ -398,7 +340,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                     ),
                   ),
                 ),
-
               const SizedBox(height: 16),
             ],
           ),

@@ -15,8 +15,7 @@ class SeguimientoScreen extends StatefulWidget {
   State<SeguimientoScreen> createState() => _SeguimientoScreenState();
 }
 
-class _SeguimientoScreenState extends State<SeguimientoScreen>
-    with SingleTickerProviderStateMixin {
+class _SeguimientoScreenState extends State<SeguimientoScreen> with SingleTickerProviderStateMixin {
   final ApiService _api = ApiService();
   late TabController _tabController;
 
@@ -60,8 +59,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     super.dispose();
   }
 
-  String get _token =>
-      Provider.of<AuthProvider>(context, listen: false).token ?? '';
+  String get _token => Provider.of<AuthProvider>(context, listen: false).token ?? '';
 
   Future<void> _loadSemana() async {
     setState(() {
@@ -98,6 +96,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       final p = iso.split('-');
       return '${p[2]}/${p[1]}';
     }
+
     final esActual = rango['es_semana_actual'] as bool? ?? false;
     return esActual ? 'Esta semana (${_fmt(ini)} – ${_fmt(fin)})' : '${_fmt(ini)} – ${_fmt(fin)}';
   }
@@ -243,7 +242,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
   Widget _buildRachaCard() {
     final racha = _rachaData!['racha_actual'] as int? ?? 0;
     final mejor = _rachaData!['mejor_racha'] as int? ?? 0;
-    final hoy   = _rachaData!['registrado_hoy'] as bool? ?? false;
+    final hoy = _rachaData!['registrado_hoy'] as bool? ?? false;
     final dias7 = List<Map<String, dynamic>>.from(_rachaData!['ultimos_7_dias'] ?? []);
     String letraDia(String fechaIso) {
       const l = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -304,9 +303,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(7, (i) {
-              final registrado = i < dias7.length
-                  ? (dias7[i]['registrado'] as bool? ?? false)
-                  : false;
+              final registrado = i < dias7.length ? (dias7[i]['registrado'] as bool? ?? false) : false;
               return Column(
                 children: [
                   Container(
@@ -314,23 +311,17 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                     height: 30,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: registrado
-                          ? Colors.orangeAccent
-                          : Colors.white.withOpacity(0.15),
+                      color: registrado ? Colors.orangeAccent : Colors.white.withOpacity(0.15),
                       border: Border.all(
                         color: registrado ? Colors.orangeAccent : Colors.white24,
                         width: 2,
                       ),
                     ),
-                    child: registrado
-                        ? const Icon(Icons.check, color: Colors.white, size: 14)
-                        : null,
+                    child: registrado ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    i < dias7.length
-                        ? letraDia(dias7[i]['fecha'] as String)
-                        : '',
+                    i < dias7.length ? letraDia(dias7[i]['fecha'] as String) : '',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                       fontSize: 10,
@@ -351,20 +342,13 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       children: [
         Icon(icon, color: Colors.white60, size: 16),
         const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-        Text(label,
-            style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 11,
-                fontWeight: FontWeight.w600)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11, fontWeight: FontWeight.w600)),
       ],
     );
   }
 
-  Widget _buildVDivider() =>
-      Container(width: 1, height: 40, color: Colors.white24);
+  Widget _buildVDivider() => Container(width: 1, height: 40, color: Colors.white24);
 
   Widget _buildSemanaTab() {
     if (_loadingSemana) {
@@ -450,9 +434,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,10 +444,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
               Icon(Icons.insights_rounded, color: color, size: 20),
               const SizedBox(width: 8),
               Text('Resumen de la semana',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark)),
             ],
           ),
           const SizedBox(height: 14),
@@ -504,15 +483,9 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Adherencia semanal',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey.shade600)),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
               Text('${adherencia.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: color)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: color)),
             ],
           ),
           const SizedBox(height: 6),
@@ -542,10 +515,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
           Icon(icon, color: color, size: 18),
           const SizedBox(height: 4),
           Text(value,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textDark),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.textDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center),
@@ -560,9 +530,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
   Widget _buildWeeklyChart(List<Map<String, dynamic>> dias) {
     if (dias.isEmpty) return const SizedBox.shrink();
 
-    final maxObjetivo = dias
-        .map((d) => (d['kcal_objetivo'] as num).toDouble())
-        .fold(0.0, (a, b) => a > b ? a : b);
+    final maxObjetivo = dias.map((d) => (d['kcal_objetivo'] as num).toDouble()).fold(0.0, (a, b) => a > b ? a : b);
     final maxConsumidas = dias
         .where((d) => d['hay_registro'] as bool)
         .map((d) => (d['kcal_consumidas'] as num).toDouble())
@@ -612,9 +580,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -639,86 +605,81 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
           SizedBox(
             height: 200,
             child: BarChart(
-                BarChartData(
-                  maxY: maxY > 0 ? maxY : 2500,
-                  minY: 0,
-                  barGroups: groups,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: maxY / 4,
-                    getDrawingHorizontalLine: (_) =>
-                        FlLine(color: Colors.grey.shade100, strokeWidth: 1),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 42,
-                        interval: maxY / 4,
-                        getTitlesWidget: (val, meta) {
-                          if (val == 0 || val == maxY) return const SizedBox.shrink();
-                          return Text(
-                            val >= 1000
-                                ? '${(val / 1000).toStringAsFixed(1)}k'
-                                : val.toStringAsFixed(0),
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade400),
-                          );
-                        },
-                      ),
+              BarChartData(
+                maxY: maxY > 0 ? maxY : 2500,
+                minY: 0,
+                barGroups: groups,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY / 4,
+                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 42,
+                      interval: maxY / 4,
+                      getTitlesWidget: (val, meta) {
+                        if (val == 0 || val == maxY) return const SizedBox.shrink();
+                        return Text(
+                          val >= 1000 ? '${(val / 1000).toStringAsFixed(1)}k' : val.toStringAsFixed(0),
+                          style: TextStyle(fontSize: 9, color: Colors.grey.shade400),
+                        );
+                      },
                     ),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 28,
-                        getTitlesWidget: (val, meta) {
-                          final idx = val.toInt();
-                          if (idx < 0 || idx >= dias.length) return const SizedBox.shrink();
-                          final esHoy = dias[idx]['es_hoy'] as bool;
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              dias[idx]['dia_etiqueta'] as String,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: esHoy ? FontWeight.w900 : FontWeight.w600,
-                                color: esHoy ? AppColors.primary : Colors.grey.shade500,
-                              ),
+                  ),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      getTitlesWidget: (val, meta) {
+                        final idx = val.toInt();
+                        if (idx < 0 || idx >= dias.length) return const SizedBox.shrink();
+                        final esHoy = dias[idx]['es_hoy'] as bool;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            dias[idx]['dia_etiqueta'] as String,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: esHoy ? FontWeight.w900 : FontWeight.w600,
+                              color: esHoy ? AppColors.primary : Colors.grey.shade500,
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      fitInsideVertically: false,
-                      fitInsideHorizontally: true,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        final d = dias[group.x];
-                        final diaLabel = d['dia_etiqueta'] as String;
-                        if (rodIndex == 0) {
-                          final obj = (d['kcal_objetivo'] as num).toStringAsFixed(0);
-                          return BarTooltipItem(
-                            '$diaLabel · Meta\n$obj kcal',
-                            const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                          );
-                        }
-                        final real = (d['kcal_consumidas'] as num).toStringAsFixed(0);
-                        final esOutlierTip = (d['kcal_consumidas'] as num) > maxY * 0.98;
-                        return BarTooltipItem(
-                          esOutlierTip
-                              ? '$diaLabel · Consumidas\n$real kcal ⚠️'
-                              : '$diaLabel · Consumidas\n$real kcal',
-                          const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
                         );
                       },
                     ),
                   ),
                 ),
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    fitInsideVertically: false,
+                    fitInsideHorizontally: true,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final d = dias[group.x];
+                      final diaLabel = d['dia_etiqueta'] as String;
+                      if (rodIndex == 0) {
+                        final obj = (d['kcal_objetivo'] as num).toStringAsFixed(0);
+                        return BarTooltipItem(
+                          '$diaLabel · Meta\n$obj kcal',
+                          const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                        );
+                      }
+                      final real = (d['kcal_consumidas'] as num).toStringAsFixed(0);
+                      final esOutlierTip = (d['kcal_consumidas'] as num) > maxY * 0.98;
+                      return BarTooltipItem(
+                        esOutlierTip ? '$diaLabel · Consumidas\n$real kcal ⚠️' : '$diaLabel · Consumidas\n$real kcal',
+                        const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -824,9 +785,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: esHoy ? Border.all(color: AppColors.primary, width: 1.5) : null,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
@@ -884,9 +843,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: hayRegistro && kcalObj > 0
-                        ? (kcalCons / kcalObj).clamp(0.0, 1.3)
-                        : 0.0,
+                    value: hayRegistro && kcalObj > 0 ? (kcalCons / kcalObj).clamp(0.0, 1.3) : 0.0,
                     backgroundColor: Colors.grey.shade100,
                     valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                     minHeight: 5,
@@ -896,9 +853,9 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                   const SizedBox(height: 6),
                   _buildMacroMiniBar(label: 'P', color: AppColors.macroProtein, value: protG, meta: protMeta),
                   const SizedBox(height: 3),
-                  _buildMacroMiniBar(label: 'C', color: AppColors.macroCarbs,   value: carbG, meta: carbMeta),
+                  _buildMacroMiniBar(label: 'C', color: AppColors.macroCarbs, value: carbG, meta: carbMeta),
                   const SizedBox(height: 3),
-                  _buildMacroMiniBar(label: 'G', color: AppColors.macroFat,     value: grasG, meta: grasMeta),
+                  _buildMacroMiniBar(label: 'G', color: AppColors.macroFat, value: grasG, meta: grasMeta),
                 ],
               ],
             ),
@@ -947,8 +904,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
   Widget _buildRangeSelector() {
     return Row(
       children: [
-        const Text('Período:',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+        const Text('Período:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark)),
         const SizedBox(width: 10),
         for (final dias in [7, 30, 90]) ...[
           GestureDetector(
@@ -965,7 +921,11 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                 ),
               ),
               child: Text(
-                dias == 7 ? '7 días' : dias == 30 ? '30 días' : '90 días',
+                dias == 7
+                    ? '7 días'
+                    : dias == 30
+                        ? '30 días'
+                        : '90 días',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -1075,8 +1035,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) =>
-                      FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.shade100, strokeWidth: 1),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
@@ -1086,8 +1045,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                       reservedSize: 40,
                       getTitlesWidget: (val, meta) {
                         if (val == 0) return const SizedBox.shrink();
-                        return Text('${val.toInt()}',
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade400));
+                        return Text('${val.toInt()}', style: TextStyle(fontSize: 9, color: Colors.grey.shade400));
                       },
                     ),
                   ),
@@ -1101,8 +1059,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                         final idx = val.toInt();
                         final label = xLabels[idx];
                         if (label == null) return const SizedBox.shrink();
-                        return Text(label,
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade500));
+                        return Text(label, style: TextStyle(fontSize: 9, color: Colors.grey.shade500));
                       },
                     ),
                   ),
@@ -1112,9 +1069,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                     getTooltipItems: (spots) => spots.map((s) {
                       if (s.barIndex == 0) return null;
                       final idx = s.x.toInt();
-                      final fecha = idx < calorias.length
-                          ? (calorias[idx]['fecha'] as String).substring(5)
-                          : '';
+                      final fecha = idx < calorias.length ? (calorias[idx]['fecha'] as String).substring(5) : '';
                       return LineTooltipItem(
                         '$fecha\n${s.y.toStringAsFixed(0)} kcal',
                         const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
@@ -1136,11 +1091,8 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       return _buildEmptyChart('Sin suficientes registros de peso\n(mínimo 2 para mostrar gráfico)');
     }
 
-    final spots = pesos
-        .asMap()
-        .entries
-        .map((e) => FlSpot(e.key.toDouble(), (e.value['peso_kg'] as num).toDouble()))
-        .toList();
+    final spots =
+        pesos.asMap().entries.map((e) => FlSpot(e.key.toDouble(), (e.value['peso_kg'] as num).toDouble())).toList();
 
     final allY = spots.map((s) => s.y).toList();
     final minY = allY.reduce((a, b) => a < b ? a : b) - 1.5;
@@ -1161,9 +1113,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
 
     final resumen = _historicoData!['resumen'] as Map<String, dynamic>;
     final num? cambio = resumen['cambio_peso'] as num?;
-    final cambioStr = cambio != null
-        ? '${cambio >= 0 ? '+' : ''}${cambio.toStringAsFixed(1)} kg'
-        : null;
+    final cambioStr = cambio != null ? '${cambio >= 0 ? '+' : ''}${cambio.toStringAsFixed(1)} kg' : null;
     final cambioColor = cambio == null
         ? Colors.grey
         : cambio <= 0
@@ -1192,9 +1142,8 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                     color: cambioColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(cambioStr,
-                      style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w800, color: cambioColor)),
+                  child:
+                      Text(cambioStr, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: cambioColor)),
                 ),
             ],
           ),
@@ -1230,8 +1179,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) =>
-                      FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.shade100, strokeWidth: 1),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
@@ -1254,8 +1202,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                       getTitlesWidget: (val, meta) {
                         final label = xLabels[val.toInt()];
                         if (label == null) return const SizedBox.shrink();
-                        return Text(label,
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade500));
+                        return Text(label, style: TextStyle(fontSize: 9, color: Colors.grey.shade500));
                       },
                     ),
                   ),
@@ -1264,9 +1211,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipItems: (spots) => spots.map((s) {
                       final idx = s.x.toInt();
-                      final fecha = idx < pesos.length
-                          ? (pesos[idx]['fecha'] as String).substring(5)
-                          : '';
+                      final fecha = idx < pesos.length ? (pesos[idx]['fecha'] as String).substring(5) : '';
                       return LineTooltipItem(
                         '$fecha\n${s.y.toStringAsFixed(1)} kg',
                         const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
@@ -1303,8 +1248,10 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
           const Text('Resumen del período',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark)),
           const SizedBox(height: 12),
-          _buildResumenRow(Icons.calendar_today_rounded, 'Días con registro', '$diasConReg de $_diasSeleccionados', Colors.blue),
-          _buildResumenRow(Icons.local_fire_department_rounded, 'Promedio calórico diario', '$kcalProm kcal', Colors.orange),
+          _buildResumenRow(
+              Icons.calendar_today_rounded, 'Días con registro', '$diasConReg de $_diasSeleccionados', Colors.blue),
+          _buildResumenRow(
+              Icons.local_fire_department_rounded, 'Promedio calórico diario', '$kcalProm kcal', Colors.orange),
           if (pesoInicial != null)
             _buildResumenRow(Icons.monitor_weight_outlined, 'Peso inicial', '$pesoInicial kg', Colors.purple),
           if (pesoActual != null)
@@ -1331,11 +1278,10 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(label,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+            child:
+                Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
           ),
-          Text(value,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textDark)),
         ],
       ),
     );
@@ -1349,9 +1295,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(msg,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+      child: Text(msg, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
     );
   }
 
@@ -1402,9 +1346,12 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       },
       destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
+        NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
+        NavigationDestination(
+            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(
+            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );

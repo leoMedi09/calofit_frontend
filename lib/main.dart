@@ -41,8 +41,8 @@ class OnboardingProfileLoader extends StatelessWidget {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 20),
-                  Text('Preparando tu configuración inicial...', 
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  Text('Preparando tu configuración inicial...',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                 ],
               ),
             ),
@@ -119,15 +119,15 @@ class MyApp extends StatelessWidget {
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
             if (!auth.isAuthenticated) return const LoginScreen();
-            
+
             final isStaff = (auth.userType == 'staff' || auth.userType == 'admin');
-            
+
             if (isStaff) return const StaffMainScreen();
-            
+
             if (!auth.isProfileComplete) {
               return const OnboardingProfileLoader();
             }
-            
+
             return const ClientMainScreen();
           },
         ),
@@ -142,4 +142,4 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
-}
+}

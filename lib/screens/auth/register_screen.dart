@@ -139,8 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } on FirebaseAuthException catch (e) {
       String errorMsg = 'Error en Firebase';
-      if (e.code == 'email-already-in-use')
-        errorMsg = 'Este correo ya está registrado.';
+      if (e.code == 'email-already-in-use') errorMsg = 'Este correo ya está registrado.';
       if (e.code == 'weak-password') errorMsg = 'La contraseña es muy débil.';
       _showSnackBar(errorMsg, isError: true);
     } catch (e) {
@@ -167,8 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Registro de Cliente',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Registro de Cliente', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -197,21 +195,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Expanded(
                             child: Text(
                               '💡 Si eres nutricionista, contacta al administrador para obtener tu acceso.',
-                              style: TextStyle(
-                                  color: Colors.blue[900], fontSize: 13),
+                              style: TextStyle(color: Colors.blue[900], fontSize: 13),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     TextFormField(
                       controller: _firstNameController,
                       decoration: const InputDecoration(
-                          labelText: 'Nombre',
-                          prefixIcon: Icon(Icons.person),
-                          border: OutlineInputBorder()),
+                          labelText: 'Nombre', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()),
                       validator: (v) => v!.isEmpty ? 'Campo requerido' : null,
                     ),
                     const SizedBox(height: 15),
@@ -220,9 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _lastNamePaternalController,
-                            decoration: const InputDecoration(
-                                labelText: 'Ap. Paterno',
-                                border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'Ap. Paterno', border: OutlineInputBorder()),
                             validator: (v) => v!.isEmpty ? 'Requerido' : null,
                           ),
                         ),
@@ -230,9 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _lastNameMaternalController,
-                            decoration: const InputDecoration(
-                                labelText: 'Ap. Materno',
-                                border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'Ap. Materno', border: OutlineInputBorder()),
                             validator: (v) => v!.isEmpty ? 'Requerido' : null,
                           ),
                         ),
@@ -242,13 +232,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(
-                          labelText: 'Correo Electrónico',
-                          prefixIcon: Icon(Icons.email),
-                          border: OutlineInputBorder()),
+                          labelText: 'Correo Electrónico', prefixIcon: Icon(Icons.email), border: OutlineInputBorder()),
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => v!.isEmpty || !v.contains('@')
-                          ? 'Correo inválido'
-                          : null,
+                      validator: (v) => v!.isEmpty || !v.contains('@') ? 'Correo inválido' : null,
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
@@ -258,18 +244,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
+                              _isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                               color: Colors.grey,
                             ),
-                            onPressed: () => setState(
-                                () => _isPasswordVisible = !_isPasswordVisible),
+                            onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                           ),
                           border: const OutlineInputBorder()),
                       obscureText: !_isPasswordVisible,
-                      validator: (v) =>
-                          v!.length < 6 ? 'Mínimo 6 caracteres' : null,
+                      validator: (v) => v!.length < 6 ? 'Mínimo 6 caracteres' : null,
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
@@ -279,27 +261,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _isConfirmPasswordVisible
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
+                              _isConfirmPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                               color: Colors.grey,
                             ),
-                            onPressed: () => setState(() =>
-                                _isConfirmPasswordVisible =
-                                    !_isConfirmPasswordVisible),
+                            onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
                           ),
                           border: const OutlineInputBorder()),
                       obscureText: !_isConfirmPasswordVisible,
-                      validator: (v) =>
-                          v!.isEmpty ? 'Confirme su contraseña' : null,
+                      validator: (v) => v!.isEmpty ? 'Confirme su contraseña' : null,
                     ),
-
                     const Divider(height: 40, thickness: 2),
                     const Text('Información Personal y Física',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 15),
-
                     TextFormField(
                       controller: _birthDateController,
                       readOnly: true,
@@ -312,30 +286,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 15),
-
                     DropdownButtonFormField<String>(
                       value: _selectedGender,
                       decoration: const InputDecoration(
-                          labelText: 'Género',
-                          prefixIcon: Icon(Icons.person_outline),
-                          border: OutlineInputBorder()),
-                      items: _genders
-                          .map(
-                              (g) => DropdownMenuItem(value: g, child: Text(g)))
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => _selectedGender = val!),
+                          labelText: 'Género', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder()),
+                      items: _genders.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                      onChanged: (val) => setState(() => _selectedGender = val!),
                     ),
                     const SizedBox(height: 15),
-
                     Row(
                       children: [
                         Expanded(
                           child: TextFormField(
                             controller: _weightController,
-                            decoration: const InputDecoration(
-                                labelText: 'Peso (kg)',
-                                border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'Peso (kg)', border: OutlineInputBorder()),
                             keyboardType: TextInputType.number,
                             validator: (v) => v!.isEmpty ? '?' : null,
                           ),
@@ -344,9 +308,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _heightController,
-                            decoration: const InputDecoration(
-                                labelText: 'Altura (cm)',
-                                border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'Altura (cm)', border: OutlineInputBorder()),
                             keyboardType: TextInputType.number,
                             validator: (v) => v!.isEmpty ? '?' : null,
                           ),
@@ -354,39 +316,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                     const SizedBox(height: 15),
-
                     DropdownButtonFormField<String>(
                       value: _selectedActivityLevel,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                          labelText: 'Nivel de Actividad Física',
-                          border: OutlineInputBorder()),
+                      decoration:
+                          const InputDecoration(labelText: 'Nivel de Actividad Física', border: OutlineInputBorder()),
                       items: _activityLevels
                           .map((lvl) => DropdownMenuItem(
-                              value: lvl,
-                              child: Text(lvl,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1)))
+                              value: lvl, child: Text(lvl, overflow: TextOverflow.ellipsis, maxLines: 1)))
                           .toList(),
                       selectedItemBuilder: (BuildContext context) {
                         return _activityLevels.map<Widget>((String lvl) {
-                          return Text(lvl,
-                              overflow: TextOverflow.ellipsis, maxLines: 1);
+                          return Text(lvl, overflow: TextOverflow.ellipsis, maxLines: 1);
                         }).toList();
                       },
-                      onChanged: (val) =>
-                          setState(() => _selectedActivityLevel = val!),
+                      onChanged: (val) => setState(() => _selectedActivityLevel = val!),
                     ),
                     const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
                       value: _selectedGoal,
-                      decoration: const InputDecoration(
-                          labelText: 'Objetivo Principal',
-                          border: OutlineInputBorder()),
-                      items: _goals
-                          .map(
-                              (g) => DropdownMenuItem(value: g, child: Text(g)))
-                          .toList(),
+                      decoration: const InputDecoration(labelText: 'Objetivo Principal', border: OutlineInputBorder()),
+                      items: _goals.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                       onChanged: (val) => setState(() => _selectedGoal = val!),
                     ),
                     const SizedBox(height: 15),
@@ -399,21 +349,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       maxLines: 2,
                     ),
-
                     const SizedBox(height: 30),
                     _isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton(
                             onPressed: _register,
                             style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
+                                padding: const EdgeInsets.symmetric(vertical: 15),
                                 backgroundColor: Colors.blue,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10))),
-                            child: const Text('Registrarse',
-                                style: TextStyle(fontSize: 18)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                            child: const Text('Registrarse', style: TextStyle(fontSize: 18)),
                           ),
                     const SizedBox(height: 15),
                     TextButton(

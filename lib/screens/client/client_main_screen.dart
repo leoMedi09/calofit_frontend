@@ -25,11 +25,10 @@ class ClientMainScreen extends StatefulWidget {
   State<ClientMainScreen> createState() => _ClientMainScreenState();
 }
 
-class _ClientMainScreenState extends State<ClientMainScreen>
-    with SingleTickerProviderStateMixin {
+class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   AnimationController? _progressController;
-  
+
   bool _checkInNeeded = false;
   int _precisionScore = 100;
   int _daysUntilCheckin = 0;
@@ -50,10 +49,10 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       if (authProvider.userId != null && authProvider.token != null) {
         try {
           final client = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
@@ -64,16 +63,15 @@ class _ClientMainScreenState extends State<ClientMainScreen>
             );
             return;
           }
-        } catch (_) {
-        }
+        } catch (_) {}
       }
-      
+
       if (authProvider.showWelcomeMessage) {
         final String name = authProvider.userName ?? 'Usuario';
         _showToast(context, '¡Bienvenido(a), $name!', const Color(0xFF1E88E5));
         authProvider.consumeWelcomeMessage();
       }
-      
+
       _loadDashboardData();
     });
   }
@@ -110,8 +108,8 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                     child: Text(
                       message,
                       style: const TextStyle(
-                        color: Colors.white, 
-                        fontWeight: FontWeight.w800, 
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
                         fontSize: 14,
                         letterSpacing: 0.2,
                       ),
@@ -130,38 +128,38 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       overlayEntry.remove();
     });
   }
-  
+
   @override
   void dispose() {
     _progressController?.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadDashboardData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
-    
+
     if (!authProvider.isAuthenticated) return;
-    
+
     if (ApiService.needsLogout) {
       ApiService.resetLogoutFlag();
       await _handleSessionExpired(authProvider);
       return;
     }
-    
+
     try {
       await balanceProvider.loadDailySummary(
         authProvider.userId!,
         authProvider.token!,
       );
-      
+
       if (!mounted) return;
-      
+
       if (balanceProvider.dailySummary != null) {
         _progressController?.reset();
         _progressController?.forward();
       }
-      
+
       try {
         final checkInStatus = await _apiService.getCheckInStatus(authProvider.token!);
         setState(() {
@@ -177,7 +175,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
 
       try {
         final profile = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
-        
+
         if (profile.profilePictureUrl != null && profile.profilePictureUrl != authProvider.profilePictureUrl) {
           authProvider.updateProfilePictureUrl(profile.profilePictureUrl!);
         }
@@ -205,15 +203,14 @@ class _ClientMainScreenState extends State<ClientMainScreen>
         _dialogShown = true;
         _showEmergencyCheckInDialog();
       }
-      
     } catch (e) {
       debugPrint('Error cargando dashboard via provider: $e');
     }
   }
-  
+
   Future<void> _handleSessionExpired(AuthProvider authProvider) async {
     if (!mounted) return;
-    
+
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -243,9 +240,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
         ],
       ),
     );
-    
+
     await authProvider.logout();
-    
+
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -259,7 +256,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     final authProvider = Provider.of<AuthProvider>(context);
     final balanceProvider = context.watch<BalanceProvider>();
     final dailySummary = balanceProvider.dailySummary;
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -268,7 +265,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
           child: CustomScrollView(
             slivers: [
               _buildCustomHeader(authProvider, dailySummary),
-              
               SliverPadding(
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
@@ -287,14 +283,12 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.wifi_off_rounded,
-                                  size: 56, color: Colors.grey),
+                              const Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey),
                               const SizedBox(height: 16),
                               Text(
                                 balanceProvider.errorMessage,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontSize: 15, color: Colors.grey),
+                                style: const TextStyle(fontSize: 15, color: Colors.grey),
                               ),
                               const SizedBox(height: 20),
                               ElevatedButton.icon(
@@ -311,7 +305,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                         ),
                       )
                     else if (dailySummary != null) ...[
-                      
                       if (_assignedNutriId == null)
                         Container(
                           margin: const EdgeInsets.only(bottom: 20),
@@ -348,7 +341,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                             ],
                           ),
                         ),
-
                       if (_checkInNeeded)
                         CheckInCard(
                           precisionScore: _precisionScore,
@@ -369,7 +361,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                             }
                           },
                         ),
-                      
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -388,8 +379,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                                     Icon(Icons.timer_outlined, size: 16, color: Colors.blue.shade700),
                                     const SizedBox(width: 6),
                                     Text(
-                                      'Faltan $_daysUntilCheckin días para tu control', 
-                                      style: TextStyle(color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.bold),
+                                      'Faltan $_daysUntilCheckin días para tu control',
+                                      style: TextStyle(
+                                          color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -408,10 +400,11 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                                     Icon(Icons.update_rounded, size: 16, color: Colors.green.shade700),
                                     const SizedBox(width: 6),
                                     Text(
-                                      _lastUpdateDate != null 
-                                          ? '¡Novedades de tu Nutricionista! (Actualizado el $_lastUpdateDate)' 
-                                          : '¡Novedades de tu Nutricionista!', 
-                                      style: TextStyle(color: Colors.green.shade800, fontSize: 12, fontWeight: FontWeight.bold),
+                                      _lastUpdateDate != null
+                                          ? '¡Novedades de tu Nutricionista! (Actualizado el $_lastUpdateDate)'
+                                          : '¡Novedades de tu Nutricionista!',
+                                      style: TextStyle(
+                                          color: Colors.green.shade800, fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -419,12 +412,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           ],
                         ),
                       ),
-                      
                       const SizedBox(height: 4),
-
                       _buildProgressHero(dailySummary),
                       const SizedBox(height: 20),
-
                       _buildMacroCards(dailySummary),
                       if ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
                           (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty) ||
@@ -440,15 +430,13 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                         ),
                       ],
                       const SizedBox(height: 20),
-
-                      if ((dailySummary.azucares ?? 0) > 0 || 
-                          (dailySummary.fibra ?? 0) > 0 || 
+                      if ((dailySummary.azucares ?? 0) > 0 ||
+                          (dailySummary.fibra ?? 0) > 0 ||
                           (dailySummary.sodio ?? 0) > 0 ||
                           (dailySummary.grasasSaturadas ?? 0) > 0) ...[
                         _buildMicrosPanel(dailySummary),
                         const SizedBox(height: 20),
                       ],
-                      
                       if (dailySummary.planObjetivo != null) ...[
                         PlanAlertCard(
                           estadoPlan: dailySummary.planObjetivo!.estadoPlan,
@@ -459,12 +447,10 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                         _buildPlanNutricionalCompact(dailySummary),
                         const SizedBox(height: 20),
                       ],
-                      
                       if (dailySummary.aiInsight.isNotEmpty) ...[
                         _buildAIInsightModern(dailySummary),
                         const SizedBox(height: 16),
                       ],
-
                       _buildQuickStats(dailySummary),
                     ] else
                       Center(
@@ -484,18 +470,20 @@ class _ClientMainScreenState extends State<ClientMainScreen>
         ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
-      floatingActionButton: _assignedNutriId == null ? null : FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ChatScreen()),
-          );
-          if (mounted) _loadDashboardData();
-        },
-        backgroundColor: const Color(0xFF1E88E5),
-        elevation: 4,
-        child: const Icon(Icons.auto_awesome, color: Colors.white),
-      ),
+      floatingActionButton: _assignedNutriId == null
+          ? null
+          : FloatingActionButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChatScreen()),
+                );
+                if (mounted) _loadDashboardData();
+              },
+              backgroundColor: const Color(0xFF1E88E5),
+              elevation: 4,
+              child: const Icon(Icons.auto_awesome, color: Colors.white),
+            ),
     );
   }
 
@@ -559,9 +547,10 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                       child: CircleAvatar(
                         radius: 30,
                         backgroundColor: Colors.white,
-                        backgroundImage: authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty
-                            ? NetworkImage(UrlService.formatImageUrl(authProvider.profilePictureUrl))
-                            : null,
+                        backgroundImage:
+                            authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty
+                                ? NetworkImage(UrlService.formatImageUrl(authProvider.profilePictureUrl))
+                                : null,
                         child: (authProvider.profilePictureUrl == null || authProvider.profilePictureUrl!.isEmpty)
                             ? Text(
                                 (authProvider.userName != null && authProvider.userName!.trim().isNotEmpty)
@@ -673,7 +662,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     final meta = plan?.caloriasObjetivo ?? 2000.0;
     final consumido = dailySummary.calorias;
     final quemadas = dailySummary.caloriasQuemadas;
-    
+
     final restante = (meta - consumido + quemadas).clamp(0.0, 5000.0);
     final progreso = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
 
@@ -989,19 +978,18 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ...(_showAllRecommended ? recommendedFoods : recommendedFoods.take(4))
-                      .map((food) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      food,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade900),
-                    ),
-                  )),
+                  ...(_showAllRecommended ? recommendedFoods : recommendedFoods.take(4)).map((food) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          food,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade900),
+                        ),
+                      )),
                   if (recommendedFoods.length > 4)
                     GestureDetector(
                       onTap: () => setState(() => _showAllRecommended = !_showAllRecommended),
@@ -1053,19 +1041,18 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ...(_showAllForbidden ? forbiddenFoods : forbiddenFoods.take(4))
-                      .map((food) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      food,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade900),
-                    ),
-                  )),
+                  ...(_showAllForbidden ? forbiddenFoods : forbiddenFoods.take(4)).map((food) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          food,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade900),
+                        ),
+                      )),
                   if (forbiddenFoods.length > 4)
                     GestureDetector(
                       onTap: () => setState(() => _showAllForbidden = !_showAllForbidden),
@@ -1126,57 +1113,42 @@ class _ClientMainScreenState extends State<ClientMainScreen>
 
   Widget _buildMacroCards(DailySummary dailySummary) {
     final plan = dailySummary.planObjetivo;
-    
+
     final proteinasMeta = plan?.proteinasObjetivoG.toInt() ?? 0;
     final carbohidratosMeta = plan?.carbohidratosObjetivoG.toInt() ?? 0;
     final grasasMeta = plan?.grasasObjetivoG.toInt() ?? 0;
-    
+
     final proteinasConsumido = dailySummary.proteinas.round();
     final carbosConsumido = dailySummary.carbohidratos.round();
     final grasasConsumido = dailySummary.grasas.round();
-    
+
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildMacroCard(
-                'Proteínas', 
-                proteinasConsumido,
-                proteinasMeta,
-                Icons.restaurant_menu_rounded, 
-                const Color(0xFFE57373)
-              ),
+              child: _buildMacroCard('Proteínas', proteinasConsumido, proteinasMeta, Icons.restaurant_menu_rounded,
+                  const Color(0xFFE57373)),
             ),
             const SizedBox(width: 15),
             Expanded(
               child: _buildMacroCard(
-                'Carbos', 
-                carbosConsumido,
-                carbohidratosMeta,
-                Icons.bakery_dining_rounded, 
-                const Color(0xFFFFB74D)
-              ),
+                  'Carbos', carbosConsumido, carbohidratosMeta, Icons.bakery_dining_rounded, const Color(0xFFFFB74D)),
             ),
             const SizedBox(width: 15),
             Expanded(
               child: _buildMacroCard(
-                'Grasas', 
-                grasasConsumido,
-                grasasMeta,
-                Icons.opacity_rounded, 
-                const Color(0xFF64B5F6)
-              ),
+                  'Grasas', grasasConsumido, grasasMeta, Icons.opacity_rounded, const Color(0xFF64B5F6)),
             ),
           ],
         ),
       ],
     );
   }
-  
+
   Widget _buildMacroCard(String label, int consumido, int meta, IconData icon, Color color) {
     final porcentaje = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
@@ -1233,50 +1205,80 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ),
     );
   }
+
   Widget _buildMicrosPanel(DailySummary summary) {
     final items = <Widget>[];
 
     if ((summary.azucares ?? 0) > 0) {
       final val = summary.azucares!;
       items.add(_buildMicroGridItem(
-        'Azúcar', '${val.toStringAsFixed(1)}g', Icons.icecream_rounded, Colors.purple,
-        val > 50 ? 'Alto' : val > 25 ? 'Moderado' : 'Bueno',
-        val > 50 ? Colors.red : val > 25 ? Colors.orange : Colors.green
-      ));
+          'Azúcar',
+          '${val.toStringAsFixed(1)}g',
+          Icons.icecream_rounded,
+          Colors.purple,
+          val > 50
+              ? 'Alto'
+              : val > 25
+                  ? 'Moderado'
+                  : 'Bueno',
+          val > 50
+              ? Colors.red
+              : val > 25
+                  ? Colors.orange
+                  : Colors.green));
     }
 
     if ((summary.fibra ?? 0) > 0) {
       final val = summary.fibra!;
       items.add(_buildMicroGridItem(
-        'Fibra', '${val.toStringAsFixed(1)}g', Icons.eco_rounded, Colors.green,
-        val > 25 ? 'Excelente' : val > 15 ? 'Normal' : 'Bajo',
-        val > 25 ? Colors.green : val > 15 ? Colors.blue : Colors.orange
-      ));
+          'Fibra',
+          '${val.toStringAsFixed(1)}g',
+          Icons.eco_rounded,
+          Colors.green,
+          val > 25
+              ? 'Excelente'
+              : val > 15
+                  ? 'Normal'
+                  : 'Bajo',
+          val > 25
+              ? Colors.green
+              : val > 15
+                  ? Colors.blue
+                  : Colors.orange));
     }
 
     if ((summary.sodio ?? 0) > 0) {
       final val = summary.sodio!;
       items.add(_buildMicroGridItem(
-        'Sodio', '${val.toStringAsFixed(0)}mg', Icons.grain_rounded, Colors.blueGrey,
-        val > 2300 ? 'Excesivo' : val > 1500 ? 'Normal' : 'Bueno',
-        val > 2300 ? Colors.red : val > 1500 ? Colors.orange : Colors.green
-      ));
+          'Sodio',
+          '${val.toStringAsFixed(0)}mg',
+          Icons.grain_rounded,
+          Colors.blueGrey,
+          val > 2300
+              ? 'Excesivo'
+              : val > 1500
+                  ? 'Normal'
+                  : 'Bueno',
+          val > 2300
+              ? Colors.red
+              : val > 1500
+                  ? Colors.orange
+                  : Colors.green));
     }
 
     if ((summary.grasasSaturadas ?? 0) > 0) {
       final val = summary.grasasSaturadas!;
-      items.add(_buildMicroGridItem(
-        'Grasa Sat.', '${val.toStringAsFixed(1)}g', Icons.warning_amber_rounded, Colors.orange,
-        val > 20 ? 'Cuidado' : 'Bien',
-        val > 20 ? Colors.red : Colors.green
-      ));
+      items.add(_buildMicroGridItem('Grasa Sat.', '${val.toStringAsFixed(1)}g', Icons.warning_amber_rounded,
+          Colors.orange, val > 20 ? 'Cuidado' : 'Bien', val > 20 ? Colors.red : Colors.green));
     }
 
     if ((summary.calcio ?? 0) > 100) {
-      items.add(_buildMicroGridItem('Calcio', '${summary.calcio!.toStringAsFixed(0)}mg', Icons.bolt_rounded, Colors.blue, 'Info', Colors.blue));
+      items.add(_buildMicroGridItem(
+          'Calcio', '${summary.calcio!.toStringAsFixed(0)}mg', Icons.bolt_rounded, Colors.blue, 'Info', Colors.blue));
     }
     if ((summary.hierro ?? 0) > 1) {
-      items.add(_buildMicroGridItem('Hierro', '${summary.hierro!.toStringAsFixed(1)}mg', Icons.fitness_center_rounded, Colors.red, 'Info', Colors.red));
+      items.add(_buildMicroGridItem('Hierro', '${summary.hierro!.toStringAsFixed(1)}mg', Icons.fitness_center_rounded,
+          Colors.red, 'Info', Colors.red));
     }
 
     if (items.isEmpty) return const SizedBox.shrink();
@@ -1335,7 +1337,8 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    Container(
+                        width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
                     const SizedBox(width: 4),
                     Text(status, style: TextStyle(fontSize: 9, color: statusColor, fontWeight: FontWeight.w700)),
                   ],
@@ -1389,7 +1392,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
 
   Widget _buildPlanNutricionalCompact(DailySummary dailySummary) {
     final plan = dailySummary.planObjetivo!;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1438,7 +1441,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
               ),
             ],
           ),
-          
           if (plan.esFallback) ...[
             const SizedBox(height: 16),
             Container(
@@ -1462,8 +1464,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
               ),
             ),
           ],
-          
-          if (plan.alertaSeguridad.isNotEmpty) ...[ 
+          if (plan.alertaSeguridad.isNotEmpty) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1491,8 +1492,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ),
     );
   }
-  
-  
+
   Widget _buildAIInsightModern(DailySummary dailySummary) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1581,9 +1581,11 @@ class _ClientMainScreenState extends State<ClientMainScreen>
             ),
           ),
           const SizedBox(height: 16),
-          _buildStatRow('Gasto Energético Total (TDEE)', '${dailySummary.gastoMetabolicoBasal.toStringAsFixed(0)} kcal', Icons.local_fire_department, Colors.orange),
+          _buildStatRow('Gasto Energético Total (TDEE)', '${dailySummary.gastoMetabolicoBasal.toStringAsFixed(0)} kcal',
+              Icons.local_fire_department, Colors.orange),
           const Divider(height: 16),
-          _buildStatRow('Actividad Física hoy', '${dailySummary.caloriasQuemadas.toStringAsFixed(0)} kcal', Icons.directions_run_rounded, Colors.green),
+          _buildStatRow('Actividad Física hoy', '${dailySummary.caloriasQuemadas.toStringAsFixed(0)} kcal',
+              Icons.directions_run_rounded, Colors.green),
           const Divider(height: 16),
           _buildStatRow('IMC Actual', dailySummary.imcActual.toStringAsFixed(1), Icons.monitor_weight, Colors.blue),
         ],

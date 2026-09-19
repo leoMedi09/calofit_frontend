@@ -35,10 +35,10 @@ class SmartMealRegistrySheet extends StatefulWidget {
 }
 
 class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
-  final TextEditingController _qtyController  = TextEditingController();
+  final TextEditingController _qtyController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
-  bool    _isLoading    = false;
+  bool _isLoading = false;
   String? _errorMessage;
   static final List<Map<String, dynamic>> _ingredients = [];
   late bool _isPreFilled;
@@ -62,13 +62,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
   }
 
   double get totalKcal => _ingredients.fold(0.0, (s, i) => s + (i['kcal'] as num).toDouble());
-  double get totalP    => _ingredients.fold(0.0, (s, i) => s + (i['p']   as num).toDouble());
-  double get totalC    => _ingredients.fold(0.0, (s, i) => s + (i['c']   as num).toDouble());
-  double get totalG    => _ingredients.fold(0.0, (s, i) => s + (i['g']   as num).toDouble());
+  double get totalP => _ingredients.fold(0.0, (s, i) => s + (i['p'] as num).toDouble());
+  double get totalC => _ingredients.fold(0.0, (s, i) => s + (i['c'] as num).toDouble());
+  double get totalG => _ingredients.fold(0.0, (s, i) => s + (i['g'] as num).toDouble());
 
   Future<void> _addIngredient() async {
     final qtyStrRaw = _qtyController.text.trim();
-    final name      = _nameController.text.trim();
+    final name = _nameController.text.trim();
     setState(() => _errorMessage = null);
 
     if (qtyStrRaw.isEmpty || name.isEmpty) {
@@ -91,13 +91,13 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
         setState(() {
           for (var item in result['ingredientes']) {
             _ingredients.add({
-              'name':     item['nombre'],
-              'gramos':   item['gramos_totales'],
+              'name': item['nombre'],
+              'gramos': item['gramos_totales'],
               'quantity': '${item['gramos_totales']}g',
               'kcal': item['calorias'],
-              'p':    item['proteinas_g'],
-              'c':    item['carbohidratos_g'],
-              'g':    item['grasas_g'],
+              'p': item['proteinas_g'],
+              'c': item['carbohidratos_g'],
+              'g': item['grasas_g'],
             });
           }
         });
@@ -121,14 +121,16 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.token == null) return;
 
-      final alimentos = _ingredients.map((i) => {
-        'nombre':          i['name'] as String,
-        'gramos':          (i['gramos'] as num).toDouble(),
-        'kcal':            (i['kcal']  as num).toDouble(),
-        'proteinas_g':     (i['p']     as num).toDouble(),
-        'carbohidratos_g': (i['c']     as num).toDouble(),
-        'grasas_g':        (i['g']     as num).toDouble(),
-      }).toList();
+      final alimentos = _ingredients
+          .map((i) => {
+                'nombre': i['name'] as String,
+                'gramos': (i['gramos'] as num).toDouble(),
+                'kcal': (i['kcal'] as num).toDouble(),
+                'proteinas_g': (i['p'] as num).toDouble(),
+                'carbohidratos_g': (i['c'] as num).toDouble(),
+                'grasas_g': (i['g'] as num).toDouble(),
+              })
+          .toList();
 
       final partes = _ingredients.map((i) => '${i['gramos']}g de ${i['name']}').join(', ');
 
@@ -218,7 +220,8 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     return Padding(
       padding: const EdgeInsets.only(top: 14, bottom: 4),
       child: Container(
-        width: 40, height: 4,
+        width: 40,
+        height: 4,
         decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
       ),
     );
@@ -303,10 +306,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                       hintText: '200',
                       hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 15),
                       suffixText: 'g',
-                      suffixStyle: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF64748B),
-                          fontSize: 13),
+                      suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B), fontSize: 13),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -338,8 +338,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                       prefixIcon: const Icon(Icons.search_rounded, color: accent, size: 19),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -360,16 +359,15 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accent,
                       disabledBackgroundColor: Colors.grey.shade300,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       padding: EdgeInsets.zero,
                       elevation: 0,
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                            width: 22, height: 22,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2.5))
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                         : const Icon(Icons.add_rounded, color: Colors.white, size: 26),
                   ),
                 ),
@@ -385,10 +383,7 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600),
+                        style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -429,7 +424,9 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Colors.grey.shade100),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))
+            ],
           ),
           child: Row(
             children: [
@@ -443,7 +440,8 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                    Text(item['name'],
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
                     const SizedBox(height: 3),
                     Text(item['quantity'], style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                     const SizedBox(height: 6),
@@ -493,7 +491,9 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, -5))],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, -5))
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -511,7 +511,8 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                         style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black87)),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 3, left: 3),
-                      child: Text(' kcal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black45)),
+                      child: Text(' kcal',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black45)),
                     ),
                   ],
                 ),
@@ -540,7 +541,8 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    ? const SizedBox(
+                        width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

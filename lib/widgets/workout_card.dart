@@ -8,8 +8,7 @@ class WorkoutCard extends StatelessWidget {
   final VoidCallback? onAdd;
   final VoidCallback? onSave;
 
-  const WorkoutCard({Key? key, required this.section, this.onAdd, this.onSave})
-      : super(key: key);
+  const WorkoutCard({Key? key, required this.section, this.onAdd, this.onSave}) : super(key: key);
 
   String get _nombreLimpio => section.nombre.replaceAll('**', '').trim();
 
@@ -34,9 +33,7 @@ class WorkoutCard extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              section.macros.trim().isEmpty
-                  ? 'Gasto según duración e intensidad'
-                  : section.macros,
+              section.macros.trim().isEmpty ? 'Gasto según duración e intensidad' : section.macros,
               style: TextStyle(
                 color: Colors.blue.shade800,
                 fontSize: 12,

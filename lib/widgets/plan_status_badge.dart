@@ -43,9 +43,7 @@ class PlanStatusBadge extends StatelessWidget {
         label = 'Provisional';
     }
 
-    if (esCondicionCritica &&
-        estadoPlan != 'validado' &&
-        estadoPlan != 'modificado') {
+    if (esCondicionCritica && estadoPlan != 'validado' && estadoPlan != 'modificado') {
       backgroundColor = Colors.red.shade100;
       textColor = Colors.red.shade900;
       icon = Icons.local_hospital;

@@ -10,8 +10,8 @@ class User {
   final String? profilePictureUrl;
 
   User({
-    required this.id, 
-    required this.firstName, 
+    required this.id,
+    required this.firstName,
     required this.lastNamePaternal,
     required this.lastNameMaternal,
     required this.email,
@@ -23,16 +23,17 @@ class User {
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
 
-  bool get isNutri  => roleName.toLowerCase().contains('nutri');
-  bool get isAdmin  => roleName.toLowerCase().contains('admin');
-  bool get isCoach  => roleName.toLowerCase().contains('coach') ||
-                       roleName.toLowerCase().contains('train') ||
-                       roleName.toLowerCase().contains('entrenador');
+  bool get isNutri => roleName.toLowerCase().contains('nutri');
+  bool get isAdmin => roleName.toLowerCase().contains('admin');
+  bool get isCoach =>
+      roleName.toLowerCase().contains('coach') ||
+      roleName.toLowerCase().contains('train') ||
+      roleName.toLowerCase().contains('entrenador');
 
   String get roleDisplayLabel {
-    if (isNutri)  return 'NUTRI';
-    if (isAdmin)  return 'ADMIN';
-    if (isCoach)  return 'ENTRENADOR';
+    if (isNutri) return 'NUTRI';
+    if (isAdmin) return 'ADMIN';
+    if (isCoach) return 'ENTRENADOR';
     return roleName.toUpperCase();
   }
 

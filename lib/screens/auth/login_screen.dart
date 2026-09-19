@@ -67,8 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await Provider.of<AuthProvider>(context, listen: false)
-          .login(email, password, _rememberMe);
+      await Provider.of<AuthProvider>(context, listen: false).login(email, password, _rememberMe);
 
       if (!mounted) return;
 
@@ -78,8 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final t = auth.userType?.toLowerCase() ?? '';
         debugPrint('🚀 Login unificado OK. Tipo: $t');
 
-        final route =
-            (t == 'staff' || t == 'admin') ? '/staff-main' : '/dashboard';
+        final route = (t == 'staff' || t == 'admin') ? '/staff-main' : '/dashboard';
         Navigator.pushNamedAndRemoveUntil(context, route, (r) => false);
       } else {
         setState(() => _errorMessage = 'No se pudo validar la sesión.');
@@ -92,8 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (e.toString().contains('SocketException') ||
           e.toString().contains('connection errored') ||
           e.toString().contains('No route to host')) {
-        message =
-            'No se pudo conectar al servidor. Revisa tu conexión y el Firewall.';
+        message = 'No se pudo conectar al servidor. Revisa tu conexión y el Firewall.';
       } else {
         message = 'Correo o contraseña incorrectos.';
       }
@@ -125,16 +122,12 @@ class _LoginScreenState extends State<LoginScreen> {
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
-                  _passwordVisible
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
+                  _passwordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                 ),
-                onPressed: () =>
-                    setState(() => _passwordVisible = !_passwordVisible),
+                onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
               )
             : null,
-        border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.grey[50],
       ),
@@ -185,10 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Ingresa con las credenciales asignadas por tu Nutricionista o Administrador.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    height: 1.5),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),
               const SizedBox(height: 32),
               if (_backendWaking)
@@ -249,17 +239,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 24,
                         child: Checkbox(
                           value: _rememberMe,
-                          onChanged: (val) =>
-                              setState(() => _rememberMe = val ?? false),
+                          onChanged: (val) => setState(() => _rememberMe = val ?? false),
                           activeColor: Colors.blue[700],
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () =>
-                            setState(() => _rememberMe = !_rememberMe),
+                        onTap: () => setState(() => _rememberMe = !_rememberMe),
                         child: Text(
                           'Recordarme',
                           style: TextStyle(
@@ -274,12 +261,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextButton(
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordScreen()),
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                     ),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -297,8 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
               if (_errorMessage != null) ...[
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
@@ -306,14 +290,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline,
-                          color: Colors.red.shade700, size: 18),
+                      Icon(Icons.error_outline, color: Colors.red.shade700, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(
-                              color: Colors.red.shade700, fontSize: 13),
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 13),
                         ),
                       ),
                     ],
@@ -328,8 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: FilledButton(
                         onPressed: _submit,
                         style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text(
                           'INGRESAR',
@@ -352,8 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline,
-                        color: Colors.blue.shade700, size: 20),
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -374,8 +354,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (_) => const TermsPrivacyScreen()),
+                    MaterialPageRoute(builder: (_) => const TermsPrivacyScreen()),
                   ),
                   child: Text(
                     'Términos y Condiciones · Política de Privacidad',

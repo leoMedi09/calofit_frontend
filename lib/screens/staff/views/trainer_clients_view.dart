@@ -30,8 +30,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.token != null) {
-        final clients =
-            await _apiService.getNutricionistaClientes(authProvider.token!);
+        final clients = await _apiService.getNutricionistaClientes(authProvider.token!);
         setState(() {
           _clients = clients;
           _filteredClients = clients;
@@ -89,8 +88,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
 
   Widget _buildSearchBox() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-          20, 20, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       decoration: const BoxDecoration(
         color: Colors.white,
       ),
@@ -105,8 +103,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
           decoration: const InputDecoration(
             hintText: 'Buscar cualquier atleta por nombre...',
             hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-            prefixIcon:
-                Icon(Icons.search_rounded, color: Color(0xFF1E88E5), size: 24),
+            prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF1E88E5), size: 24),
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(vertical: 14),
           ),
@@ -118,13 +115,11 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
   Widget _buildClientList() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      physics:
-          const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       itemCount: _filteredClients.length,
       itemBuilder: (context, index) {
         final client = _filteredClients[index];
-        final double adherence =
-            double.tryParse(client['adherencia']?.toString() ?? '0') ?? 0;
+        final double adherence = double.tryParse(client['adherencia']?.toString() ?? '0') ?? 0;
         final bool isMale = client['gender']?.toString().toLowerCase() == 'm';
 
         return Container(
@@ -157,10 +152,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                         children: [
                           Text(
                             client['full_name'] ?? 'Sin nombre',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                                color: Color(0xFF263238)),
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF263238)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -179,8 +171,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_ios_rounded,
-                        color: Colors.grey, size: 14),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 14),
                   ],
                 ),
               ),
@@ -198,26 +189,18 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
       decoration: BoxDecoration(
         color: (isMale ? Colors.blue.shade50 : Colors.pink.shade50),
         shape: BoxShape.circle,
-        image: client['profile_picture_url'] != null &&
-                client['profile_picture_url'].toString().isNotEmpty
+        image: client['profile_picture_url'] != null && client['profile_picture_url'].toString().isNotEmpty
             ? DecorationImage(
-                image: NetworkImage(
-                    UrlService.formatImageUrl(client['profile_picture_url'])),
+                image: NetworkImage(UrlService.formatImageUrl(client['profile_picture_url'])),
                 fit: BoxFit.cover,
               )
             : null,
       ),
-      child: client['profile_picture_url'] == null ||
-              client['profile_picture_url'].toString().isEmpty
+      child: client['profile_picture_url'] == null || client['profile_picture_url'].toString().isEmpty
           ? Center(
               child: Text(
-                (client['full_name'] != null &&
-                        client['full_name'].toString().trim().isNotEmpty)
-                    ? client['full_name']
-                        .toString()
-                        .trim()
-                        .substring(0, 1)
-                        .toUpperCase()
+                (client['full_name'] != null && client['full_name'].toString().trim().isNotEmpty)
+                    ? client['full_name'].toString().trim().substring(0, 1).toUpperCase()
                     : 'A',
                 style: TextStyle(
                   color: (isMale ? Colors.blue.shade700 : Colors.pink.shade700),
@@ -238,11 +221,8 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
           Icon(Icons.fitness_center_rounded, size: 80, color: Colors.grey[200]),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isEmpty
-                ? 'No hay atletas registrados'
-                : 'No se encontraron resultados',
-            style: const TextStyle(
-                color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
+            _searchQuery.isEmpty ? 'No hay atletas registrados' : 'No se encontraron resultados',
+            style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -268,16 +248,13 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
               child: Container(
                 width: 45,
                 height: 5,
-                decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
               ),
             ),
             const SizedBox(height: 30),
             Row(
               children: [
-                _buildProfileAvatar(
-                    client, client['gender']?.toString().toLowerCase() == 'm'),
+                _buildProfileAvatar(client, client['gender']?.toString().toLowerCase() == 'm'),
                 const SizedBox(width: 20),
                 Expanded(
                   child: Column(
@@ -290,10 +267,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                               color: Color(0xFF263238),
                               letterSpacing: -0.5)),
                       Text(client['email'] ?? '',
-                          style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600)),
+                          style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -301,13 +275,9 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
             ),
             const SizedBox(height: 35),
             const Text('ANÁLISIS DE ADHERENCIA (IA)',
-                style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                    letterSpacing: 1.5,
-                    color: Color(0xFF1E88E5))),
+                style:
+                    TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.5, color: Color(0xFF1E88E5))),
             const SizedBox(height: 12),
-
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               decoration: BoxDecoration(
@@ -317,8 +287,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      color: Color(0xFF1E88E5), size: 24),
+                  const Icon(Icons.auto_awesome_rounded, color: Color(0xFF1E88E5), size: 24),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
@@ -334,9 +303,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                 ],
               ),
             ),
-
             const SizedBox(height: 40),
-
             SizedBox(
               width: double.infinity,
               height: 62,
@@ -345,9 +312,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            PatientRecordView(patientData: client)),
+                    MaterialPageRoute(builder: (context) => PatientRecordView(patientData: client)),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -355,14 +320,10 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shadowColor: const Color(0xFF1E88E5).withOpacity(0.3),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
                 child: const Text('Ver Expediente Completo',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        letterSpacing: -0.2)),
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: -0.2)),
               ),
             ),
           ],

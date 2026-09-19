@@ -132,7 +132,8 @@ class _AuditViewState extends State<AuditView> {
               const SizedBox(width: 6),
               Text(
                 'HISTORIAL DEL SISTEMA',
-                style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style:
+                    const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
               ),
             ],
           ),
@@ -145,14 +146,11 @@ class _AuditViewState extends State<AuditView> {
         Text(
           'Auditoría General',
           style: TextStyle(
-            fontSize: 28, 
-            fontWeight: FontWeight.w900, 
-            color: Colors.white,
-            letterSpacing: -1.0,
-            shadows: [
-              Shadow(color: Colors.black.withOpacity(0.1), offset: const Offset(0, 4), blurRadius: 8)
-            ]
-          ),
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -1.0,
+              shadows: [Shadow(color: Colors.black.withOpacity(0.1), offset: const Offset(0, 4), blurRadius: 8)]),
         ),
       ],
     );
@@ -160,18 +158,21 @@ class _AuditViewState extends State<AuditView> {
 
   Widget _buildAuditCard(Map<String, dynamic> log) {
     final bool isAdminLog = log.containsKey('accion');
-    
+
     if (isAdminLog) {
       return _buildAdminLogCard(log);
     }
 
     final bool isAttended = log['estado'] == 'atendida';
     final String severity = log['severidad'] ?? 'bajo';
-    
+
     Color severityColor;
-    if (severity == 'alto') severityColor = Colors.red;
-    else if (severity == 'medio') severityColor = Colors.orange;
-    else severityColor = Colors.blue;
+    if (severity == 'alto')
+      severityColor = Colors.red;
+    else if (severity == 'medio')
+      severityColor = Colors.orange;
+    else
+      severityColor = Colors.blue;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -205,13 +206,14 @@ class _AuditViewState extends State<AuditView> {
                     const SizedBox(width: 4),
                     Text(
                       severity.toUpperCase(),
-                      style: TextStyle(color: severityColor, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                      style:
+                          TextStyle(color: severityColor, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                     ),
                   ],
                 ),
               ),
               Text(
-                log['fecha_deteccion'] != null 
+                log['fecha_deteccion'] != null
                     ? log['fecha_deteccion'].toString().substring(0, 10).split('-').reversed.join('/')
                     : '',
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.bold),
@@ -221,7 +223,8 @@ class _AuditViewState extends State<AuditView> {
           const SizedBox(height: 15),
           Text(
             log['tipo'] ?? 'Alerta de Salud',
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1A237E), letterSpacing: -0.2),
+            style: const TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1A237E), letterSpacing: -0.2),
           ),
           const SizedBox(height: 6),
           Text(
@@ -324,9 +327,7 @@ class _AuditViewState extends State<AuditView> {
                       ),
                     ),
                     Text(
-                      log['fecha'] != null 
-                          ? log['fecha'].toString().substring(11, 16)
-                          : '',
+                      log['fecha'] != null ? log['fecha'].toString().substring(11, 16) : '',
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -334,7 +335,8 @@ class _AuditViewState extends State<AuditView> {
                 const SizedBox(height: 8),
                 Text(
                   log['descripcion'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1A237E), letterSpacing: -0.2),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1A237E), letterSpacing: -0.2),
                 ),
                 const SizedBox(height: 4),
                 Text(

@@ -4,14 +4,14 @@ import '../config/api_config.dart';
 class UrlService {
   static String formatImageUrl(String? url) {
     if (url == null || url.isEmpty) return '';
-    
+
     debugPrint('🖼️ UrlService: Input URL = $url');
-    
+
     String baseUrl = ApiConfig.baseUrl;
     if (baseUrl.endsWith('/')) {
       baseUrl = baseUrl.substring(0, baseUrl.length - 1);
     }
-    
+
     Uri baseUri = Uri.parse(baseUrl);
 
     if (url.startsWith('http')) {
@@ -21,15 +21,17 @@ class UrlService {
       }
 
       bool isBackendUrl = url.contains(':8000') || url.contains('/uploads/') || url.contains('/profiles/');
-      
+
       if (isBackendUrl) {
         try {
           Uri imageUri = Uri.parse(url);
-          String patched = imageUri.replace(
-            scheme: baseUri.scheme,
-            host: baseUri.host,
-            port: baseUri.port,
-          ).toString();
+          String patched = imageUri
+              .replace(
+                scheme: baseUri.scheme,
+                host: baseUri.host,
+                port: baseUri.port,
+              )
+              .toString();
           debugPrint('🛡️ UrlService: Patched URL = $patched');
           return patched;
         } catch (e) {
@@ -49,11 +51,13 @@ class UrlService {
 
     if (url.contains('localhost') || url.contains('127.0.0.1')) {
       Uri imageUri = Uri.parse(url);
-      return imageUri.replace(
-        scheme: baseUri.scheme,
-        host: baseUri.host,
-        port: baseUri.port,
-      ).toString();
+      return imageUri
+          .replace(
+            scheme: baseUri.scheme,
+            host: baseUri.host,
+            port: baseUri.port,
+          )
+          .toString();
     }
 
     return url;

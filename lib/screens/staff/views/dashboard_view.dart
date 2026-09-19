@@ -29,7 +29,7 @@ class _DashboardViewState extends State<DashboardView> {
   int _countCoach = 0;
   int _countAdmin = 0;
   int _countInactive = 0;
-  
+
   int _countPacientes = 0;
   int _countValidaciones = 0;
   int _countAlertasCriticas = 0;
@@ -37,7 +37,7 @@ class _DashboardViewState extends State<DashboardView> {
   List<double> _tendenciaAdherencia = [];
   List<Map<String, dynamic>> _recentAlerts = [];
   bool _showAllAlerts = false;
-  
+
   String _currentAIInsight = 'Generando informe estratégico...';
   Timer? _refreshTimer;
 
@@ -57,18 +57,18 @@ class _DashboardViewState extends State<DashboardView> {
   Future<void> _refreshData({bool isAutoRefresh = false}) async {
     if (!mounted) return;
     if (!isAutoRefresh) setState(() => _isLoading = true);
-    
+
     if (ApiService.needsLogout) {
       ApiService.resetLogoutFlag();
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await _handleSessionExpired(authProvider);
       return;
     }
-    
+
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token ?? '';
-      
+
       if (token.isEmpty) {
         _refreshTimer?.cancel();
         return;
@@ -79,7 +79,7 @@ class _DashboardViewState extends State<DashboardView> {
 
       if (isAdmin) {
         final team = await _apiService.getUsers(token);
-        
+
         int nutris = 0;
         int coaches = 0;
         int admins = 0;
@@ -89,7 +89,7 @@ class _DashboardViewState extends State<DashboardView> {
 
         for (var member in team) {
           if (member.id == currentUserId) selfFound = true;
-          
+
           String role = member.roleName.toLowerCase();
           if (role.contains('admin') || role.contains('administrador')) {
             admins++;
@@ -115,7 +115,7 @@ class _DashboardViewState extends State<DashboardView> {
             _countAdmin = admins;
             _countInactive = inactives;
             _isLoading = false;
-            
+
             final total = nutris + coaches + admins;
             if (total == 0) {
               _currentAIInsight = '👋 No hay personal registrado aún.';
@@ -128,22 +128,20 @@ class _DashboardViewState extends State<DashboardView> {
         }
       } else {
         final stats = await _apiService.getNutriStats(token);
-        
+
         if (mounted) {
           setState(() {
             _countPacientes = stats['total_pacientes'] ?? 0;
             _countValidaciones = stats['validaciones_pendientes'] ?? 0;
             _countAlertasCriticas = stats['alertas_criticas'] ?? 0;
             _adherenciaMedia = (stats['adherencia_media'] ?? 0.0).toDouble();
-            _tendenciaAdherencia = (stats['tendencia_adherencia'] as List?)
-                ?.map((e) => (e as num).toDouble())
-                .toList() ?? [];
-            _recentAlerts = (stats['alertas_recientes'] as List?)
-                ?.map((e) => Map<String, dynamic>.from(e))
-                .toList() ?? [];
-            
+            _tendenciaAdherencia =
+                (stats['tendencia_adherencia'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [];
+            _recentAlerts =
+                (stats['alertas_recientes'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
+
             _isLoading = false;
-            
+
             if (_countAlertasCriticas > 0) {
               _currentAIInsight = '🚨 Tienes $_countAlertasCriticas alertas críticas de salud. ¡Revísalas pronto!';
             } else if (_countValidaciones > 0) {
@@ -156,7 +154,7 @@ class _DashboardViewState extends State<DashboardView> {
           });
         }
       }
-      
+
       try {
         final profile = await _apiService.getStaffProfile(token);
         final identity = profile['identidad'];
@@ -176,7 +174,7 @@ class _DashboardViewState extends State<DashboardView> {
         await _handleSessionExpired(authProvider);
         return;
       }
-      
+
       debugPrint('❌ Error refrescando datos: $e');
       if (mounted) setState(() => _isLoading = false);
     } catch (e) {
@@ -184,12 +182,12 @@ class _DashboardViewState extends State<DashboardView> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-  
+
   Future<void> _handleSessionExpired(AuthProvider authProvider) async {
     if (!mounted) return;
-    
+
     _refreshTimer?.cancel();
-    
+
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -219,9 +217,9 @@ class _DashboardViewState extends State<DashboardView> {
         ],
       ),
     );
-    
+
     await authProvider.logout();
-    
+
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -229,7 +227,6 @@ class _DashboardViewState extends State<DashboardView> {
       );
     }
   }
-
 
   void _updateAIInsight() {
     List<String> insights = [
@@ -240,7 +237,7 @@ class _DashboardViewState extends State<DashboardView> {
       'Sugerencia: Revisar los accesos de staff que no han tenido actividad reciente.',
       'Análisis: La distribución del equipo es ideal para la carga de usuarios actual.',
     ];
-    
+
     if (_countNutri < 2) {
       insights.insert(0, 'Alerta: Hay pocos Nutricionistas activos. Considera contratar refuerzos.');
     }
@@ -341,45 +338,33 @@ class _DashboardViewState extends State<DashboardView> {
                   SizedBox(width: 8),
                 ],
               ),
-              
               SliverPadding(
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                  if (!_isAdmin(context)) ...[
-                    _buildSectionTitle('Alertas de Salud (Clientes)', Icons.notification_important_rounded),
-                    const SizedBox(height: 15),
-                    _buildHealthAlertsSection(),
+                    if (!_isAdmin(context)) ...[
+                      _buildSectionTitle('Alertas de Salud (Clientes)', Icons.notification_important_rounded),
+                      const SizedBox(height: 15),
+                      _buildHealthAlertsSection(),
+                      const SizedBox(height: 35),
+                    ],
+                    _buildSectionTitle(_isAdmin(context) ? 'Centro de Análisis Corporativo' : 'Gestión de Equipo',
+                        _isAdmin(context) ? Icons.analytics_rounded : Icons.analytics_rounded),
+                    const SizedBox(height: 20),
+                    if (_isAdmin(context)) _buildAdminModernStats() else _buildNutriKPIs(),
                     const SizedBox(height: 35),
-                  ],
-
-                  _buildSectionTitle(
-                    _isAdmin(context) ? 'Centro de Análisis Corporativo' : 'Gestión de Equipo', 
-                    _isAdmin(context) ? Icons.analytics_rounded : Icons.analytics_rounded
-                  ),
-                  const SizedBox(height: 20),
-                  if (_isAdmin(context))
-                    _buildAdminModernStats()
-                  else
-                    _buildNutriKPIs(),
-
-                  const SizedBox(height: 35),
-
-
-
-                  _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),
-                  const SizedBox(height: 15),
-                  _buildAIInsightCard(),
-                  
-                  const SizedBox(height: 40),
-                ]),
+                    _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),
+                    const SizedBox(height: 15),
+                    _buildAIInsightCard(),
+                    const SizedBox(height: 40),
+                  ]),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-   );
+    );
   }
 
   bool _isAdmin(BuildContext context) {
@@ -395,8 +380,8 @@ class _DashboardViewState extends State<DashboardView> {
         Text(
           title.toUpperCase(),
           style: TextStyle(
-            fontSize: 13, 
-            fontWeight: FontWeight.w800, 
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF1A237E).withOpacity(0.7),
             letterSpacing: 1.2,
           ),
@@ -405,10 +390,9 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-
   Widget _buildWelcomeHeader(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     return Row(
       children: [
         Container(
@@ -512,7 +496,6 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-
   Widget _buildNutriKPIs() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,7 +524,6 @@ class _DashboardViewState extends State<DashboardView> {
           ],
         ),
         const SizedBox(height: 25),
-        
         _buildSectionSubtitle('Adherencia del Equipo (7 días)'),
         const SizedBox(height: 15),
         Container(
@@ -708,20 +690,12 @@ class _DashboardViewState extends State<DashboardView> {
           children: [
             Expanded(
               child: _buildRoleCard(
-                'Nutricionistas', 
-                _countNutri.toString(), 
-                Icons.restaurant_menu_rounded, 
-                const Color(0xFFE57373)
-              ),
+                  'Nutricionistas', _countNutri.toString(), Icons.restaurant_menu_rounded, const Color(0xFFE57373)),
             ),
             const SizedBox(width: 15),
             Expanded(
-              child: _buildRoleCard(
-                'Entrenadores', 
-                _countCoach.toString(), 
-                Icons.bolt_rounded, 
-                const Color(0xFFFFB74D)
-              ),
+              child:
+                  _buildRoleCard('Entrenadores', _countCoach.toString(), Icons.bolt_rounded, const Color(0xFFFFB74D)),
             ),
           ],
         ),
@@ -737,7 +711,8 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildKpiCard(String title, String value, String subtitle, IconData icon, Color color, {bool isFullWidth = false}) {
+  Widget _buildKpiCard(String title, String value, String subtitle, IconData icon, Color color,
+      {bool isFullWidth = false}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -832,12 +807,14 @@ class _DashboardViewState extends State<DashboardView> {
               children: [
                 const Text(
                   'IA COPILOT ANALYTICS',
-                  style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                  style:
+                      TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _currentAIInsight,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: -0.1),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: -0.1),
                 ),
               ],
             ),
@@ -884,11 +861,7 @@ class _DashboardViewState extends State<DashboardView> {
                         const Text(
                           'DISTRIBUCIÓN DEL EQUIPO',
                           style: TextStyle(
-                            fontSize: 12, 
-                            fontWeight: FontWeight.w800, 
-                            color: Colors.white, 
-                            letterSpacing: 1.2
-                          ),
+                              fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1.2),
                         ),
                       ],
                     ),
@@ -908,7 +881,7 @@ class _DashboardViewState extends State<DashboardView> {
                                 sections: [
                                   PieChartSectionData(
                                     value: _countAdmin.toDouble(),
-                                    color: Colors.white, 
+                                    color: Colors.white,
                                     radius: 14,
                                     showTitle: false,
                                   ),
@@ -933,19 +906,14 @@ class _DashboardViewState extends State<DashboardView> {
                                 Text(
                                   '$totalStaffCount',
                                   style: const TextStyle(
-                                    fontSize: 52, 
-                                    fontWeight: FontWeight.w900, 
-                                    color: Colors.white, 
-                                    letterSpacing: -2
-                                  ),
+                                      fontSize: 52,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      letterSpacing: -2),
                                 ),
                                 const Text(
                                   'total',
-                                  style: TextStyle(
-                                    fontSize: 16, 
-                                    fontWeight: FontWeight.w500, 
-                                    color: Colors.white
-                                  ),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
                                 ),
                               ],
                             ),
@@ -968,9 +936,7 @@ class _DashboardViewState extends State<DashboardView> {
             ],
           ),
         ),
-        
         const SizedBox(height: 35),
-        
         _buildSectionTitle('Operaciones del Sistema', Icons.bolt_rounded),
         const SizedBox(height: 15),
         _buildActionItem(
@@ -995,7 +961,6 @@ class _DashboardViewState extends State<DashboardView> {
       ],
     );
   }
-
 
   Widget _buildHeroIndicator(String label, String value) {
     return Column(
@@ -1040,12 +1005,14 @@ class _DashboardViewState extends State<DashboardView> {
           const SizedBox(height: 15),
           Text(
             value,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.8),
+            style: const TextStyle(
+                fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.8),
           ),
           const SizedBox(height: 2),
           Text(
             title,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+            style:
+                TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w800, letterSpacing: 0.5),
           ),
         ],
       ),
@@ -1083,11 +1050,13 @@ class _DashboardViewState extends State<DashboardView> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A237E), letterSpacing: -0.3),
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A237E), letterSpacing: -0.3),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600, letterSpacing: 0.2),
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600, letterSpacing: 0.2),
                   ),
                 ],
               ),
@@ -1115,14 +1084,19 @@ class _DashboardViewState extends State<DashboardView> {
       children: [
         Row(
           children: [
-            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+            Container(
+                width: 8, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 6),
-            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.0)),
+            Text(label,
+                style:
+                    const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.0)),
           ],
         ),
         Padding(
           padding: const EdgeInsets.only(left: 14),
-          child: Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.5)),
+          child: Text(value,
+              style: const TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.5)),
         ),
       ],
     );
@@ -1159,8 +1133,12 @@ class _DashboardViewState extends State<DashboardView> {
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 15),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.2)),
-            Text(subtitle, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.2)),
+            Text(subtitle,
+                style: TextStyle(
+                    fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
           ],
         ),
       ),
@@ -1202,7 +1180,8 @@ class _DashboardViewState extends State<DashboardView> {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1A237E), letterSpacing: -0.2),
+              style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1A237E), letterSpacing: -0.2),
             ),
           ],
         ),
@@ -1219,7 +1198,6 @@ class _DashboardViewState extends State<DashboardView> {
       ],
     );
   }
-
 
   Widget _buildHealthAlertsSection() {
     if (_recentAlerts.isEmpty) {
@@ -1246,14 +1224,13 @@ class _DashboardViewState extends State<DashboardView> {
     }
 
     final int totalAlerts = _recentAlerts.length;
-    final int alta  = _recentAlerts.where((a) => a['urgency'] == 'Alta').length;
+    final int alta = _recentAlerts.where((a) => a['urgency'] == 'Alta').length;
     final int media = _recentAlerts.where((a) => a['urgency'] == 'Media').length;
-    final int baja  = _recentAlerts.where((a) => a['urgency'] == 'Baja').length;
+    final int baja = _recentAlerts.where((a) => a['urgency'] == 'Baja').length;
 
     const int previewCount = 3;
-    final List<Map<String, dynamic>> visible = _showAllAlerts
-        ? _recentAlerts
-        : _recentAlerts.take(previewCount).toList();
+    final List<Map<String, dynamic>> visible =
+        _showAllAlerts ? _recentAlerts : _recentAlerts.take(previewCount).toList();
     final int hidden = totalAlerts - previewCount;
 
     return Container(
@@ -1298,15 +1275,13 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ),
                 ),
-                if (alta > 0)  _urgencyChip('Alta', alta, Colors.red),
+                if (alta > 0) _urgencyChip('Alta', alta, Colors.red),
                 if (media > 0) _urgencyChip('Media', media, Colors.orange),
-                if (baja > 0)  _urgencyChip('Baja', baja, const Color(0xFFF59E0B)),
+                if (baja > 0) _urgencyChip('Baja', baja, const Color(0xFFF59E0B)),
               ],
             ),
           ),
-
           Divider(height: 1, color: Colors.grey.shade100),
-
           ...visible.asMap().entries.map((entry) {
             final alert = entry.value;
             final bool isLast = entry.key == visible.length - 1 && (!_showAllAlerts || hidden <= 0);
@@ -1333,9 +1308,7 @@ class _DashboardViewState extends State<DashboardView> {
                       ),
                       const SizedBox(width: 12),
                       Icon(
-                        alert['urgency'] == 'Alta'
-                            ? Icons.warning_amber_rounded
-                            : Icons.info_outline_rounded,
+                        alert['urgency'] == 'Alta' ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
                         color: accent,
                         size: 18,
                       ),
@@ -1388,7 +1361,6 @@ class _DashboardViewState extends State<DashboardView> {
               ],
             );
           }),
-
           if (totalAlerts > previewCount)
             InkWell(
               onTap: () => setState(() => _showAllAlerts = !_showAllAlerts),
@@ -1405,17 +1377,13 @@ class _DashboardViewState extends State<DashboardView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      _showAllAlerts
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
+                      _showAllAlerts ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
                       size: 18,
                       color: Colors.grey.shade500,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      _showAllAlerts
-                          ? 'Mostrar menos'
-                          : 'Ver $hidden alerta${hidden > 1 ? 's' : ''} más',
+                      _showAllAlerts ? 'Mostrar menos' : 'Ver $hidden alerta${hidden > 1 ? 's' : ''} más',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1451,30 +1419,24 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildProfileIcon(AuthProvider authProvider) {
-    final String initials = (authProvider.userName ?? '?').isNotEmpty 
-        ? (authProvider.userName ?? '?').substring(0, 1).toUpperCase() 
-        : '?';
+    final String initials =
+        (authProvider.userName ?? '?').isNotEmpty ? (authProvider.userName ?? '?').substring(0, 1).toUpperCase() : '?';
     final String? photoUrl = authProvider.profilePictureUrl;
-    
+
     return Container(
       padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withOpacity(0.3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ]
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.3), boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ]),
       child: CircleAvatar(
         radius: 30,
         backgroundColor: Colors.white,
-        backgroundImage: photoUrl != null && photoUrl.isNotEmpty
-            ? NetworkImage(UrlService.formatImageUrl(photoUrl))
-            : null,
+        backgroundImage:
+            photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(UrlService.formatImageUrl(photoUrl)) : null,
         child: (photoUrl == null || photoUrl.isEmpty)
             ? Text(initials, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: primaryBlue))
             : null,

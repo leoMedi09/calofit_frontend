@@ -49,14 +49,14 @@ class BalanceProvider with ChangeNotifier {
       aiInsight: _dailySummary?.aiInsight ?? "",
       planObjetivo: _dailySummary?.planObjetivo,
     );
-    
+
     if (_fullBalanceData != null && _fullBalanceData!.containsKey('resumen')) {
-       var resumen = _fullBalanceData!['resumen'];
-       resumen['calorias_consumidas'] = _dailySummary!.calorias;
-       resumen['calorias_quemadas'] = _dailySummary!.caloriasQuemadas;
-       _fullBalanceData!['resumen'] = resumen;
+      var resumen = _fullBalanceData!['resumen'];
+      resumen['calorias_consumidas'] = _dailySummary!.calorias;
+      resumen['calorias_quemadas'] = _dailySummary!.caloriasQuemadas;
+      _fullBalanceData!['resumen'] = resumen;
     }
-    
+
     notifyListeners();
   }
 
@@ -64,20 +64,19 @@ class BalanceProvider with ChangeNotifier {
     try {
       final data = await _apiService.getMiBalance(token, fecha: fecha);
       _fullBalanceData = data;
-      
+
       if (data['resumen'] != null && fecha == null) {
         final res = data['resumen'];
         _dailySummary = DailySummary(
-          calorias: _toDouble(res['calorias_consumidas']),
-          proteinas: _toDouble(res['proteinas_g']), 
-          carbohidratos: _toDouble(res['carbohidratos_g']),
-          grasas: _toDouble(res['grasas_g']),
-          gastoMetabolicoBasal: _dailySummary?.gastoMetabolicoBasal ?? 0.0,
-          caloriasQuemadas: _toDouble(res['calorias_quemadas']),
-          imcActual: _dailySummary?.imcActual ?? 0.0,
-          aiInsight: _dailySummary?.aiInsight ?? "",
-          planObjetivo: _dailySummary?.planObjetivo
-        );
+            calorias: _toDouble(res['calorias_consumidas']),
+            proteinas: _toDouble(res['proteinas_g']),
+            carbohidratos: _toDouble(res['carbohidratos_g']),
+            grasas: _toDouble(res['grasas_g']),
+            gastoMetabolicoBasal: _dailySummary?.gastoMetabolicoBasal ?? 0.0,
+            caloriasQuemadas: _toDouble(res['calorias_quemadas']),
+            imcActual: _dailySummary?.imcActual ?? 0.0,
+            aiInsight: _dailySummary?.aiInsight ?? "",
+            planObjetivo: _dailySummary?.planObjetivo);
       }
       notifyListeners();
     } catch (e) {

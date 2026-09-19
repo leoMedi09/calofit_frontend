@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
-
   static const bool useProduction = true;
 
   static String get baseUrl {
@@ -22,8 +21,7 @@ class ApiConfig {
   }
 
   static const String devUrl = 'http://localhost:8000';
-  static const String prodUrl =
-      'https://calofit-backend.onrender.com';
+  static const String prodUrl = 'https://calofit-backend.onrender.com';
 
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 30);

@@ -5,13 +5,12 @@ class LoginRequest {
   final String firebaseUid;
   final String userType;
 
-  LoginRequest({
-    required this.email,
-    required this.password,
-    required this.firebaseUid,
-    required this.userType,
-    this.rememberMe = false
-  });
+  LoginRequest(
+      {required this.email,
+      required this.password,
+      required this.firebaseUid,
+      required this.userType,
+      this.rememberMe = false});
 
   Map<String, dynamic> toJson() {
     return {
@@ -125,4 +124,3 @@ class ClientRegisterRequest {
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
 }
-

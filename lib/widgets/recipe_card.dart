@@ -8,8 +8,7 @@ class RecipeCard extends StatelessWidget {
   final VoidCallback? onAdd;
   final VoidCallback? onSave;
 
-  const RecipeCard({Key? key, required this.section, this.onAdd, this.onSave})
-      : super(key: key);
+  const RecipeCard({Key? key, required this.section, this.onAdd, this.onSave}) : super(key: key);
 
   String get _nombreLimpio => section.nombre.replaceAll('**', '').trim();
 
@@ -33,10 +32,7 @@ class RecipeCard extends StatelessWidget {
   }
 
   static String _macroKeyLettersOnly(String raw) {
-    return raw
-        .replaceAll(RegExp(r'[^a-zA-ZñÑáéíóúüÁÉÍÓÚÜ0-9\s\-\.]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    return raw.replaceAll(RegExp(r'[^a-zA-ZñÑáéíóúüÁÉÍÓÚÜ0-9\s\-\.]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   Map<String, String> _parseMacros(String macros) {
@@ -49,8 +45,11 @@ class RecipeCard extends StatelessWidget {
       if (parts.length >= 2) {
         String key = parts[0].trim();
         final lk = _macroKeyLettersOnly(key).toLowerCase();
-        if (lk.contains('kcal') || lk.contains('calor') || lk.contains('energ') ||
-            lk == 'cal' || lk.startsWith('cal ')) {
+        if (lk.contains('kcal') ||
+            lk.contains('calor') ||
+            lk.contains('energ') ||
+            lk == 'cal' ||
+            lk.startsWith('cal ')) {
           key = 'Cal';
         } else if (lk.contains('prote')) {
           key = 'P';
@@ -158,8 +157,8 @@ class RecipeCard extends StatelessWidget {
   List<Widget> _ingredientListWidgets(List<String> ingredientes) {
     final accent = Colors.orange;
     final w = <Widget>[];
-    for (final raw in expandItemLines(ingredientes).where((l) =>
-        !RegExp(r'^0\s*g\b', caseSensitive: false).hasMatch(l.trim()))) {
+    for (final raw
+        in expandItemLines(ingredientes).where((l) => !RegExp(r'^0\s*g\b', caseSensitive: false).hasMatch(l.trim()))) {
       if (isAssistantSubheader(raw)) {
         w.add(assistantSubheaderLine(
           stripMarkdownLight(raw),
@@ -174,9 +173,7 @@ class RecipeCard extends StatelessWidget {
   }
 
   Widget _ingredientLine(String text, Color accent) {
-    final reKcal = RegExp(
-        r'\((?:~[\d.]+g\s*\|\s*)?([\d.]+)\s*kcal\)\s*$',
-        caseSensitive: false);
+    final reKcal = RegExp(r'\((?:~[\d.]+g\s*\|\s*)?([\d.]+)\s*kcal\)\s*$', caseSensitive: false);
     final mKcal = reKcal.firstMatch(text);
     String kcalStr = '';
     String nameRaw = text;
@@ -200,24 +197,16 @@ class RecipeCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 1),
             child: Text('•',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: accent.withValues(alpha: 0.6))),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: accent.withValues(alpha: 0.6))),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(nameRaw,
-                    style: const TextStyle(fontSize: 13, height: 1.35)),
+                Text(nameRaw, style: const TextStyle(fontSize: 13, height: 1.35)),
                 if (gramEquiv.isNotEmpty)
-                  Text(gramEquiv,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                          height: 1.3)),
+                  Text(gramEquiv, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, height: 1.3)),
               ],
             ),
           ),
@@ -280,25 +269,18 @@ class MacroChipsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(spacing: 6, runSpacing: 4, children: [
-      if (macrosMap.containsKey('Cal'))
-        _chip('🔥 ${macrosMap['Cal']}', Colors.orange.shade700, Colors.orange.shade50),
-      if (macrosMap.containsKey('P'))
-        _chip('💪 P: ${macrosMap['P']}', Colors.blue.shade700, Colors.blue.shade50),
-      if (macrosMap.containsKey('C'))
-        _chip('🌾 C: ${macrosMap['C']}', Colors.amber.shade800, Colors.amber.shade50),
-      if (macrosMap.containsKey('G'))
-        _chip('🥑 G: ${macrosMap['G']}', Colors.green.shade700, Colors.green.shade50),
+      if (macrosMap.containsKey('Cal')) _chip('🔥 ${macrosMap['Cal']}', Colors.orange.shade700, Colors.orange.shade50),
+      if (macrosMap.containsKey('P')) _chip('💪 P: ${macrosMap['P']}', Colors.blue.shade700, Colors.blue.shade50),
+      if (macrosMap.containsKey('C')) _chip('🌾 C: ${macrosMap['C']}', Colors.amber.shade800, Colors.amber.shade50),
+      if (macrosMap.containsKey('G')) _chip('🥑 G: ${macrosMap['G']}', Colors.green.shade700, Colors.green.shade50),
     ]);
   }
 
   Widget _chip(String label, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(
-          color: bgColor, borderRadius: BorderRadius.circular(20)),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.bold, color: textColor)),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
+      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor)),
     );
   }
 }
@@ -326,10 +308,7 @@ class MacroDetailPanel extends StatelessWidget {
           const SizedBox(width: 6),
           Text('INFORMACIÓN NUTRICIONAL',
               style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade800,
-                  letterSpacing: 1.0)),
+                  fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange.shade800, letterSpacing: 1.0)),
         ]),
         const SizedBox(height: 12),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -341,8 +320,7 @@ class MacroDetailPanel extends StatelessWidget {
             child: Column(children: [
               if (macrosMap.containsKey('P'))
                 _MacroRow('Proteína', macrosMap['P']!, Colors.blue.shade400, Icons.fitness_center),
-              if (macrosMap.containsKey('C'))
-                _MacroRow('Carbos', macrosMap['C']!, Colors.amber.shade600, Icons.grain),
+              if (macrosMap.containsKey('C')) _MacroRow('Carbos', macrosMap['C']!, Colors.amber.shade600, Icons.grain),
               if (macrosMap.containsKey('G'))
                 _MacroRow('Grasas', macrosMap['G']!, Colors.green.shade500, Icons.water_drop),
             ]),
@@ -377,9 +355,7 @@ class _CalCard extends StatelessWidget {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         const Text('🔥', style: TextStyle(fontSize: 24)),
         const SizedBox(height: 4),
-        Text(numStr,
-            style: const TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text(numStr, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
         const Text('kcal', style: TextStyle(fontSize: 11, color: Colors.white70)),
       ]),
     );
@@ -401,17 +377,11 @@ class _MacroRow extends StatelessWidget {
       child: Row(children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 6),
-        Expanded(
-            child: Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700))),
+        Expanded(child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700))),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8)),
-          child: Text(value,
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+          child: Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
         ),
       ]),
     );

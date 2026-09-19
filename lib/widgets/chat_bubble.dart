@@ -18,8 +18,7 @@ class AssistantMessageBubble extends StatelessWidget {
     final tipo = (response.tipoPregunta ?? '').toUpperCase();
     final isRegistro = intent == 'SUCCESS' || tipo == 'LOG';
     final isEjercicioReg = isRegistro && (response.datos?['kcal_quemadas'] != null);
-    final isRecomendacion = intent == 'RECIPE' || intent == 'POWER' ||
-        tipo.contains('RECOMENDAR');
+    final isRecomendacion = intent == 'RECIPE' || intent == 'POWER' || tipo.contains('RECOMENDAR');
 
     final texto = response.respuestaEstructurada.textoConversacional.trim();
     final progress = response.dataCientifica.progresoDiario;
@@ -41,11 +40,9 @@ class AssistantMessageBubble extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.smart_toy_rounded,
-                color: Colors.white, size: 16),
+            child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 10),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,11 +104,26 @@ class _ConversationalBubble extends StatelessWidget {
     if (t.contains('ingredientes:') || t.contains('preparación:') || t.contains('preparacion:')) {
       return _BubbleType.receta;
     }
-    const ejerciciosKw = ['press', 'sentadilla', 'curl', 'remo', 'dominada', 'fondos',
-      'peso muerto', 'plancha', 'burpee', 'bíceps', 'biceps', 'tríceps', 'triceps',
-      'pecho', 'espalda', 'pierna', 'hombro'];
-    if (ejerciciosKw.any((k) => t.contains(k)) &&
-        (t.contains('1.') || t.contains('2.') || t.contains('paso'))) {
+    const ejerciciosKw = [
+      'press',
+      'sentadilla',
+      'curl',
+      'remo',
+      'dominada',
+      'fondos',
+      'peso muerto',
+      'plancha',
+      'burpee',
+      'bíceps',
+      'biceps',
+      'tríceps',
+      'triceps',
+      'pecho',
+      'espalda',
+      'pierna',
+      'hombro'
+    ];
+    if (ejerciciosKw.any((k) => t.contains(k)) && (t.contains('1.') || t.contains('2.') || t.contains('paso'))) {
       return _BubbleType.tecnica;
     }
     return _BubbleType.chat;
@@ -203,8 +215,7 @@ class _RegistrationPill extends StatelessWidget {
     required this.esEjercicio,
   });
 
-  double _toDouble(dynamic v) =>
-      v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+  double _toDouble(dynamic v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 
   String? _alertaDieta() => datos['alerta_dieta'] as String?;
   String? _advertenciaCantidad() => datos['advertencia_cantidad'] as String?;
@@ -283,10 +294,8 @@ class _RegistrationPill extends StatelessWidget {
     final prot = _toDouble(datos['proteinas_g']);
     final carb = _toDouble(datos['carbohidratos_g']);
     final grasa = _toDouble(datos['grasas_g']);
-    final alimentosLista = (datos['alimentos_lista'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        (nombre.isNotEmpty ? [nombre] : []);
+    final alimentosLista =
+        (datos['alimentos_lista'] as List?)?.map((e) => e.toString()).toList() ?? (nombre.isNotEmpty ? [nombre] : []);
 
     return _PillCard(
       color: const Color(0xFF059669),
@@ -309,34 +318,36 @@ class _RegistrationPill extends StatelessWidget {
           else
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: alimentosLista.map((a) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  children: [
-                    const Text('• ', style: TextStyle(
-                      color: Color(0xFF059669),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    )),
-                    Expanded(child: Text(
-                      a,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF064E3B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    )),
-                  ],
-                ),
-              )).toList(),
+              children: alimentosLista
+                  .map((a) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          children: [
+                            const Text('• ',
+                                style: TextStyle(
+                                  color: Color(0xFF059669),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                )),
+                            Expanded(
+                                child: Text(
+                              a,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF064E3B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            )),
+                          ],
+                        ),
+                      ))
+                  .toList(),
             ),
           const SizedBox(height: 8),
-
           if (kcal >= 0)
             Row(
               children: [
-                const Icon(Icons.local_fire_department_rounded,
-                    size: 18, color: Color(0xFFDC2626)),
+                const Icon(Icons.local_fire_department_rounded, size: 18, color: Color(0xFFDC2626)),
                 const SizedBox(width: 4),
                 Text(
                   '${kcal.round()} kcal',
@@ -348,7 +359,6 @@ class _RegistrationPill extends StatelessWidget {
                 ),
               ],
             ),
-
           if (prot > 0 || carb > 0 || grasa > 0) ...[
             const SizedBox(height: 6),
             Row(
@@ -361,7 +371,6 @@ class _RegistrationPill extends StatelessWidget {
               ],
             ),
           ],
-
           if (_alertaDieta() != null) ...[
             const SizedBox(height: 8),
             Container(
@@ -381,7 +390,6 @@ class _RegistrationPill extends StatelessWidget {
               ),
             ),
           ],
-
           if (_advertenciaCantidad() != null) ...[
             const SizedBox(height: 8),
             Container(
@@ -401,7 +409,6 @@ class _RegistrationPill extends StatelessWidget {
               ),
             ),
           ],
-
           if (consumido > 0 && meta > 0) ...[
             const SizedBox(height: 10),
             const Divider(height: 1, color: Color(0xFFD1FAE5)),
@@ -421,9 +428,7 @@ class _RegistrationPill extends StatelessWidget {
                   '${pct.toInt()}%',
                   style: TextStyle(
                     fontSize: 12,
-                    color: pct >= 100
-                        ? const Color(0xFFDC2626)
-                        : const Color(0xFF059669),
+                    color: pct >= 100 ? const Color(0xFFDC2626) : const Color(0xFF059669),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -437,9 +442,7 @@ class _RegistrationPill extends StatelessWidget {
                 minHeight: 5,
                 backgroundColor: const Color(0xFFD1FAE5),
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  pct >= 100
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF10B981),
+                  pct >= 100 ? const Color(0xFFDC2626) : const Color(0xFF10B981),
                 ),
               ),
             ),
@@ -534,7 +537,7 @@ class _PillCard extends StatelessWidget {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha:0.08),
+            color: color.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -583,7 +586,7 @@ class _MacroPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -614,7 +617,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

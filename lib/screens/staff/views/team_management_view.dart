@@ -41,7 +41,7 @@ class _TeamManagementViewState extends State<TeamManagementView> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     try {
       final List<User> team = await _apiService.getUsers(authProvider.token ?? '');
-      
+
       final bool selfFound = team.any((m) => m.id == authProvider.userId);
       if (!selfFound && authProvider.userId != null) {
         team.add(User(
@@ -126,39 +126,38 @@ class _TeamManagementViewState extends State<TeamManagementView> {
                 ),
               ),
             ),
-            
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _buildSectionTitle('Estadísticas de Personal', Icons.analytics_outlined),
                   const SizedBox(height: 15),
-                  _isLoading 
-                    ? const Center(child: LinearProgressIndicator())
-                    : Row(
-                        children: [
-                          Expanded(child: _buildRoleCard(
-                            'Nutricionistas', 
-                            _members.where((m) => m.isNutri).length.toString(),
-                            Icons.restaurant_menu, 
-                            const Color(0xFFFF5252)
-                          )),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildRoleCard(
-                            'Entrenadores', 
-                            _members.where((m) => m.isCoach).length.toString(),
-                            Icons.fitness_center, 
-                            const Color(0xFFFFA000)
-                          )),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildRoleCard(
-                            'Administradores', 
-                            _members.where((m) => m.isAdmin).length.toString(),
-                            Icons.admin_panel_settings, 
-                            primaryBlue
-                          )),
-                        ],
-                      ),
+                  _isLoading
+                      ? const Center(child: LinearProgressIndicator())
+                      : Row(
+                          children: [
+                            Expanded(
+                                child: _buildRoleCard(
+                                    'Nutricionistas',
+                                    _members.where((m) => m.isNutri).length.toString(),
+                                    Icons.restaurant_menu,
+                                    const Color(0xFFFF5252))),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _buildRoleCard(
+                                    'Entrenadores',
+                                    _members.where((m) => m.isCoach).length.toString(),
+                                    Icons.fitness_center,
+                                    const Color(0xFFFFA000))),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _buildRoleCard(
+                                    'Administradores',
+                                    _members.where((m) => m.isAdmin).length.toString(),
+                                    Icons.admin_panel_settings,
+                                    primaryBlue)),
+                          ],
+                        ),
                   const SizedBox(height: 35),
                   _buildSectionTitle('Acciones de Miembros', Icons.settings_accessibility_rounded),
                   const SizedBox(height: 15),
@@ -187,9 +186,8 @@ class _TeamManagementViewState extends State<TeamManagementView> {
                     Icons.password_rounded,
                     const Color(0xFF455A64),
                     () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Acción disponible seleccionando al miembro en "Ver Mi Equipo"'))
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Acción disponible seleccionando al miembro en "Ver Mi Equipo"')));
                     },
                   ),
                 ]),
@@ -219,7 +217,8 @@ class _TeamManagementViewState extends State<TeamManagementView> {
               const SizedBox(width: 6),
               Text(
                 'RECURSOS HUMANOS',
-                style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style:
+                    const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
               ),
             ],
           ),
@@ -232,14 +231,11 @@ class _TeamManagementViewState extends State<TeamManagementView> {
         Text(
           'Gestión de Equipo',
           style: TextStyle(
-            fontSize: 28, 
-            fontWeight: FontWeight.w900, 
-            color: Colors.white,
-            letterSpacing: -1.0,
-            shadows: [
-              Shadow(color: Colors.black.withOpacity(0.1), offset: const Offset(0, 4), blurRadius: 8)
-            ]
-          ),
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -1.0,
+              shadows: [Shadow(color: Colors.black.withOpacity(0.1), offset: const Offset(0, 4), blurRadius: 8)]),
         ),
       ],
     );
@@ -253,8 +249,8 @@ class _TeamManagementViewState extends State<TeamManagementView> {
         Text(
           title.toUpperCase(),
           style: TextStyle(
-            fontSize: 13, 
-            fontWeight: FontWeight.w800, 
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF1A237E).withOpacity(0.7),
             letterSpacing: 1.2,
           ),
@@ -283,13 +279,16 @@ class _TeamManagementViewState extends State<TeamManagementView> {
           ),
           const SizedBox(height: 12),
           Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A237E))),
-          Text(title.toUpperCase(), style: TextStyle(color: Colors.grey.shade500, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          Text(title.toUpperCase(),
+              style:
+                  TextStyle(color: Colors.grey.shade500, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+      BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
@@ -320,11 +319,13 @@ class _TeamManagementViewState extends State<TeamManagementView> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A237E), letterSpacing: -0.3),
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A237E), letterSpacing: -0.3),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600, letterSpacing: 0.2),
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600, letterSpacing: 0.2),
                   ),
                 ],
               ),

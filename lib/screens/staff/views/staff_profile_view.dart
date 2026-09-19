@@ -47,7 +47,12 @@ class _StaffProfileViewState extends State<StaffProfileView> {
     if (auth.token == null) return;
     try {
       final data = await _apiService.getStaffProfile(auth.token!);
-      if (mounted) setState(() { _profileData = data; _loadingProfile = false; _initControllers(); });
+      if (mounted)
+        setState(() {
+          _profileData = data;
+          _loadingProfile = false;
+          _initControllers();
+        });
     } catch (_) {
       if (mounted) setState(() => _loadingProfile = false);
     }
@@ -125,10 +130,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
     final String firstName = identidad?['nombres'] ?? auth.userName ?? '';
     final String lastPaternal = identidad?['apellido_paterno'] ?? '';
     final String lastMaternal = identidad?['apellido_materno'] ?? '';
-    final String fullName = [firstName, lastPaternal, lastMaternal]
-        .where((s) => s.isNotEmpty)
-        .join(' ')
-        .trim();
+    final String fullName = [firstName, lastPaternal, lastMaternal].where((s) => s.isNotEmpty).join(' ').trim();
     final String displayName = fullName.isNotEmpty ? fullName : (auth.userName ?? 'Usuario');
     final String email = identidad?['email'] ?? auth.userEmail ?? '';
     final String role = auth.userRole ?? '';
@@ -161,8 +163,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                     top: 50,
                     left: 20,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white, size: 22),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -171,11 +172,8 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                     top: 50,
                     right: 20,
                     child: IconButton(
-                      icon: Icon(_isEditing ? Icons.close_rounded : Icons.edit_rounded,
-                          color: Colors.white, size: 22),
-                      onPressed: _isEditing
-                          ? _cancelarEdicion
-                          : () => setState(() => _isEditing = true),
+                      icon: Icon(_isEditing ? Icons.close_rounded : Icons.edit_rounded, color: Colors.white, size: 22),
+                      onPressed: _isEditing ? _cancelarEdicion : () => setState(() => _isEditing = true),
                     ),
                   ),
                 Positioned(
@@ -242,15 +240,14 @@ class _StaffProfileViewState extends State<StaffProfileView> {
               ],
             ),
           ),
-
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
-
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _loadingProfile
-                    ? const Center(child: Padding(
+                    ? const Center(
+                        child: Padding(
                         padding: EdgeInsets.all(16),
                         child: CircularProgressIndicator(),
                       ))
@@ -262,22 +259,24 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                               _buildSectionTitle('Información Personal'),
                               const SizedBox(height: 12),
                               _buildInfoCard([
-                                _buildProfileTile(Icons.person_rounded, 'Nombres', firstName.isNotEmpty ? firstName : '—'),
-                                _buildProfileTile(Icons.badge_rounded, 'Apellido Paterno', lastPaternal.isNotEmpty ? lastPaternal : '—'),
-                                _buildProfileTile(Icons.badge_outlined, 'Apellido Materno', lastMaternal.isNotEmpty ? lastMaternal : '—'),
+                                _buildProfileTile(
+                                    Icons.person_rounded, 'Nombres', firstName.isNotEmpty ? firstName : '—'),
+                                _buildProfileTile(Icons.badge_rounded, 'Apellido Paterno',
+                                    lastPaternal.isNotEmpty ? lastPaternal : '—'),
+                                _buildProfileTile(Icons.badge_outlined, 'Apellido Materno',
+                                    lastMaternal.isNotEmpty ? lastMaternal : '—'),
                               ]),
                               const SizedBox(height: 24),
                               _buildSectionTitle('Información de Contacto'),
                               const SizedBox(height: 12),
                               _buildInfoCard([
-                                _buildProfileTile(Icons.email_rounded, 'Correo Electrónico', email.isNotEmpty ? email : '—'),
+                                _buildProfileTile(
+                                    Icons.email_rounded, 'Correo Electrónico', email.isNotEmpty ? email : '—'),
                                 _buildProfileTile(Icons.work_rounded, 'Rol del Sistema', _roleLabel(role)),
                               ]),
                             ],
                           ),
-
                 const SizedBox(height: 32),
-
                 if (!_isEditing)
                   Container(
                     width: double.infinity,
@@ -290,13 +289,11 @@ class _StaffProfileViewState extends State<StaffProfileView> {
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Color(0xFFFFEBEE), width: 1),
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                       child: const Text(
                         'CERRAR SESIÓN',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                        style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2),
                       ),
                     ),
                   ),
@@ -353,8 +350,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
               ),
               child: _isSaving
                   ? const SizedBox(
-                      width: 22, height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('GUARDAR CAMBIOS', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
             ),
           ),
@@ -375,8 +371,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        validator: validator ??
-            (v) => (v == null || v.trim().isEmpty) ? 'Este campo es obligatorio' : null,
+        validator: validator ?? (v) => (v == null || v.trim().isEmpty) ? 'Este campo es obligatorio' : null,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Container(
@@ -423,8 +418,7 @@ class _StaffProfileViewState extends State<StaffProfileView> {
       ),
       child: Text(
         label,
-        style: const TextStyle(
-            color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -457,19 +451,11 @@ class _StaffProfileViewState extends State<StaffProfileView> {
         ),
         child: Icon(icon, color: vNavy, size: 22),
       ),
-      title: Text(title,
-          style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade500,
-              fontWeight: FontWeight.w600)),
+      title: Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
       subtitle: FittedBox(
         fit: BoxFit.scaleDown,
         alignment: Alignment.centerLeft,
-        child: Text(subtitle,
-            style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87)),
+        child: Text(subtitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
       ),
     );
   }
@@ -478,36 +464,26 @@ class _StaffProfileViewState extends State<StaffProfileView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text('¿Cerrar Sesión?',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text(
-            'Se cerrará tu sesión y volverás a la pantalla de acceso.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text('¿Cerrar Sesión?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Se cerrará tu sesión y volverás a la pantalla de acceso.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCELAR',
-                style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.bold)),
+            child: Text('CANCELAR', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () async {
               await authProvider.logout();
               if (context.mounted) {
-                Navigator.of(context)
-                    .pushNamedAndRemoveUntil('/login', (route) => false);
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            child: const Text('SALIR',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('SALIR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

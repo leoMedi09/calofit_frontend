@@ -20,8 +20,7 @@ class StaffMainScreen extends StatefulWidget {
 class _StaffMainScreenState extends State<StaffMainScreen> {
   int _selectedIndex = 0;
 
-  bool _isEntrenador(String role) =>
-      role.contains('COACH') || role.contains('ENTRENADOR');
+  bool _isEntrenador(String role) => role.contains('COACH') || role.contains('ENTRENADOR');
 
   @override
   void initState() {
@@ -29,9 +28,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.showWelcomeMessage) {
-        _showToast(context, "¡Bienvenido Staff, ${authProvider.userName}! 🛠️",
-            const Color(0xFF2E7D32)
-            );
+        _showToast(context, "¡Bienvenido Staff, ${authProvider.userName}! 🛠️", const Color(0xFF2E7D32));
         authProvider.consumeWelcomeMessage();
       }
     });
@@ -43,8 +40,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       builder: (context) => Align(
         alignment: Alignment.bottomCenter,
         child: Padding(
-          padding: const EdgeInsets.only(
-              bottom: 100),
+          padding: const EdgeInsets.only(bottom: 100),
           child: Material(
             color: Colors.transparent,
             child: Container(
@@ -64,8 +60,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.stars_rounded,
-                      color: Colors.white, size: 22),
+                  const Icon(Icons.stars_rounded, color: Colors.white, size: 22),
                   const SizedBox(width: 12),
                   Flexible(
                     child: Text(
@@ -100,41 +95,31 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
 
     final Map<String, Map<String, dynamic>> allSections = {
       'dashboard': {
-        'view': DashboardView(
-            onNavigate: (index) => setState(() => _selectedIndex = index)),
+        'view': DashboardView(onNavigate: (index) => setState(() => _selectedIndex = index)),
         'item': const BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard'),
+            icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
       },
       'patients': {
         'view': _isEntrenador(userRole) ? const TrainerClientsView() : const PatientListView(),
         'item': BottomNavigationBarItem(
-          icon: Icon(_isEntrenador(userRole) ? Icons.fitness_center_outlined : Icons.assignment_ind_outlined),
-          activeIcon: Icon(_isEntrenador(userRole) ? Icons.fitness_center_rounded : Icons.assignment_ind_rounded),
-          label: _isEntrenador(userRole) ? 'Mis Atletas' : 'Clientes'
-        ),
+            icon: Icon(_isEntrenador(userRole) ? Icons.fitness_center_outlined : Icons.assignment_ind_outlined),
+            activeIcon: Icon(_isEntrenador(userRole) ? Icons.fitness_center_rounded : Icons.assignment_ind_rounded),
+            label: _isEntrenador(userRole) ? 'Mis Atletas' : 'Clientes'),
       },
       'assistant': {
         'view': const AssistantCopilotView(),
         'item': const BottomNavigationBarItem(
-            icon: Icon(Icons.psychology_outlined),
-            activeIcon: Icon(Icons.psychology_rounded),
-            label: 'Asistente'),
+            icon: Icon(Icons.psychology_outlined), activeIcon: Icon(Icons.psychology_rounded), label: 'Asistente'),
       },
       'menu': {
         'view': const StaffMenuView(),
         'item': const BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_outlined),
-            activeIcon: Icon(Icons.grid_view_rounded),
-            label: 'Menú'),
+            icon: Icon(Icons.grid_view_outlined), activeIcon: Icon(Icons.grid_view_rounded), label: 'Menú'),
       },
       'team': {
         'view': const TeamListView(),
         'item': const BottomNavigationBarItem(
-            icon: Icon(Icons.people_alt_outlined),
-            activeIcon: Icon(Icons.people_alt_rounded),
-            label: 'Equipo'),
+            icon: Icon(Icons.people_alt_outlined), activeIcon: Icon(Icons.people_alt_rounded), label: 'Equipo'),
       },
       'audit': {
         'view': const AuditView(),
@@ -146,9 +131,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       'profile': {
         'view': const StaffProfileView(showBackButton: false),
         'item': const BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Perfil'),
+            icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: 'Perfil'),
       },
     };
 
@@ -163,12 +146,9 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       activeSectionKeys = ['dashboard', 'profile'];
     }
 
-    final List<Widget> filteredViews = activeSectionKeys
-        .map((k) => allSections[k]!['view'] as Widget)
-        .toList();
-    final List<BottomNavigationBarItem> filteredItems = activeSectionKeys
-        .map((k) => allSections[k]!['item'] as BottomNavigationBarItem)
-        .toList();
+    final List<Widget> filteredViews = activeSectionKeys.map((k) => allSections[k]!['view'] as Widget).toList();
+    final List<BottomNavigationBarItem> filteredItems =
+        activeSectionKeys.map((k) => allSections[k]!['item'] as BottomNavigationBarItem).toList();
 
     if (_selectedIndex >= filteredViews.length) {
       _selectedIndex = 0;
@@ -178,24 +158,23 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       backgroundColor: Colors.grey[50],
       appBar: null,
       body: filteredViews[_selectedIndex],
-      floatingActionButton: (activeSectionKeys.contains('assistant') &&
-              activeSectionKeys[_selectedIndex] != 'assistant')
-          ? FloatingActionButton(
-              onPressed: () {
-                int assistantIndex = activeSectionKeys.indexOf('assistant');
-                if (assistantIndex != -1) {
-                  setState(() => _selectedIndex = assistantIndex);
-                }
-              },
-              backgroundColor: primaryBlue,
-              elevation: 4,
-              child: const Icon(Icons.auto_awesome, color: Colors.white),
-            )
-          : null,
+      floatingActionButton:
+          (activeSectionKeys.contains('assistant') && activeSectionKeys[_selectedIndex] != 'assistant')
+              ? FloatingActionButton(
+                  onPressed: () {
+                    int assistantIndex = activeSectionKeys.indexOf('assistant');
+                    if (assistantIndex != -1) {
+                      setState(() => _selectedIndex = assistantIndex);
+                    }
+                  },
+                  backgroundColor: primaryBlue,
+                  elevation: 4,
+                  child: const Icon(Icons.auto_awesome, color: Colors.white),
+                )
+              : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
         backgroundColor: Colors.white,
         destinations: filteredItems.map((item) {
           return NavigationDestination(
@@ -207,5 +186,4 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       ),
     );
   }
-
 }

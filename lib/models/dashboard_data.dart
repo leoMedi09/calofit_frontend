@@ -1,10 +1,9 @@
-
 class DailySummary {
   final double calorias;
   final double proteinas;
   final double carbohidratos;
   final double grasas;
-  
+
   final double? azucares;
   final double? fibra;
   final double? sodio;
@@ -63,26 +62,15 @@ class DailySummary {
       proteinas: toDouble(dieta['proteinas_g'] ?? dieta['proteinas']),
       carbohidratos: toDouble(dieta['carbohidratos_g'] ?? dieta['carbohidratos']),
       grasas: toDouble(dieta['grasas_g'] ?? dieta['grasas']),
-      
-      azucares: (dieta['azucares'] ?? micros['azucares']) != null 
-          ? toDouble(dieta['azucares'] ?? micros['azucares']) 
+      azucares:
+          (dieta['azucares'] ?? micros['azucares']) != null ? toDouble(dieta['azucares'] ?? micros['azucares']) : null,
+      fibra: (dieta['fibra'] ?? micros['fibra']) != null ? toDouble(dieta['fibra'] ?? micros['fibra']) : null,
+      sodio: (dieta['sodio'] ?? micros['sodio']) != null ? toDouble(dieta['sodio'] ?? micros['sodio']) : null,
+      grasasSaturadas: (dieta['grasas_saturadas'] ?? micros['grasas_saturadas']) != null
+          ? toDouble(dieta['grasas_saturadas'] ?? micros['grasas_saturadas'])
           : null,
-      fibra: (dieta['fibra'] ?? micros['fibra']) != null 
-          ? toDouble(dieta['fibra'] ?? micros['fibra']) 
-          : null,
-      sodio: (dieta['sodio'] ?? micros['sodio']) != null 
-          ? toDouble(dieta['sodio'] ?? micros['sodio']) 
-          : null,
-      grasasSaturadas: (dieta['grasas_saturadas'] ?? micros['grasas_saturadas']) != null 
-          ? toDouble(dieta['grasas_saturadas'] ?? micros['grasas_saturadas']) 
-          : null,
-      calcio: (dieta['calcio'] ?? micros['calcio']) != null 
-          ? toDouble(dieta['calcio'] ?? micros['calcio']) 
-          : null,
-      hierro: (dieta['hierro'] ?? micros['hierro']) != null 
-          ? toDouble(dieta['hierro'] ?? micros['hierro']) 
-          : null,
-
+      calcio: (dieta['calcio'] ?? micros['calcio']) != null ? toDouble(dieta['calcio'] ?? micros['calcio']) : null,
+      hierro: (dieta['hierro'] ?? micros['hierro']) != null ? toDouble(dieta['hierro'] ?? micros['hierro']) : null,
       gastoMetabolicoBasal: toDouble(dieta['gasto_metabolico_basal'] ?? dieta['gasto_estimado']),
       caloriasQuemadas: toDouble(json['resumen']?['calorias_quemadas'] ?? json['calorias_quemadas']),
       imcActual: toDouble(dieta['imc'] ?? dieta['imc_actual']),
@@ -91,14 +79,8 @@ class DailySummary {
       aiStrategicFocus: json['ai_strategic_focus'] as String?,
       nutriWeeklyNote: json['nutri_weekly_note'] as String?,
       isStrategyValidated: json['is_strategy_validated'] as bool? ?? false,
-      recommendedFoods: (json['recommended_foods'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-      forbiddenFoods: (json['forbidden_foods'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
+      recommendedFoods: (json['recommended_foods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      forbiddenFoods: (json['forbidden_foods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
     );
   }
 }
@@ -112,7 +94,7 @@ class PlanNutricional {
   final bool validado;
   final int? planId;
   final bool esFallback;
-  
+
   final String estadoPlan;
   final bool requiereValidacion;
   final bool esCondicionCritica;
@@ -164,7 +146,6 @@ class PlanNutricional {
       validado: json['validado'] as bool? ?? false,
       planId: json['plan_id'] as int?,
       esFallback: json['es_fallback'] as bool? ?? false,
-      
       estadoPlan: json['estado_plan'] as String? ?? 'provisional_ia',
       requiereValidacion: json['requiere_validacion'] as bool? ?? false,
       esCondicionCritica: json['es_condicion_critica'] as bool? ?? false,
@@ -172,10 +153,10 @@ class PlanNutricional {
       generadoAutomaticamente: json['generado_automaticamente'] as bool? ?? true,
       fechaGeneracion: json['fecha_generacion'] as String?,
       validoHastaValidacion: json['valido_hasta_validacion'] as bool? ?? true,
-      mensajeCliente: json['mensaje_cliente'] as String? ?? 
-                      '🤖 Este plan fue generado automáticamente por la IA. Tu nutricionista lo revisará pronto.',
-      descripcionEstado: json['descripcion_estado'] as String? ?? 
-                         'Plan generado automáticamente - Pendiente de validación',
+      mensajeCliente: json['mensaje_cliente'] as String? ??
+          '🤖 Este plan fue generado automáticamente por la IA. Tu nutricionista lo revisará pronto.',
+      descripcionEstado:
+          json['descripcion_estado'] as String? ?? 'Plan generado automáticamente - Pendiente de validación',
     );
   }
 }
@@ -193,6 +174,7 @@ class CalorieTrend {
       if (val is num) return val.toDouble();
       return 0.0;
     }
+
     return CalorieTrend(
       day: json['dia'] ?? json['day'] ?? '',
       consumed: toDouble(json['consumidas'] ?? json['consumed']),

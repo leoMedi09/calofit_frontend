@@ -44,7 +44,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     if (auth.token != null) {
       String? dateParam;
       if (_selectedDate != null) {
-        dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+        dateParam =
+            "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
       }
       balance.fetchFullBalance(auth.token!, fecha: dateParam).then((_) {
         if (mounted) _animController.forward(from: 0);
@@ -73,7 +74,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
       String? dateParam;
       if (_selectedDate != null) {
-        dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+        dateParam =
+            "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
       }
 
       await Provider.of<BalanceProvider>(context, listen: false).fetchFullBalance(token, fecha: dateParam);
@@ -112,30 +114,40 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Tienes $cantidad registros de este alimento.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  Text('Tienes $cantidad registros de este alimento.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
                         onPressed: seleccionado > 1 ? () => setStateDialog(() => seleccionado--) : null,
-                        icon: Icon(Icons.remove_circle_outline, color: seleccionado > 1 ? Colors.red.shade500 : Colors.grey.shade300, size: 32),
+                        icon: Icon(Icons.remove_circle_outline,
+                            color: seleccionado > 1 ? Colors.red.shade500 : Colors.grey.shade300, size: 32),
                       ),
                       Container(
-                        width: 56, height: 56,
-                        decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.orange.shade200)),
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.orange.shade200)),
                         alignment: Alignment.center,
-                        child: Text('$seleccionado', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.orange.shade700)),
+                        child: Text('$seleccionado',
+                            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.orange.shade700)),
                       ),
                       IconButton(
                         onPressed: seleccionado < cantidad ? () => setStateDialog(() => seleccionado++) : null,
-                        icon: Icon(Icons.add_circle_outline, color: seleccionado < cantidad ? Colors.green.shade500 : Colors.grey.shade300, size: 32),
+                        icon: Icon(Icons.add_circle_outline,
+                            color: seleccionado < cantidad ? Colors.green.shade500 : Colors.grey.shade300, size: 32),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    seleccionado == cantidad ? 'Se eliminarán todos los registros' : 'Se eliminará $seleccionado de $cantidad',
+                    seleccionado == cantidad
+                        ? 'Se eliminarán todos los registros'
+                        : 'Se eliminará $seleccionado de $cantidad',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
@@ -147,7 +159,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(ctx, seleccionado),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -171,10 +185,14 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
           ),
           content: Text('¿Eliminar este ${tipo == 'alimento' ? 'alimento' : 'ejercicio'} de tu registro?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar', style: TextStyle(color: Colors.grey.shade600))),
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Cancelar', style: TextStyle(color: Colors.grey.shade600))),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -255,7 +273,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 60, height: 60,
+            width: 60,
+            height: 60,
             child: CircularProgressIndicator(
               strokeWidth: 3,
               valueColor: AlwaysStoppedAnimation(AppColors.primary),
@@ -275,9 +294,11 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         children: [
           Icon(Icons.calendar_today_rounded, size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 20),
-          Text('Sin datos disponibles', style: TextStyle(color: Colors.grey.shade600, fontSize: 18, fontWeight: FontWeight.w600)),
+          Text('Sin datos disponibles',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('Registra tu primera comida en el asistente', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+          Text('Registra tu primera comida en el asistente',
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _loadBalance,
@@ -306,7 +327,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final proteinas = (resumen['proteinas_g'] ?? 0.0).toDouble();
     final carbohidratos = (resumen['carbohidratos_g'] ?? 0.0).toDouble();
     final grasas = (resumen['grasas_g'] ?? 0.0).toDouble();
-    
+
     final metaP = (resumen['proteinas_objetivo'] ?? 150.0).toDouble();
     final metaC = (resumen['carbohidratos_objetivo'] ?? 250.0).toDouble();
     final metaG = (resumen['grasas_objetivo'] ?? 60.0).toDouble();
@@ -374,21 +395,21 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 34, 20, 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            stops: const [0.3, 0.9],
-            colors: [
-              AppColors.primary,
-              AppColors.primaryDark,
-            ],
-          ),
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(35),
-            bottomRight: Radius.circular(35),
-          ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.3, 0.9],
+          colors: [
+            AppColors.primary,
+            AppColors.primaryDark,
+          ],
         ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(35),
+          bottomRight: Radius.circular(35),
+        ),
+      ),
       child: SafeArea(
         bottom: false,
         child: Column(
@@ -412,11 +433,15 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       children: [
                         const Text(
                           'Mi Balance',
-                          style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1),
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                              height: 1.1),
                         ),
-                        if (_selectedDate != null && 
-                            (_selectedDate!.day != DateTime.now().day || 
-                             _selectedDate!.month != DateTime.now().month))
+                        if (_selectedDate != null &&
+                            (_selectedDate!.day != DateTime.now().day || _selectedDate!.month != DateTime.now().month))
                           Text(
                             'Historial: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
                             style: TextStyle(color: Colors.orange.shade200, fontSize: 12, fontWeight: FontWeight.bold),
@@ -476,9 +501,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 ),
               ],
             ),
-
             const SizedBox(height: 20),
-
             AnimatedBuilder(
               animation: _animController,
               builder: (context, child) {
@@ -547,9 +570,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 );
               },
             ),
-
             const SizedBox(height: 14),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -587,7 +608,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     return Container(width: 1, height: 36, color: Colors.white.withOpacity(0.15));
   }
 
-  Widget _buildMacroPills(double proteinas, double carbohidratos, double grasas, double metaP, double metaC, double metaG) {
+  Widget _buildMacroPills(
+      double proteinas, double carbohidratos, double grasas, double metaP, double metaC, double metaG) {
     return Column(
       children: [
         Row(
@@ -629,7 +651,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
   Widget _buildMacroPill(String label, double value, double meta, IconData icon, Color color) {
     final double progress = meta > 0 ? (value / meta).clamp(0.0, 1.0) : 0.0;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
@@ -735,7 +757,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
           child: Row(
             children: [
               Container(
-                width: 46, height: 46,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.orange.shade300, Colors.orange.shade500],
@@ -754,8 +777,10 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                         Expanded(
                           child: Text(
                             nombre,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style:
+                                const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (cantidad > 1) ...[
@@ -779,10 +804,19 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       spacing: 5,
                       runSpacing: 3,
                       children: [
-                        MiniChip(icon: Icons.local_fire_department_rounded, label: '${alimento['macros']?['calorias']?.toStringAsFixed(0) ?? 0} kcal', color: Colors.orange),
-                        MiniChip(label: 'P: ${alimento['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroProtein),
-                        MiniChip(label: 'C: ${alimento['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroCarbs),
-                        MiniChip(label: 'G: ${alimento['macros']?['grasas']?.toStringAsFixed(1) ?? 0}g', color: AppColors.macroFat),
+                        MiniChip(
+                            icon: Icons.local_fire_department_rounded,
+                            label: '${alimento['macros']?['calorias']?.toStringAsFixed(0) ?? 0} kcal',
+                            color: Colors.orange),
+                        MiniChip(
+                            label: 'P: ${alimento['macros']?['proteinas']?.toStringAsFixed(1) ?? 0}g',
+                            color: AppColors.macroProtein),
+                        MiniChip(
+                            label: 'C: ${alimento['macros']?['carbohidratos']?.toStringAsFixed(1) ?? 0}g',
+                            color: AppColors.macroCarbs),
+                        MiniChip(
+                            label: 'G: ${alimento['macros']?['grasas']?.toStringAsFixed(1) ?? 0}g',
+                            color: AppColors.macroFat),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -790,7 +824,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       children: [
                         Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
                         const SizedBox(width: 4),
-                        Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                        Text(horaCorta,
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ],
@@ -800,7 +835,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => _eliminarRegistro(alimento['id'], 'alimento', cantidad: (alimento['cantidad'] as num? ?? 1).toInt()),
+                  onTap: () => _eliminarRegistro(alimento['id'], 'alimento',
+                      cantidad: (alimento['cantidad'] as num? ?? 1).toInt()),
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -812,7 +848,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                   ),
                 ),
               ),
-
             ],
           ),
         ),
@@ -846,7 +881,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
           child: Row(
             children: [
               Container(
-                width: 46, height: 46,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.blue.shade400, Colors.blue.shade700],
@@ -863,7 +899,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                     Text(
                       nombre,
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Wrap(
@@ -871,13 +908,18 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        MiniChip(icon: Icons.local_fire_department_rounded, label: '${(ejercicio['calorias_quemadas'] as num?)?.toStringAsFixed(0) ?? '0'} kcal', color: Colors.orange),
+                        MiniChip(
+                            icon: Icons.local_fire_department_rounded,
+                            label: '${(ejercicio['calorias_quemadas'] as num?)?.toStringAsFixed(0) ?? '0'} kcal',
+                            color: Colors.orange),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.access_time_rounded, size: 13, color: Colors.grey.shade400),
                             const SizedBox(width: 3),
-                            Text(horaCorta, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                            Text(horaCorta,
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
                           ],
                         ),
                         if (volumenLabel != null)
@@ -937,9 +979,12 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       },
       destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
+        NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
+        NavigationDestination(
+            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(
+            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );
@@ -976,7 +1021,8 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
               child: Icon(Icons.cloud_off_rounded, size: 48, color: Colors.red.shade300),
             ),
             const SizedBox(height: 20),
-            Text('Error de conexión', style: TextStyle(color: Colors.grey.shade800, fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('Error de conexión',
+                style: TextStyle(color: Colors.grey.shade800, fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text(
               errorMessage ?? 'Error desconocido',

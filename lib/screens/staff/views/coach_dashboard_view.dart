@@ -58,7 +58,9 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (_isLoading)
-                    const Center(child: Padding(padding: EdgeInsets.all(50), child: CircularProgressIndicator(color: Colors.orange)))
+                    const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(50), child: CircularProgressIndicator(color: Colors.orange)))
                   else ...[
                     _buildStatsRow(),
                     const SizedBox(height: 24),
@@ -107,10 +109,10 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
                     CircleAvatar(
                       radius: 35,
                       backgroundColor: Colors.orange.shade700,
-                      backgroundImage: auth.profilePictureUrl != null 
-                          ? NetworkImage(UrlService.formatImageUrl(auth.profilePictureUrl!)) 
+                      backgroundImage: auth.profilePictureUrl != null
+                          ? NetworkImage(UrlService.formatImageUrl(auth.profilePictureUrl!))
                           : null,
-                      child: auth.profilePictureUrl == null 
+                      child: auth.profilePictureUrl == null
                           ? const Icon(Icons.person, color: Colors.white, size: 35)
                           : null,
                     ),
@@ -120,10 +122,13 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HOLA, ENTRENADOR', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2)),
+                          const Text('HOLA, ENTRENADOR',
+                              style: TextStyle(
+                                  color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2)),
                           Text(
                             auth.userName?.split(' ')[0] ?? 'Entrenador',
-                            style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -1),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -1),
                           ),
                         ],
                       ),
@@ -141,9 +146,13 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatItem('ATLETAS', _stats['total_pacientes']?.toString() ?? '0', Icons.groups_rounded, Colors.blue)),
+        Expanded(
+            child: _buildStatItem(
+                'ATLETAS', _stats['total_pacientes']?.toString() ?? '0', Icons.groups_rounded, Colors.blue)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatItem('VALIDACIONES', _stats['validaciones_pendientes']?.toString() ?? '0', Icons.fact_check_rounded, Colors.orange)),
+        Expanded(
+            child: _buildStatItem('VALIDACIONES', _stats['validaciones_pendientes']?.toString() ?? '0',
+                Icons.fact_check_rounded, Colors.orange)),
       ],
     );
   }
@@ -162,7 +171,8 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
           const SizedBox(height: 8),
           Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey[400], letterSpacing: 0.5)),
+          Text(label,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey[400], letterSpacing: 0.5)),
         ],
       ),
     );
@@ -172,7 +182,8 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('ALERTAS DE RENDIMIENTO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
+        const Text('ALERTAS DE RENDIMIENTO',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
         const SizedBox(height: 12),
         if (_alerts.isEmpty)
           Container(
@@ -182,44 +193,48 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
               children: [
                 const Icon(Icons.check_circle_rounded, color: Colors.green),
                 const SizedBox(width: 12),
-                Text('Todo en orden con tus atletas', style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold)),
+                Text('Todo en orden con tus atletas',
+                    style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold)),
               ],
             ),
           )
         else
           ..._alerts.take(2).map((alerta) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.red.withOpacity(0.1)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
-                  child: const Icon(Icons.bolt_rounded, color: Colors.red, size: 20),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.red.withOpacity(0.1)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(alerta['paciente'] ?? 'Atleta', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      Text(alerta['problema'] ?? 'Baja intensidad detectada', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                    ],
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                      child: const Icon(Icons.bolt_rounded, color: Colors.red, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(alerta['paciente'] ?? 'Atleta',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(alerta['problema'] ?? 'Baja intensidad detectada',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                      child: const Text('FATIGA',
+                          style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
-                  child: const Text('FATIGA', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
-                ),
-              ],
-            ),
-          )),
+              )),
       ],
     );
   }
@@ -253,8 +268,13 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
                 lineBarsData: [
                   LineChartBarData(
                     spots: const [
-                      FlSpot(0, 30), FlSpot(1, 45), FlSpot(2, 35), FlSpot(3, 60), 
-                      FlSpot(4, 55), FlSpot(5, 80), FlSpot(6, 75)
+                      FlSpot(0, 30),
+                      FlSpot(1, 45),
+                      FlSpot(2, 35),
+                      FlSpot(3, 60),
+                      FlSpot(4, 55),
+                      FlSpot(5, 80),
+                      FlSpot(6, 75)
                     ],
                     isCurved: true,
                     color: Colors.orange.shade700,
@@ -262,13 +282,11 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
                     isStrokeCapRound: true,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
-                      show: true, 
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter, 
-                        end: Alignment.bottomCenter, 
-                        colors: [Colors.orange.shade700.withOpacity(0.3), Colors.orange.shade700.withOpacity(0)]
-                      )
-                    ),
+                        show: true,
+                        gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.orange.shade700.withOpacity(0.3), Colors.orange.shade700.withOpacity(0)])),
                   ),
                 ],
               ),
@@ -298,7 +316,9 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('COPILOT ENTRENADOR IA', style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.2)),
+                Text('COPILOT ENTRENADOR IA',
+                    style: TextStyle(
+                        color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.2)),
                 const SizedBox(height: 4),
                 Text(
                   '3 atletas están listos para subir cargas de peso esta semana.',

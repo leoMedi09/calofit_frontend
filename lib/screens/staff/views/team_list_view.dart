@@ -317,7 +317,8 @@ class _TeamListViewState extends State<TeamListView> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: roleColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                      decoration:
+                          BoxDecoration(color: roleColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -339,7 +340,8 @@ class _TeamListViewState extends State<TeamListView> {
                             const Icon(Icons.people_outline, size: 12, color: Colors.blueGrey),
                             const SizedBox(width: 4),
                             Text('${member.pacientesCount} PACIENTES',
-                                style: const TextStyle(color: Colors.blueGrey, fontSize: 10, fontWeight: FontWeight.w900)),
+                                style:
+                                    const TextStyle(color: Colors.blueGrey, fontSize: 10, fontWeight: FontWeight.w900)),
                           ],
                         ),
                       ),
@@ -433,7 +435,8 @@ class _TeamListViewState extends State<TeamListView> {
         labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
         prefixIcon: Icon(icon, size: 20, color: const Color(0xFF1E88E5)),
         suffixIcon: IconButton(
-          icon: Icon(isObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey.shade500, size: 20),
+          icon: Icon(isObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+              color: Colors.grey.shade500, size: 20),
           onPressed: toggleVisibility,
           splashRadius: 20,
         ),
@@ -441,8 +444,10 @@ class _TeamListViewState extends State<TeamListView> {
         fillColor: Colors.grey.shade50,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
       );
     }
 
@@ -465,19 +470,27 @@ class _TeamListViewState extends State<TeamListView> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Nueva Contraseña:\n${member.firstName}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A237E), fontSize: 18, height: 1.1, letterSpacing: -0.3)),
+                child: Text('Nueva Contraseña:\n${member.firstName}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1A237E),
+                        fontSize: 18,
+                        height: 1.1,
+                        letterSpacing: -0.3)),
               ),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Establece las nuevas credenciales de acceso para este miembro del equipo.', style: TextStyle(fontSize: 13, color: Colors.grey), textAlign: TextAlign.center),
+              const Text('Establece las nuevas credenciales de acceso para este miembro del equipo.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey), textAlign: TextAlign.center),
               const SizedBox(height: 24),
               TextField(
                 controller: passwordController,
                 obscureText: !isPasswordVisible,
-                decoration: buildInputDecoration('Nueva Contraseña', Icons.lock_outline_rounded, !isPasswordVisible, () {
+                decoration:
+                    buildInputDecoration('Nueva Contraseña', Icons.lock_outline_rounded, !isPasswordVisible, () {
                   setDialogState(() => isPasswordVisible = !isPasswordVisible);
                 }),
               ),
@@ -485,7 +498,8 @@ class _TeamListViewState extends State<TeamListView> {
               TextField(
                 controller: confirmPasswordController,
                 obscureText: !isConfirmVisible,
-                decoration: buildInputDecoration('Confirmar Contraseña', Icons.enhanced_encryption_outlined, !isConfirmVisible, () {
+                decoration: buildInputDecoration(
+                    'Confirmar Contraseña', Icons.enhanced_encryption_outlined, !isConfirmVisible, () {
                   setDialogState(() => isConfirmVisible = !isConfirmVisible);
                 }),
               ),
@@ -503,7 +517,9 @@ class _TeamListViewState extends State<TeamListView> {
                       const Icon(Icons.error_outline_rounded, color: Color(0xFFC62828), size: 16),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(errorMsg!, style: const TextStyle(color: Color(0xFFC62828), fontSize: 12, fontWeight: FontWeight.w600)),
+                        child: Text(errorMsg!,
+                            style:
+                                const TextStyle(color: Color(0xFFC62828), fontSize: 12, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ),
@@ -538,35 +554,43 @@ class _TeamListViewState extends State<TeamListView> {
                         return;
                       }
 
-                      setDialogState(() { isLoading = true; errorMsg = null; });
+                      setDialogState(() {
+                        isLoading = true;
+                        errorMsg = null;
+                      });
                       try {
                         final authProvider = Provider.of<AuthProvider>(context, listen: false);
                         await _apiService.updateStaffPassword(member.id, password, authProvider.token ?? '');
                         if (dialogCtx.mounted) {
                           Navigator.pop(dialogCtx);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada correctamente'), backgroundColor: Colors.green));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Contraseña actualizada correctamente'), backgroundColor: Colors.green));
                         }
                       } catch (e) {
-                        setDialogState(() { isLoading = false; errorMsg = e.toString().replaceAll('Exception: ', ''); });
+                        setDialogState(() {
+                          isLoading = false;
+                          errorMsg = e.toString().replaceAll('Exception: ', '');
+                        });
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E88E5), 
+                backgroundColor: const Color(0xFF1E88E5),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: isLoading 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) 
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Actualizar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      const SizedBox(width: 8),
-                      Icon(Icons.check_circle_rounded, size: 18, color: Colors.white.withOpacity(0.9)),
-                    ],
-                  ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Actualizar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        const SizedBox(width: 8),
+                        Icon(Icons.check_circle_rounded, size: 18, color: Colors.white.withOpacity(0.9)),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -579,14 +603,14 @@ class _TeamListViewState extends State<TeamListView> {
     final TextEditingController lastPaternalController = TextEditingController(text: member.lastNamePaternal);
     final TextEditingController lastMaternalController = TextEditingController(text: member.lastNameMaternal);
     final TextEditingController emailController = TextEditingController(text: member.email);
-    
+
     String currentRole = 'Nutricionista';
     if (member.isAdmin) {
       currentRole = 'Administrador';
     } else if (member.isCoach) {
       currentRole = 'Entrenador';
     }
-    
+
     String selectedRole = currentRole;
     bool isLoading = false;
 
@@ -599,8 +623,10 @@ class _TeamListViewState extends State<TeamListView> {
         fillColor: Colors.grey.shade50,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
       );
     }
 
@@ -622,7 +648,9 @@ class _TeamListViewState extends State<TeamListView> {
                 child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF1E88E5)),
               ),
               const SizedBox(width: 12),
-              const Text('Editar Perfil', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A237E), fontSize: 22, letterSpacing: -0.5)),
+              const Text('Editar Perfil',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900, color: Color(0xFF1A237E), fontSize: 22, letterSpacing: -0.5)),
             ],
           ),
           content: SizedBox(
@@ -632,7 +660,8 @@ class _TeamListViewState extends State<TeamListView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Actualiza los datos del personal. Los cambios se reflejarán de inmediato.', style: TextStyle(fontSize: 13, color: Colors.grey), textAlign: TextAlign.center),
+                  const Text('Actualiza los datos del personal. Los cambios se reflejarán de inmediato.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey), textAlign: TextAlign.center),
                   const SizedBox(height: 24),
                   TextField(
                     controller: firstNameController,
@@ -696,7 +725,8 @@ class _TeamListViewState extends State<TeamListView> {
                   ? null
                   : () async {
                       if (firstNameController.text.trim().isEmpty || emailController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombres y Correo son obligatorios')));
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(content: Text('Nombres y Correo son obligatorios')));
                         return;
                       }
 
@@ -709,44 +739,46 @@ class _TeamListViewState extends State<TeamListView> {
                         if (selectedRole == 'Entrenador') mappedRole = 'coach';
 
                         await _apiService.updateStaff(
-                          member.id,
-                          {
-                            'first_name': firstNameController.text.trim(),
-                            'last_name_paternal': lastPaternalController.text.trim(),
-                            'last_name_maternal': lastMaternalController.text.trim(),
-                            'email': emailController.text.trim(),
-                            'role_name': mappedRole,
-                          },
-                          authProvider.token ?? ''
-                        );
+                            member.id,
+                            {
+                              'first_name': firstNameController.text.trim(),
+                              'last_name_paternal': lastPaternalController.text.trim(),
+                              'last_name_maternal': lastMaternalController.text.trim(),
+                              'email': emailController.text.trim(),
+                              'role_name': mappedRole,
+                            },
+                            authProvider.token ?? '');
 
                         if (dialogCtx.mounted) {
                           Navigator.pop(dialogCtx);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil actualizado con éxito'), backgroundColor: Colors.green));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Perfil actualizado con éxito'), backgroundColor: Colors.green));
                           _refreshTeam();
                         }
                       } catch (e) {
-                         setDialogState(() => isLoading = false);
-                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        setDialogState(() => isLoading = false);
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E88E5), 
+                backgroundColor: const Color(0xFF1E88E5),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: isLoading 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) 
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Guardar Cambios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      const SizedBox(width: 8),
-                      Icon(Icons.check_circle_rounded, size: 18, color: Colors.white.withOpacity(0.9)),
-                    ],
-                  ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Guardar Cambios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        const SizedBox(width: 8),
+                        Icon(Icons.check_circle_rounded, size: 18, color: Colors.white.withOpacity(0.9)),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -766,14 +798,14 @@ class _TeamListViewState extends State<TeamListView> {
           title: Row(
             children: [
               Icon(isDisabling ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
-                   color: isDisabling ? Colors.orange : Colors.green),
+                  color: isDisabling ? Colors.orange : Colors.green),
               const SizedBox(width: 10),
               Text(isDisabling ? '¿Dar de baja?' : '¿Reactivar?'),
             ],
           ),
           content: Text(isDisabling
-            ? 'Suspenderá el acceso de ${member.firstName} al sistema. Podrás reactivarlo luego.'
-            : 'Se restaurará el acceso de ${member.firstName} al sistema con su última contraseña o contraseña temporal.'),
+              ? 'Suspenderá el acceso de ${member.firstName} al sistema. Podrás reactivarlo luego.'
+              : 'Se restaurará el acceso de ${member.firstName} al sistema con su última contraseña o contraseña temporal.'),
           actions: [
             TextButton(
               onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
@@ -790,20 +822,22 @@ class _TeamListViewState extends State<TeamListView> {
                         if (dialogCtx.mounted) {
                           Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(isDisabling ? 'Personal dado de baja' : 'Personal reactivado'),
-                            backgroundColor: isDisabling ? Colors.orange : Colors.green
-                          ));
+                              content: Text(isDisabling ? 'Personal dado de baja' : 'Personal reactivado'),
+                              backgroundColor: isDisabling ? Colors.orange : Colors.green));
                           _refreshTeam();
                         }
                       } catch (e) {
-                         setDialogState(() => isLoading = false);
-                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        setDialogState(() => isLoading = false);
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                       }
                     },
               style: ElevatedButton.styleFrom(
-                  backgroundColor: isDisabling ? Colors.orange : Colors.green, 
-                  foregroundColor: Colors.white),
-              child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(isDisabling ? 'Suspender' : 'Reactivar'),
+                  backgroundColor: isDisabling ? Colors.orange : Colors.green, foregroundColor: Colors.white),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(isDisabling ? 'Suspender' : 'Reactivar'),
             ),
           ],
         ),
@@ -826,7 +860,8 @@ class _TeamListViewState extends State<TeamListView> {
               Text('Eliminar Personal', style: TextStyle(color: Colors.red)),
             ],
           ),
-          content: Text('¿Estás seguro de eliminar permanentemente a ${member.firstName} del sistema? Esta acción no se puede deshacer y desvinculará a los pacientes a su cargo.'),
+          content: Text(
+              '¿Estás seguro de eliminar permanentemente a ${member.firstName} del sistema? Esta acción no se puede deshacer y desvinculará a los pacientes a su cargo.'),
           actions: [
             TextButton(
               onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
@@ -843,18 +878,20 @@ class _TeamListViewState extends State<TeamListView> {
                         if (dialogCtx.mounted) {
                           Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('Personal eliminado permanentemente'),
-                            backgroundColor: Colors.redAccent
-                          ));
+                              content: Text('Personal eliminado permanentemente'), backgroundColor: Colors.redAccent));
                           _refreshTeam();
                         }
                       } catch (e) {
-                         setDialogState(() => isLoading = false);
-                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.red));
+                        setDialogState(() => isLoading = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.red));
                       }
                     },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-              child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Eliminar Definitivamente'),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Eliminar Definitivamente'),
             ),
           ],
         ),

@@ -21,7 +21,8 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
   final List<Map<String, dynamic>> _messages = [
     {
       'role': 'assistant',
-      'content': '¡Hola! Soy tu Copiloto IA para personal de salud. 🩺\n¿En qué caso clínico, análisis de datos o gestión de pacientes puedo ayudarte hoy?',
+      'content':
+          '¡Hola! Soy tu Copiloto IA para personal de salud. 🩺\n¿En qué caso clínico, análisis de datos o gestión de pacientes puedo ayudarte hoy?',
     },
   ];
 
@@ -50,23 +51,20 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final token = auth.token!;
-    
+
     try {
-      
-      final history = _messages.length > 2 
-        ? _messages.sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
-          .map((m) => {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': m['content']})
-          .toList() 
-        : null;
+      final history = _messages.length > 2
+          ? _messages
+              .sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
+              .map((m) => {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': m['content']})
+              .toList()
+          : null;
 
       final result = await _apiService.consultarCopiloto(text, token, historial: history);
-      
+
       setState(() {
         _isTyping = false;
-        _messages.add({
-          'role': 'assistant', 
-          'content': result['respuesta_ia'] ?? 'Sin respuesta.'
-        });
+        _messages.add({'role': 'assistant', 'content': result['respuesta_ia'] ?? 'Sin respuesta.'});
       });
     } catch (e) {
       setState(() {
@@ -138,7 +136,8 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
               children: [
                 const Text(
                   'Cerebro Clínico IA',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF263238), letterSpacing: -0.5),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF263238), letterSpacing: -0.5),
                 ),
                 Row(
                   children: [
@@ -166,7 +165,7 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
     final authProvider = Provider.of<AuthProvider>(context);
     final String displayHeroText = isUser ? text : _cleanResponseText(text);
     final bool isLongMessage = !isUser && displayHeroText.length > 300;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Row(
@@ -188,7 +187,6 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
             ),
             const SizedBox(width: 12),
           ],
-            
           ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.75,
@@ -203,7 +201,6 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
               ],
             ),
           ),
-          
           if (isUser) ...[
             const SizedBox(width: 12),
             Container(
@@ -364,32 +361,33 @@ class _ExpandableMessageState extends State<_ExpandableMessage> {
         children: [
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: BorderRadius.vertical(top: const Radius.circular(20), bottom: Radius.circular(_isExpanded ? 0 : 20)),
+            borderRadius:
+                BorderRadius.vertical(top: const Radius.circular(20), bottom: Radius.circular(_isExpanded ? 0 : 20)),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
               decoration: BoxDecoration(
                 color: const Color(0xFF5C6BC0).withOpacity(0.05),
-                borderRadius: BorderRadius.vertical(top: const Radius.circular(20), bottom: Radius.circular(_isExpanded ? 0 : 20)),
+                borderRadius: BorderRadius.vertical(
+                    top: const Radius.circular(20), bottom: Radius.circular(_isExpanded ? 0 : 20)),
               ),
               child: Row(
                 children: [
-                   Icon(Icons.assignment_ind_rounded, size: 20, color: const Color(0xFF5C6BC0).withOpacity(0.7)),
-                   const SizedBox(width: 10),
-                   Expanded(
-                     child: Text(
-                       title,
-                       style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3F51B5), fontSize: 15),
-                     ),
-                   ),
-                   Icon(
-                     _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                     color: const Color(0xFF5C6BC0),
-                   ),
+                  Icon(Icons.assignment_ind_rounded, size: 20, color: const Color(0xFF5C6BC0).withOpacity(0.7)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3F51B5), fontSize: 15),
+                    ),
+                  ),
+                  Icon(
+                    _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: const Color(0xFF5C6BC0),
+                  ),
                 ],
               ),
             ),
           ),
-          
           if (_isExpanded)
             Padding(
               padding: const EdgeInsets.all(18),

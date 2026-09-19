@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract class AppColors {
-  static const Color primary     = Color(0xFF1E88E5);
+  static const Color primary = Color(0xFF1E88E5);
   static const Color primaryDark = Color(0xFF1565C0);
 
   static const Color surface = Color(0xFFF1F5F9);
@@ -9,8 +9,8 @@ abstract class AppColors {
   static const Color textDark = Color(0xFF1E293B);
 
   static const Color macroProtein = Color(0xFFEF5350);
-  static const Color macroCarbs   = Color(0xFFFFA726);
-  static const Color macroFat     = Color(0xFF42A5F5);
+  static const Color macroCarbs = Color(0xFFFFA726);
+  static const Color macroFat = Color(0xFF42A5F5);
 }
 
 abstract class AppTextStyles {

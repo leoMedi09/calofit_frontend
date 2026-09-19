@@ -21,23 +21,23 @@ class RoutineBuilderSheet extends StatefulWidget {
 }
 
 class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
-  final TextEditingController _nameController   = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _seriesController = TextEditingController();
-  final TextEditingController _repsController   = TextEditingController();
-  final TextEditingController _pesoController   = TextEditingController();
+  final TextEditingController _repsController = TextEditingController();
+  final TextEditingController _pesoController = TextEditingController();
   final TextEditingController _minutosController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isCardio  = false;
+  bool _isCardio = false;
   String? _errorMessage;
 
   static final List<Map<String, dynamic>> _exercises = [];
 
   Future<void> _addExercise() async {
-    final name    = _nameController.text.trim();
-    final series  = _isCardio ? 0 : (int.tryParse(_seriesController.text.trim()) ?? 0);
-    final reps    = _isCardio ? 0 : (int.tryParse(_repsController.text.trim()) ?? 0);
-    final peso    = _isCardio ? 0.0 : (double.tryParse(_pesoController.text.trim().replaceAll(',', '.')) ?? 0.0);
+    final name = _nameController.text.trim();
+    final series = _isCardio ? 0 : (int.tryParse(_seriesController.text.trim()) ?? 0);
+    final reps = _isCardio ? 0 : (int.tryParse(_repsController.text.trim()) ?? 0);
+    final peso = _isCardio ? 0.0 : (double.tryParse(_pesoController.text.trim().replaceAll(',', '.')) ?? 0.0);
     final minutos = _isCardio ? (double.tryParse(_minutosController.text.trim().replaceAll(',', '.')) ?? 0.0) : 0.0;
 
     setState(() => _errorMessage = null);
@@ -74,14 +74,14 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         final ex = result['ejercicio'] as Map<String, dynamic>;
         setState(() {
           _exercises.add({
-            'name':        ex['nombre']     ?? name,
-            'series':      ex['series']     ?? series,
-            'reps':        ex['reps']       ?? reps,
-            'peso_kg':     ex['peso_kg']    ?? peso,
+            'name': ex['nombre'] ?? name,
+            'series': ex['series'] ?? series,
+            'reps': ex['reps'] ?? reps,
+            'peso_kg': ex['peso_kg'] ?? peso,
             'duracion_min': ex['duracion_min'] ?? (minutos > 0 ? minutos : 10.0),
-            'kcal':        (ex['calorias']  ?? 0.0).toDouble(),
-            'met':         (ex['met']       ?? 5.0).toDouble(),
-            'is_cardio':   _isCardio,
+            'kcal': (ex['calorias'] ?? 0.0).toDouble(),
+            'met': (ex['met'] ?? 5.0).toDouble(),
+            'is_cardio': _isCardio,
           });
         });
         _nameController.clear();
@@ -147,11 +147,9 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     super.dispose();
   }
 
-  double get totalKcal => _exercises.fold(
-      0.0, (sum, e) => sum + (e['kcal'] as num).toDouble());
+  double get totalKcal => _exercises.fold(0.0, (sum, e) => sum + (e['kcal'] as num).toDouble());
 
-  double get totalMinutes => _exercises.fold(
-      0.0, (sum, e) => sum + (e['duracion_min'] as num).toDouble());
+  double get totalMinutes => _exercises.fold(0.0, (sum, e) => sum + (e['duracion_min'] as num).toDouble());
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +189,8 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       child: Column(
         children: [
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 14),
@@ -240,30 +239,30 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                 ),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF10B981), width: 2),
+                  borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
-                Expanded(child: _modeChip('Fuerza', Icons.fitness_center_rounded, !_isCardio, () => setState(() => _isCardio = false))),
+                Expanded(
+                    child: _modeChip(
+                        'Fuerza', Icons.fitness_center_rounded, !_isCardio, () => setState(() => _isCardio = false))),
                 const SizedBox(width: 8),
-                Expanded(child: _modeChip('Cardio', Icons.directions_run_rounded, _isCardio, () => setState(() => _isCardio = true))),
+                Expanded(
+                    child: _modeChip(
+                        'Cardio', Icons.directions_run_rounded, _isCardio, () => setState(() => _isCardio = true))),
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -285,8 +284,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       disabledBackgroundColor: Colors.grey.shade300,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       padding: EdgeInsets.zero,
                       elevation: 0,
                     ),
@@ -294,15 +292,12 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2.5))
-                        : const Icon(Icons.add_rounded,
-                            color: Colors.white, size: 28),
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        : const Icon(Icons.add_rounded, color: Colors.white, size: 28),
                   ),
                 ),
               ],
             ),
-
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
@@ -313,10 +308,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600),
+                        style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -344,10 +336,12 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           children: [
             Icon(icon, size: 16, color: selected ? Colors.white : Colors.grey.shade500),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : Colors.grey.shade500,
-            )),
+            Text(label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : Colors.grey.shade500,
+                )),
           ],
         ),
       ),
@@ -376,9 +370,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           const SizedBox(height: 5),
           TextField(
             controller: ctrl,
-            keyboardType: isDecimal
-                ? const TextInputType.numberWithOptions(decimal: true)
-                : TextInputType.number,
+            keyboardType: isDecimal ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.number,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontWeight: FontWeight.w800,
@@ -401,8 +393,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: Color(0xFF10B981), width: 2),
+                borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
               ),
             ),
           ),
@@ -433,13 +424,13 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final item = _exercises[index];
-        final int    series  = item['series']  as int;
-        final int    reps    = item['reps']    as int;
-        final double pesoKg  = (item['peso_kg'] as num).toDouble();
-        final double durMin  = (item['duracion_min'] as num).toDouble();
-        final double kcal    = (item['kcal'] as num).toDouble();
-        final double met     = (item['met'] as num).toDouble();
-        final bool   isCardio = item['is_cardio'] == true;
+        final int series = item['series'] as int;
+        final int reps = item['reps'] as int;
+        final double pesoKg = (item['peso_kg'] as num).toDouble();
+        final double durMin = (item['duracion_min'] as num).toDouble();
+        final double kcal = (item['kcal'] as num).toDouble();
+        final double met = (item['met'] as num).toDouble();
+        final bool isCardio = item['is_cardio'] == true;
 
         return Container(
           padding: const EdgeInsets.all(14),

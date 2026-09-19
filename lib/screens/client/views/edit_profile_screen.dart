@@ -48,10 +48,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _guardandoNotificaciones = false;
 
   final List<String> _medicalOptions = [
-    'Diabetes', 'Hipertensión', 'Asma', 'Enfermedad Cardiovascular', 'Intolerancia a la Lactosa', 'Celíaco',
+    'Diabetes',
+    'Hipertensión',
+    'Asma',
+    'Enfermedad Cardiovascular',
+    'Intolerancia a la Lactosa',
+    'Celíaco',
   ];
   final List<String> _dietaryOptions = [
-    'Vegano', 'Vegetariano', 'Ninguna',
+    'Vegano',
+    'Vegetariano',
+    'Ninguna',
   ];
   List<String> get _medicalConditionsOptions => [..._medicalOptions, ..._dietaryOptions];
 
@@ -62,8 +69,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _initControllers() {
-    _weightController  = TextEditingController(text: widget.client.weight.toStringAsFixed(1));
-    _heightController  = TextEditingController(text: widget.client.height.toStringAsFixed(0));
+    _weightController = TextEditingController(text: widget.client.weight.toStringAsFixed(1));
+    _heightController = TextEditingController(text: widget.client.height.toStringAsFixed(0));
     _firstNameController = TextEditingController(text: widget.client.firstName);
     _lastNamePaternalController = TextEditingController(text: widget.client.lastNamePaternal);
     _lastNameMaternalController = TextEditingController(text: widget.client.lastNameMaternal);
@@ -191,7 +198,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final authProvider    = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
 
     final confirmed = await _confirmarCambiosPerfil();
@@ -374,9 +381,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         radius: 50,
                         backgroundColor: Colors.white,
                         child: Text(
-                          widget.client.firstName.isNotEmpty 
-                            ? widget.client.firstName.substring(0, 1).toUpperCase() 
-                            : 'U',
+                          widget.client.firstName.isNotEmpty
+                              ? widget.client.firstName.substring(0, 1).toUpperCase()
+                              : 'U',
                           style: const TextStyle(
                             fontSize: 40,
                             fontWeight: FontWeight.bold,
@@ -390,7 +397,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ],
             ),
             const SizedBox(height: 60),
-            
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Container(
@@ -433,7 +439,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
             ),
-            
             const SizedBox(height: 30),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -470,9 +475,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 prefixIcon: Icon(Icons.people_alt_outlined, color: Colors.blue.shade300),
                                 filled: true,
                                 fillColor: Colors.grey.shade50,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
                               ),
                               items: const [
                                 DropdownMenuItem(value: 'M', child: Text('Masculino')),
@@ -501,9 +511,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     prefixIcon: Icon(Icons.cake_outlined, color: Colors.blue.shade300),
                                     filled: true,
                                     fillColor: Colors.grey.shade50,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(color: Colors.grey.shade200)),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
                                     errorText: state.errorText,
                                   ),
                                   child: Text(
@@ -518,47 +533,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 20),
                     _buildSectionTitle('Objetivo y Estilo de Vida'),
                     _buildDropdownField(
-                      'Objetivo Principal', 
-                      Icons.flag_rounded, 
-                      _goal, 
-                      {
-                        'perder peso': 'Perder peso (Agresivo)',
-                        'perder_leve': 'Perder peso (Definición)',
-                        'mantener peso': 'Mantener peso',
-                        'ganar_leve': 'Ganar masa (Limpio)',
-                        'ganar masa': 'Ganar masa (Volumen)'
-                      },
-                      (val) => setState(() => _goal = val)
-                    ),
+                        'Objetivo Principal',
+                        Icons.flag_rounded,
+                        _goal,
+                        {
+                          'perder peso': 'Perder peso (Agresivo)',
+                          'perder_leve': 'Perder peso (Definición)',
+                          'mantener peso': 'Mantener peso',
+                          'ganar_leve': 'Ganar masa (Limpio)',
+                          'ganar masa': 'Ganar masa (Volumen)'
+                        },
+                        (val) => setState(() => _goal = val)),
                     _buildDropdownField(
-                      'Nivel de Actividad', 
-                      Icons.directions_run_rounded, 
-                      _activityLevel, 
-                      {
-                        'Sedentario': 'Sedentario (0-1 días)',
-                        'Ligero': 'Ligero (2-3 días)',
-                        'Moderado': 'Moderado (3-5 días)',
-                        'Activo': 'Activo (5-6 días)',
-                        'Muy activo': 'Muy activo (Atleta/Intenso)'
-                      },
-                      (val) => setState(() => _activityLevel = val)
-                    ),
+                        'Nivel de Actividad',
+                        Icons.directions_run_rounded,
+                        _activityLevel,
+                        {
+                          'Sedentario': 'Sedentario (0-1 días)',
+                          'Ligero': 'Ligero (2-3 días)',
+                          'Moderado': 'Moderado (3-5 días)',
+                          'Activo': 'Activo (5-6 días)',
+                          'Muy activo': 'Muy activo (Atleta/Intenso)'
+                        },
+                        (val) => setState(() => _activityLevel = val)),
                     _buildDropdownField(
-                      'Tipo de Entrenamiento',
-                      Icons.fitness_center_rounded,
-                      _workoutType,
-                      {
-                        'Cardio': '🏃 Cardio (Correr, Bicicleta, Natación)',
-                        'Strength': '💪 Fuerza (Pesas, Gym)',
-                        'HIIT': '⚡ HIIT (Alta Intensidad)',
-                        'Yoga': '🧘 Yoga / Flexibilidad',
-                      },
-                      (val) => setState(() => _workoutType = val)
-                    ),
+                        'Tipo de Entrenamiento',
+                        Icons.fitness_center_rounded,
+                        _workoutType,
+                        {
+                          'Cardio': '🏃 Cardio (Correr, Bicicleta, Natación)',
+                          'Strength': '💪 Fuerza (Pesas, Gym)',
+                          'HIIT': '⚡ HIIT (Alta Intensidad)',
+                          'Yoga': '🧘 Yoga / Flexibilidad',
+                        },
+                        (val) => setState(() => _workoutType = val)),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: DropdownButtonFormField<double>(
@@ -568,9 +579,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           prefixIcon: Icon(Icons.timer_rounded, color: Colors.blue.shade300),
                           filled: true,
                           fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: const Color(0xFF1E88E5), width: 2)),
+                          border:
+                              OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: Colors.grey.shade200)),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: const Color(0xFF1E88E5), width: 2)),
                         ),
                         items: {
                           0.5: '30 minutos',
@@ -581,14 +597,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         onChanged: (v) => setState(() => _sessionDuration = v),
                       ),
                     ),
-
                     const SizedBox(height: 20),
                     _buildSectionTitle('Medidas Físicas'),
                     Row(
                       children: [
-                        Expanded(child: _buildTextField(_weightController, 'Peso (kg)', Icons.monitor_weight_outlined, isNumber: true)),
+                        Expanded(
+                            child: _buildTextField(_weightController, 'Peso (kg)', Icons.monitor_weight_outlined,
+                                isNumber: true)),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(
+                        Expanded(
+                            child: _buildTextField(
                           _heightController,
                           'Altura (cm)',
                           Icons.height_outlined,
@@ -603,7 +621,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         )),
                       ],
                     ),
-                    
                     const SizedBox(height: 24),
                     _buildSectionTitle('Condiciones y Restricciones'),
                     const SizedBox(height: 12),
@@ -656,8 +673,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             : const Text(
                                 'GUARDAR CAMBIOS',
                                 style: TextStyle(
-                                  fontSize: 16, 
-                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   letterSpacing: 1.5,
                                 ),
@@ -721,7 +738,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: controller,
-        keyboardType: keyboardType ?? (isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text),
+        keyboardType:
+            keyboardType ?? (isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text),
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: Colors.blue.shade300),
@@ -745,9 +763,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildDropdownField(String label, IconData icon, String? currentValue, Map<String, String> itemsMap, ValueChanged<String?> onChanged) {
-    final String? safeValue = (currentValue != null && itemsMap.containsKey(currentValue)) 
-        ? currentValue 
+  Widget _buildDropdownField(String label, IconData icon, String? currentValue, Map<String, String> itemsMap,
+      ValueChanged<String?> onChanged) {
+    final String? safeValue = (currentValue != null && itemsMap.containsKey(currentValue))
+        ? currentValue
         : (itemsMap.isNotEmpty ? itemsMap.keys.first : null);
 
     return Padding(
@@ -800,7 +819,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Row(children: [
       Icon(icon, size: 14, color: Colors.blueGrey.shade400),
       const SizedBox(width: 6),
-      Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade500, letterSpacing: 0.5)),
+      Text(label,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade500, letterSpacing: 0.5)),
     ]);
   }
 
@@ -847,7 +868,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       selectedIndex: 4,
       onDestinationSelected: (index) {
         if (index == 0) {
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const ClientMainScreen()), (route) => false);
+          Navigator.pushAndRemoveUntil(
+              context, MaterialPageRoute(builder: (_) => const ClientMainScreen()), (route) => false);
         } else if (index == 1) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
         } else if (index == 2) {
@@ -859,9 +881,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: Colors.white,
       destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
-        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
-        NavigationDestination(icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
+        NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Asistente'),
+        NavigationDestination(
+            icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'Balance'),
+        NavigationDestination(
+            icon: Icon(Icons.trending_up_rounded), selectedIcon: Icon(Icons.trending_up), label: 'Seguimiento'),
         NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
       ],
     );

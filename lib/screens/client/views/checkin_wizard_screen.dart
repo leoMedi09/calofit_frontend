@@ -7,11 +7,7 @@ class CheckInWizardScreen extends StatefulWidget {
   final double currentWeight;
   final double currentHeight;
 
-  const CheckInWizardScreen({
-    super.key, 
-    required this.currentWeight, 
-    required this.currentHeight
-  });
+  const CheckInWizardScreen({super.key, required this.currentWeight, required this.currentHeight});
 
   @override
   State<CheckInWizardScreen> createState() => _CheckInWizardScreenState();
@@ -20,7 +16,7 @@ class CheckInWizardScreen extends StatefulWidget {
 class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
   final PageController _pageController = PageController();
   final ApiService _apiService = ApiService();
-  
+
   late double _weight;
   late double _height;
   bool _isSaving = false;
@@ -35,10 +31,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
 
   void _nextPage() {
     if (_currentStep < 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300), 
-        curve: Curves.easeInOut
-      );
+      _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
       setState(() => _currentStep++);
     } else {
       _saveCheckIn();
@@ -49,14 +42,11 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
     setState(() => _isSaving = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      await _apiService.postCheckIn(
-        auth.token!,
-        {
-          "weight": _weight,
-          "height": _height,
-          "activity_level": "Moderado", 
-        }
-      );
+      await _apiService.postCheckIn(auth.token!, {
+        "weight": _weight,
+        "height": _height,
+        "activity_level": "Moderado",
+      });
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -116,12 +106,12 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 5,
                 ),
-                child: _isSaving 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      _currentStep == 1 ? 'FINALIZAR CALIBRACIÓN' : 'CONTINUAR',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                    ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        _currentStep == 1 ? 'FINALIZAR CALIBRACIÓN' : 'CONTINUAR',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                      ),
               ),
             ),
           ),
@@ -274,7 +264,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
           ),
           const SizedBox(height: 30),
           const Text(
-             'Al finalizar, el Asistente IA ajustará tu plan para la próxima semana.',
+            'Al finalizar, el Asistente IA ajustará tu plan para la próxima semana.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey, fontSize: 13),
           ),

@@ -15,8 +15,7 @@ class OnboardingProfileScreen extends StatefulWidget {
   State<OnboardingProfileScreen> createState() => _OnboardingProfileScreenState();
 }
 
-class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
-    with TickerProviderStateMixin {
+class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> with TickerProviderStateMixin {
   final PageController _pageController = PageController();
   final ApiService _apiService = ApiService();
   late AnimationController _animController;
@@ -109,14 +108,14 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
 
   Future<void> _finishOnboarding() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     if (_passwordCtrl.text.isEmpty || _passwordCtrl.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres'), backgroundColor: Colors.orange),
       );
       return;
     }
-    
+
     if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Las contraseñas no coinciden'), backgroundColor: Colors.orange),
@@ -126,7 +125,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
 
     if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes aceptar los Términos y la Política de Privacidad'), backgroundColor: Colors.orange),
+        const SnackBar(
+            content: Text('Debes aceptar los Términos y la Política de Privacidad'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -286,29 +286,29 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 20, bottom: 25, left: 24, right: 24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(colors: [_navy, _navyLight], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        boxShadow: [
-          BoxShadow(color: Color(0x331565C0), blurRadius: 15, offset: Offset(0, 5))
-        ],
+        boxShadow: [BoxShadow(color: Color(0x331565C0), blurRadius: 15, offset: Offset(0, 5))],
         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(35), bottomRight: Radius.circular(35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('¡Bienvenido a CaloFit! 👋', style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w600)),
+          const Text('¡Bienvenido a CaloFit! 👋',
+              style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          const Text('Cuéntanos sobre ti', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+          const Text('Cuéntanos sobre ti',
+              style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
           const SizedBox(height: 25),
           Row(
             children: List.generate(4, (i) {
               final isActive = i == _currentPage;
               final isDone = i < _currentPage;
-              
+
               Color getBgColor() {
                 if (isActive) return Colors.white;
                 if (isDone) return Colors.greenAccent.withValues(alpha: 0.25);
                 return Colors.white.withValues(alpha: 0.15);
               }
-              
+
               Color getTextColor() {
                 if (isActive) return _navy;
                 if (isDone) return Colors.greenAccent;
@@ -326,23 +326,28 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                         decoration: BoxDecoration(
                           color: getBgColor(),
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: isActive ? [const BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))] : [],
+                          boxShadow: isActive
+                              ? [const BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))]
+                              : [],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(isDone ? Icons.check_circle_rounded : icons[i], color: getTextColor(), size: isActive ? 18 : 16),
+                            Icon(isDone ? Icons.check_circle_rounded : icons[i],
+                                color: getTextColor(), size: isActive ? 18 : 16),
                             if (isActive || isDone) ...[
                               const SizedBox(width: 4),
                               Flexible(
-                                child: Text(steps[i], style: TextStyle(color: getTextColor(), fontSize: 10, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                                child: Text(steps[i],
+                                    style: TextStyle(color: getTextColor(), fontSize: 10, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis),
                               ),
                             ]
                           ],
                         ),
                       ),
                     ),
-                    if (i < 3) 
+                    if (i < 3)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Container(
@@ -405,7 +410,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                     _birthDate != null
                         ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
                         : 'Seleccionar fecha',
-                    style: TextStyle(color: _birthDate != null ? Colors.black87 : Colors.grey, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                        color: _birthDate != null ? Colors.black87 : Colors.grey, fontWeight: FontWeight.w500),
                   ),
                 ]),
               ),
@@ -424,7 +430,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
       'Activo': 'Activo (5-6 días)',
       'Muy activo': 'Muy activo (Atleta/Intenso)'
     };
-    
+
     final goals = {
       'perder peso': 'Perder peso (Agresivo)',
       'perder_leve': 'Perder peso (Definición)',
@@ -460,7 +466,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             Row(children: [
               Expanded(child: _field(_weightCtrl, 'Peso (kg)', Icons.monitor_weight_outlined, isNumber: true)),
               const SizedBox(width: 16),
-              Expanded(child: _field(_heightCtrl, 'Altura (cm)', Icons.height_rounded, isNumber: true, isInteger: true)),
+              Expanded(
+                  child: _field(_heightCtrl, 'Altura (cm)', Icons.height_rounded, isNumber: true, isInteger: true)),
             ]),
             const SizedBox(height: 16),
             _sectionTitle('Objetivo Principal', Icons.flag_rounded),
@@ -469,11 +476,13 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             const SizedBox(height: 16),
             _sectionTitle('Nivel de Actividad', Icons.directions_run_rounded),
             const SizedBox(height: 12),
-            _dropdownMap('Nivel de Actividad', Icons.directions_run_rounded, _activityLevel, activityLevels, (v) => setState(() => _activityLevel = v!)),
+            _dropdownMap('Nivel de Actividad', Icons.directions_run_rounded, _activityLevel, activityLevels,
+                (v) => setState(() => _activityLevel = v!)),
             const SizedBox(height: 16),
             _sectionTitle('Tipo de Ejercicio Preferido', Icons.fitness_center_rounded),
             const SizedBox(height: 12),
-            _dropdownMap('Tipo de Entrenamiento', Icons.fitness_center_rounded, _workoutType, workoutTypes, (v) => setState(() => _workoutType = v!)),
+            _dropdownMap('Tipo de Entrenamiento', Icons.fitness_center_rounded, _workoutType, workoutTypes,
+                (v) => setState(() => _workoutType = v!)),
             const SizedBox(height: 16),
             _sectionTitle('Duración de Sesión', Icons.timer_rounded),
             const SizedBox(height: 12),
@@ -485,8 +494,11 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
               ),
               items: sessionDurations.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
               onChanged: (v) => setState(() => _sessionDuration = v!),
@@ -508,7 +520,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             const SizedBox(height: 8),
             _sectionTitle('Condiciones y Restricciones', Icons.favorite_rounded),
             const SizedBox(height: 8),
-            Text('Selecciona tus condiciones médicas o preferencias alimenticias.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            Text('Selecciona tus condiciones médicas o preferencias alimenticias.',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
             const SizedBox(height: 20),
             Wrap(
               spacing: 10,
@@ -531,11 +544,14 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                     }),
                     selectedColor: _navyLight.withValues(alpha: 0.15),
                     checkmarkColor: _navy,
-                    labelStyle: TextStyle(color: isSelected ? _navy : Colors.grey.shade700, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                    labelStyle: TextStyle(
+                        color: isSelected ? _navy : Colors.grey.shade700,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: isSelected ? _navyLight : Colors.grey.shade300, width: isSelected ? 2 : 1),
+                      side:
+                          BorderSide(color: isSelected ? _navyLight : Colors.grey.shade300, width: isSelected ? 2 : 1),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   ),
@@ -553,9 +569,11 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
               child: Row(children: [
                 const Icon(Icons.verified_rounded, color: Colors.green, size: 28),
                 const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('¡Casi listo!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                  Text('Al finalizar, tu plan nutricional personalizado estará listo.', style: TextStyle(color: Colors.green.shade800, fontSize: 12)),
+                  Text('Al finalizar, tu plan nutricional personalizado estará listo.',
+                      style: TextStyle(color: Colors.green.shade800, fontSize: 12)),
                 ])),
               ]),
             ),
@@ -576,8 +594,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             const SizedBox(height: 8),
             _sectionTitle('Seguridad de la Cuenta', Icons.lock_rounded),
             const SizedBox(height: 12),
-            Text('Para proteger tu cuenta, por favor establece una contraseña personal. Esta reemplazará a tu DNI.', 
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            Text('Para proteger tu cuenta, por favor establece una contraseña personal. Esta reemplazará a tu DNI.',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
             const SizedBox(height: 24),
             _field(_passwordCtrl, 'Nueva Contraseña', Icons.lock_outline, isPassword: true),
             _field(_confirmPasswordCtrl, 'Confirmar Contraseña', Icons.lock_clock_outlined, isPassword: true),
@@ -592,8 +610,9 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
               child: Row(children: [
                 const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 28),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Usa al menos 6 caracteres. Te recomendamos combinar letras y números.',
-                  style: TextStyle(color: Colors.blue.shade800, fontSize: 12))),
+                Expanded(
+                    child: Text('Usa al menos 6 caracteres. Te recomendamos combinar letras y números.',
+                        style: TextStyle(color: Colors.blue.shade800, fontSize: 12))),
               ]),
             ),
             const SizedBox(height: 20),
@@ -650,7 +669,9 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   Widget _buildBottomButton() {
     return Container(
       padding: EdgeInsets.only(left: 24, right: 24, bottom: MediaQuery.of(context).padding.bottom + 20, top: 16),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -8))]),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [
+        BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -8))
+      ]),
       child: Row(
         children: [
           if (_currentPage > 0) ...[
@@ -686,9 +707,12 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                     : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Text(_currentPage == 3 ? '¡Activar Cuenta!' : 'Continuar', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                        Text(_currentPage == 3 ? '¡Activar Cuenta!' : 'Continuar',
+                            style: const TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
                         const SizedBox(width: 8),
-                        Icon(_currentPage == 3 ? Icons.verified_user_rounded : Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                        Icon(_currentPage == 3 ? Icons.verified_user_rounded : Icons.arrow_forward_rounded,
+                            color: Colors.white, size: 20),
                       ]),
               ),
             ),
@@ -700,22 +724,23 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
 
   Widget _sectionTitle(String title, IconData icon) {
     return Row(children: [
-      Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: _navy.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, color: _navy, size: 18)),
+      Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: _navy.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, color: _navy, size: 18)),
       const SizedBox(width: 10),
       Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF37474F))),
     ]);
   }
 
-  Widget _field(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, bool isPassword = false, bool isInteger = false}) {
+  Widget _field(TextEditingController ctrl, String label, IconData icon,
+      {bool isNumber = false, bool isPassword = false, bool isInteger = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: ctrl,
         obscureText: isPassword,
-        keyboardType: isNumber
-            ? TextInputType.numberWithOptions(decimal: !isInteger)
-            : TextInputType.text,
+        keyboardType: isNumber ? TextInputType.numberWithOptions(decimal: !isInteger) : TextInputType.text,
         textCapitalization: isPassword ? TextCapitalization.none : TextCapitalization.words,
         decoration: InputDecoration(
           labelText: label,
@@ -723,8 +748,10 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
         ),
       ),
     );
@@ -743,13 +770,16 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: isSelected ? _navy : Colors.grey.shade200, width: 2),
           ),
-          child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          child: Text(label,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
 
-  Widget _dropdownMap(String label, IconData icon, String currentVal, Map<String, String> itemsMap, ValueChanged<String?> onChanged) {
+  Widget _dropdownMap(
+      String label, IconData icon, String currentVal, Map<String, String> itemsMap, ValueChanged<String?> onChanged) {
     final safeValue = itemsMap.containsKey(currentVal) ? currentVal : itemsMap.keys.first;
 
     return DropdownButtonFormField<String>(
@@ -761,8 +791,10 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _navyLight, width: 2)),
       ),
       items: itemsMap.entries
           .map(

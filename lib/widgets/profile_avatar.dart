@@ -22,7 +22,7 @@ class ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String initials = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?';
-    
+
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -31,19 +31,19 @@ class ProfileAvatar extends StatelessWidget {
       child: CircleAvatar(
         radius: radius,
         backgroundColor: backgroundColor ?? const Color(0xFFE8EAF6),
-        backgroundImage: (photoUrl != null && photoUrl!.isNotEmpty) 
-          ? NetworkImage(UrlService.formatImageUrl(photoUrl!)) 
-          : null,
+        backgroundImage:
+            (photoUrl != null && photoUrl!.isNotEmpty) ? NetworkImage(UrlService.formatImageUrl(photoUrl!)) : null,
         child: (photoUrl == null || photoUrl!.isEmpty)
-          ? Text(
-              initials,
-              style: textStyle ?? TextStyle(
-                fontSize: radius * 0.8,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF3949AB),
-              ),
-            )
-          : null,
+            ? Text(
+                initials,
+                style: textStyle ??
+                    TextStyle(
+                      fontSize: radius * 0.8,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF3949AB),
+                    ),
+              )
+            : null,
       ),
     );
   }

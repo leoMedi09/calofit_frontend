@@ -86,8 +86,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             children: [
               const SizedBox(height: 16),
               Center(
-                child: Icon(Icons.lock_reset_rounded,
-                    size: 72, color: Colors.blue[700]),
+                child: Icon(Icons.lock_reset_rounded, size: 72, color: Colors.blue[700]),
               ),
               const SizedBox(height: 28),
               Text(
@@ -104,8 +103,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Text(
                 'Ingresa tu correo electrónico registrado y te enviaremos un código de 6 dígitos para restablecerla.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 14, color: Colors.grey[600], height: 1.5),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),
               const SizedBox(height: 16),
               Container(
@@ -136,8 +134,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 decoration: InputDecoration(
                   labelText: 'Correo Electrónico',
                   prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: Colors.grey[50],
                 ),
@@ -150,15 +147,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       child: FilledButton(
                         onPressed: _sendRecoveryCode,
                         style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text(
                           'ENVIAR CÓDIGO',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.2),
                         ),
                       ),
                     ),

@@ -6,7 +6,6 @@ import '../models/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/notification_service.dart';
 
-
 class AuthProvider with ChangeNotifier {
   static GlobalKey<NavigatorState>? navigatorKey;
   String? _token;
@@ -21,7 +20,6 @@ class AuthProvider with ChangeNotifier {
   bool _showWelcomeMessage = false;
   final ApiService _apiService = ApiService();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-
 
   String? get token => _token;
   String? get userType => _userType;
@@ -45,8 +43,7 @@ class AuthProvider with ChangeNotifier {
       debugPrint('🔥 LOGIN UNIFICADO: email=$email');
 
       try {
-        final UserCredential userCredential =
-            await _firebaseAuth.signInWithEmailAndPassword(
+        final UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
@@ -88,9 +85,8 @@ class AuthProvider with ChangeNotifier {
       _profilePictureUrl = response.profilePictureUrl;
       _isProfileComplete = response.isProfileComplete;
       debugPrint('👤 AuthProvider: profilePictureUrl recibido = $_profilePictureUrl');
-      _userIdFirebase = (response.firebaseUid != null && response.firebaseUid!.isNotEmpty) 
-          ? response.firebaseUid 
-          : firebaseUid;
+      _userIdFirebase =
+          (response.firebaseUid != null && response.firebaseUid!.isNotEmpty) ? response.firebaseUid : firebaseUid;
 
       await _saveSession(rememberMe);
 
@@ -110,7 +106,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-
   Future<void> _saveSession(bool rememberMe) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('remember_me', rememberMe);
@@ -123,8 +118,7 @@ class AuthProvider with ChangeNotifier {
     if (_userId != null) await prefs.setInt('userId', _userId!);
     await prefs.setBool('isProfileComplete', _isProfileComplete);
 
-    final expiry = DateTime.now()
-        .add(rememberMe ? const Duration(days: 30) : const Duration(hours: 24));
+    final expiry = DateTime.now().add(rememberMe ? const Duration(days: 30) : const Duration(hours: 24));
     await prefs.setInt('token_expiry', expiry.millisecondsSinceEpoch);
 
     if (rememberMe) {
@@ -231,7 +225,6 @@ class AuthProvider with ChangeNotifier {
     navigatorKey?.currentState?.pushNamedAndRemoveUntil('/login', (r) => false);
   }
 
-
   Future<void> markProfileComplete() async {
     _isProfileComplete = true;
     final prefs = await SharedPreferences.getInstance();
@@ -250,30 +243,30 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> updateProfilePictureUrl(String newUrl) async {
     _profilePictureUrl = newUrl;
-    
+
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('remember_me') == true) {
       await prefs.setString('profilePictureUrl', newUrl);
     }
-    
+
     debugPrint('✅ AuthProvider: Foto de perfil sincronizada localmente a $newUrl');
     notifyListeners();
   }
 
   Future<void> uploadProfilePicture(String filePath) async {
     if (_token == null || _userType == null) return;
-    
+
     try {
       bool isStaff = (_userType == 'staff' || _userType == 'admin');
       String newUrl = await _apiService.uploadProfilePicture(_token!, filePath, isStaff);
-      
+
       _profilePictureUrl = newUrl;
-      
+
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool('remember_me') == true) {
         await prefs.setString('profilePictureUrl', newUrl);
       }
-      
+
       notifyListeners();
       debugPrint('✅ AuthProvider: Foto de perfil actualizada a $newUrl');
     } catch (e) {

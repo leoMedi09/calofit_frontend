@@ -273,10 +273,6 @@ class RecipeCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MacroChipsRow — chips compactos de macros visibles sin expandir
-// Público para poder reutilizarse en otras pantallas de nutrición
-// ─────────────────────────────────────────────────────────────────────────────
 class MacroChipsRow extends StatelessWidget {
   final Map<String, String> macrosMap;
   const MacroChipsRow({super.key, required this.macrosMap});
@@ -307,10 +303,6 @@ class MacroChipsRow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MacroDetailPanel — panel de información nutricional expandido
-// Público para poder reutilizarse en otras pantallas de nutrición
-// ─────────────────────────────────────────────────────────────────────────────
 class MacroDetailPanel extends StatelessWidget {
   final Map<String, String> macrosMap;
   const MacroDetailPanel({super.key, required this.macrosMap});

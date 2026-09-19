@@ -20,7 +20,6 @@ class _AuditViewState extends State<AuditView> {
   void initState() {
     super.initState();
     _refreshAudit();
-    // ⏱️ Auto-refresco de alertas cada 60 segundos
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) setState(() => _refreshAudit());
     });
@@ -160,7 +159,6 @@ class _AuditViewState extends State<AuditView> {
   }
 
   Widget _buildAuditCard(Map<String, dynamic> log) {
-    // Detectar si es un log administrativo o una alerta de salud
     final bool isAdminLog = log.containsKey('accion');
     
     if (isAdminLog) {

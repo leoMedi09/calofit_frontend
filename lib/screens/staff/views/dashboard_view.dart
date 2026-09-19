@@ -30,7 +30,6 @@ class _DashboardViewState extends State<DashboardView> {
   int _countAdmin = 0;
   int _countInactive = 0;
   
-  // 🏥 Nutri KPIs
   int _countPacientes = 0;
   int _countValidaciones = 0;
   int _countAlertasCriticas = 0;
@@ -46,7 +45,6 @@ class _DashboardViewState extends State<DashboardView> {
   void initState() {
     super.initState();
     _refreshData();
-    // ⏱️ Refresco automático cada 60 segundos para mantener datos frescos sin saturar el back
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _refreshData(isAutoRefresh: true));
   }
 
@@ -60,7 +58,6 @@ class _DashboardViewState extends State<DashboardView> {
     if (!mounted) return;
     if (!isAutoRefresh) setState(() => _isLoading = true);
     
-    // 🔐 Verificar si hubo un error 401/403 en alguna petición previa
     if (ApiService.needsLogout) {
       ApiService.resetLogoutFlag();
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -81,7 +78,6 @@ class _DashboardViewState extends State<DashboardView> {
       final isAdmin = currentUserRole.contains('admin') || currentUserRole.contains('administrador');
 
       if (isAdmin) {
-        // 🏢 Lógica original para Administradores (Gestión de Staff)
         final team = await _apiService.getUsers(token);
         
         int nutris = 0;
@@ -131,7 +127,6 @@ class _DashboardViewState extends State<DashboardView> {
           });
         }
       } else {
-        // 🏥 Lógica nueva para Nutricionistas (KPIs Clínicos)
         final stats = await _apiService.getNutriStats(token);
         
         if (mounted) {
@@ -149,7 +144,6 @@ class _DashboardViewState extends State<DashboardView> {
             
             _isLoading = false;
             
-            // Insight específico para Nutri
             if (_countAlertasCriticas > 0) {
               _currentAIInsight = '🚨 Tienes $_countAlertasCriticas alertas críticas de salud. ¡Revísalas pronto!';
             } else if (_countValidaciones > 0) {
@@ -163,7 +157,6 @@ class _DashboardViewState extends State<DashboardView> {
         }
       }
       
-      // ✅ Sincronizar Foto de Perfil del Staff
       try {
         final profile = await _apiService.getStaffProfile(token);
         final identity = profile['identidad'];
@@ -177,7 +170,6 @@ class _DashboardViewState extends State<DashboardView> {
         debugPrint('Error sincronizando perfil de staff: $staffProfileErr');
       }
     } on DioException catch (e) {
-      // Detectar error de autenticación (token expirado)
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         debugPrint('🔐 Token expirado detectado en Dashboard Staff');
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -196,10 +188,8 @@ class _DashboardViewState extends State<DashboardView> {
   Future<void> _handleSessionExpired(AuthProvider authProvider) async {
     if (!mounted) return;
     
-    // Cancelar timer de refresco
     _refreshTimer?.cancel();
     
-    // Mostrar diálogo informativo
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -230,7 +220,6 @@ class _DashboardViewState extends State<DashboardView> {
       ),
     );
     
-    // Ejecutar logout y redirigir al login
     await authProvider.logout();
     
     if (mounted) {
@@ -252,7 +241,6 @@ class _DashboardViewState extends State<DashboardView> {
       'Análisis: La distribución del equipo es ideal para la carga de usuarios actual.',
     ];
     
-    // Consejos dinámicos basados en la data real
     if (_countNutri < 2) {
       insights.insert(0, 'Alerta: Hay pocos Nutricionistas activos. Considera contratar refuerzos.');
     }
@@ -266,8 +254,6 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   void _navigateToAuditList(BuildContext context) {
-    // Usamos el callback para cambiar a la pestaña de Auditoría (Índice 2)
-    // Esto mantiene la barra de navegación visible y evita el "pop up"
     widget.onNavigate?.call(2);
   }
 
@@ -275,7 +261,7 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Match Scaffold background
+      backgroundColor: Colors.grey[50],
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshData,
@@ -360,16 +346,13 @@ class _DashboardViewState extends State<DashboardView> {
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                  // Lógica de Rol
                   if (!_isAdmin(context)) ...[
-                    // SESIÓN 2: ALERTAS DE SALUD (Solo para Nutris/Coaches)
                     _buildSectionTitle('Alertas de Salud (Clientes)', Icons.notification_important_rounded),
                     const SizedBox(height: 15),
                     _buildHealthAlertsSection(),
                     const SizedBox(height: 35),
                   ],
 
-                  // SESIÓN 3: ESTADÍSTICAS DE EQUIPO / GESTIÓN
                   _buildSectionTitle(
                     _isAdmin(context) ? 'Centro de Análisis Corporativo' : 'Gestión de Equipo', 
                     _isAdmin(context) ? Icons.analytics_rounded : Icons.analytics_rounded
@@ -384,7 +367,6 @@ class _DashboardViewState extends State<DashboardView> {
 
 
 
-                  // SESIÓN 4: INTELIGENCIA ARTIFICIAL
                   _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),
                   const SizedBox(height: 15),
                   _buildAIInsightCard(),
@@ -535,7 +517,6 @@ class _DashboardViewState extends State<DashboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 📈 Main KPI Row
         Row(
           children: [
             Expanded(
@@ -561,7 +542,6 @@ class _DashboardViewState extends State<DashboardView> {
         ),
         const SizedBox(height: 25),
         
-        // 📊 Adherence Chart Section
         _buildSectionSubtitle('Adherencia del Equipo (7 días)'),
         const SizedBox(height: 15),
         Container(
@@ -868,11 +848,10 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildAdminModernStats() {
-    final int totalStaffCount = _countNutri + _countAdmin + _countCoach; // ✅ Incluimos Coaches
+    final int totalStaffCount = _countNutri + _countAdmin + _countCoach;
 
     return Column(
       children: [
-        // 💎 HERO STATUS CARD (Diseño Sólido Premium)
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -941,7 +920,7 @@ class _DashboardViewState extends State<DashboardView> {
                                   ),
                                   PieChartSectionData(
                                     value: _countCoach.toDouble(),
-                                    color: const Color(0xFFFFA726), // ✅ Naranja para Coaches
+                                    color: const Color(0xFFFFA726),
                                     radius: 14,
                                     showTitle: false,
                                   ),
@@ -975,7 +954,6 @@ class _DashboardViewState extends State<DashboardView> {
                       ),
                     ),
                     const SizedBox(height: 35),
-                    // Stats Inferiores (Admin, Nutri)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -993,7 +971,6 @@ class _DashboardViewState extends State<DashboardView> {
         
         const SizedBox(height: 35),
         
-        // ⚡ ACCIONES RÁPIDAS
         _buildSectionTitle('Operaciones del Sistema', Icons.bolt_rounded),
         const SizedBox(height: 15),
         _buildActionItem(
@@ -1002,7 +979,6 @@ class _DashboardViewState extends State<DashboardView> {
           Icons.group_add_rounded,
           const Color(0xFF1E88E5),
           () {
-            // Cambiar pestaña a "Equipo"
             widget.onNavigate?.call(1);
           },
         ),
@@ -1011,9 +987,8 @@ class _DashboardViewState extends State<DashboardView> {
           'Gestión de Clientes',
           'Inscribir pacientes y asignarlos al personal.',
           Icons.person_add_alt_1_rounded,
-          const Color(0xFF43A047), // Verde
+          const Color(0xFF43A047),
           () {
-            // Cambiar pestaña a "Pacientes"
             widget.onNavigate?.call(2);
           },
         ),
@@ -1247,7 +1222,6 @@ class _DashboardViewState extends State<DashboardView> {
 
 
   Widget _buildHealthAlertsSection() {
-    // ── Estado vacío ────────────────────────────────────────────────────────
     if (_recentAlerts.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -1271,7 +1245,6 @@ class _DashboardViewState extends State<DashboardView> {
       );
     }
 
-    // ── Métricas del resumen ─────────────────────────────────────────────────
     final int totalAlerts = _recentAlerts.length;
     final int alta  = _recentAlerts.where((a) => a['urgency'] == 'Alta').length;
     final int media = _recentAlerts.where((a) => a['urgency'] == 'Media').length;
@@ -1298,7 +1271,6 @@ class _DashboardViewState extends State<DashboardView> {
       ),
       child: Column(
         children: [
-          // ── Fila resumen ────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             child: Row(
@@ -1326,7 +1298,6 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ),
                 ),
-                // Chips de urgencia
                 if (alta > 0)  _urgencyChip('Alta', alta, Colors.red),
                 if (media > 0) _urgencyChip('Media', media, Colors.orange),
                 if (baja > 0)  _urgencyChip('Baja', baja, const Color(0xFFF59E0B)),
@@ -1336,7 +1307,6 @@ class _DashboardViewState extends State<DashboardView> {
 
           Divider(height: 1, color: Colors.grey.shade100),
 
-          // ── Alertas compactas ───────────────────────────────────────────
           ...visible.asMap().entries.map((entry) {
             final alert = entry.value;
             final bool isLast = entry.key == visible.length - 1 && (!_showAllAlerts || hidden <= 0);
@@ -1353,7 +1323,6 @@ class _DashboardViewState extends State<DashboardView> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Indicador de color lateral
                       Container(
                         width: 3,
                         height: 36,
@@ -1363,7 +1332,6 @@ class _DashboardViewState extends State<DashboardView> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Ícono pequeño
                       Icon(
                         alert['urgency'] == 'Alta'
                             ? Icons.warning_amber_rounded
@@ -1372,7 +1340,6 @@ class _DashboardViewState extends State<DashboardView> {
                         size: 18,
                       ),
                       const SizedBox(width: 10),
-                      // Texto
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1399,7 +1366,6 @@ class _DashboardViewState extends State<DashboardView> {
                           ],
                         ),
                       ),
-                      // Badge urgencia
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
@@ -1423,7 +1389,6 @@ class _DashboardViewState extends State<DashboardView> {
             );
           }),
 
-          // ── Botón expandir / contraer ───────────────────────────────────
           if (totalAlerts > previewCount)
             InkWell(
               onTap: () => setState(() => _showAllAlerts = !_showAllAlerts),

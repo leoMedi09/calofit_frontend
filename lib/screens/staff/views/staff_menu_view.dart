@@ -15,7 +15,6 @@ class StaffMenuView extends StatelessWidget {
     final String userRole = (authProvider.userRole ?? 'STAFF').toUpperCase();
     final bool isAdmin = userRole.contains('ADMIN');
 
-    // Colores Premium
     const Color vIndigo = Color(0xFF1A237E);
     const Color vBlue = Color(0xFF1E88E5);
 
@@ -23,7 +22,6 @@ class StaffMenuView extends StatelessWidget {
       backgroundColor: const Color(0xFFF8F9FE),
       body: CustomScrollView(
         slivers: [
-          // Elegant Header
           SliverAppBar(
             expandedHeight: 120,
             floating: false,

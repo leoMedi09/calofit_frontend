@@ -8,8 +8,6 @@ import '../services/notification_service.dart';
 
 
 class AuthProvider with ChangeNotifier {
-  // Inyectado desde main.dart para poder navegar a /login globalmente
-  // (funciona incluso cuando el Consumer<AuthProvider> del home ya no está en el árbol).
   static GlobalKey<NavigatorState>? navigatorKey;
   String? _token;
   String? _userType;
@@ -25,7 +23,6 @@ class AuthProvider with ChangeNotifier {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
 
-  // Getters
   String? get token => _token;
   String? get userType => _userType;
   String? get userRole => _userRole;
@@ -42,16 +39,11 @@ class AuthProvider with ChangeNotifier {
     _showWelcomeMessage = false;
   }
 
-  /// Login unificado:
-  /// - Intenta Firebase para obtener UID si aplica.
-  /// - Valida siempre contra la API con `user_type: auto`.
-  /// El backend decide si el correo es cliente o staff.
   Future<void> login(String email, String password, bool rememberMe) async {
     try {
       String firebaseUid = "";
       debugPrint('🔥 LOGIN UNIFICADO: email=$email');
 
-      // 1) Firebase para UID cuando exista usuario.
       try {
         final UserCredential userCredential =
             await _firebaseAuth.signInWithEmailAndPassword(
@@ -72,7 +64,6 @@ class AuthProvider with ChangeNotifier {
         }
       }
 
-      // 2) API: resolucion automatica de rol.
       final request = LoginRequest(
         email: email,
         password: password,
@@ -84,7 +75,6 @@ class AuthProvider with ChangeNotifier {
 
       final response = await _apiService.login(request);
 
-      // Validacion defensiva del token.
       if (response.token == null) {
         throw Exception('Error: El servidor no devolvió un token de acceso.');
       }
@@ -102,22 +92,18 @@ class AuthProvider with ChangeNotifier {
           ? response.firebaseUid 
           : firebaseUid;
 
-      // 4️⃣ PERSISTENCIA (En segundo plano pero esperado)
       await _saveSession(rememberMe);
 
-      // Registrar el token FCM para recordatorios push (solo clientes)
       if (_userType != 'staff' && _userType != 'admin' && _token != null) {
         NotificationService.instance.registrarToken(_token!);
       }
 
-      // 5️⃣ NOTIFICACIÓN (Esto dispara el redibujado de todas las pantallas)
       _showWelcomeMessage = true;
       notifyListeners();
 
       debugPrint('✅ Login completado: $_userName (tipo=$_userType)');
     } catch (e) {
       debugPrint('❌ Error en AuthProvider.login: $e');
-      // Limpiamos datos por seguridad si algo falla a mitad de camino
       await _removeSession();
       _token = null;
       rethrow;
@@ -137,7 +123,6 @@ class AuthProvider with ChangeNotifier {
     if (_userId != null) await prefs.setInt('userId', _userId!);
     await prefs.setBool('isProfileComplete', _isProfileComplete);
 
-    // Guarda la fecha de expiración para validación local al relanzar la app.
     final expiry = DateTime.now()
         .add(rememberMe ? const Duration(days: 30) : const Duration(hours: 24));
     await prefs.setInt('token_expiry', expiry.millisecondsSinceEpoch);
@@ -171,8 +156,6 @@ class AuthProvider with ChangeNotifier {
       return;
     }
 
-    // Verificar expiración localmente antes de mostrar la pantalla principal.
-    // Esto evita que el usuario vea el dashboard con un token muerto.
     final expiryMs = prefs.getInt('token_expiry');
     if (expiryMs != null && DateTime.now().millisecondsSinceEpoch > expiryMs) {
       debugPrint('🕐 Token expirado localmente — limpiando sesión.');
@@ -214,16 +197,12 @@ class AuthProvider with ChangeNotifier {
       debugPrint('✅ Sesión validada exitosamente.');
     } catch (e) {
       debugPrint('❌ Sesión inválida o expirada detectada en background: $e');
-      // Detectar 401/403 correctamente tanto en DioException como en otros errores.
-      // Si es error de red (timeout/sin conexión) mantenemos al usuario (modo offline).
-      // Solo logout por errores de autenticación reales (no por red/timeout)
       if (e is DioException) {
         final code = e.response?.statusCode;
         if (code == 401 || code == 403) {
           debugPrint('🔐 Token inválido ($code) — cerrando sesión automáticamente.');
           await logout();
         }
-        // Si es error de red/timeout: no cerrar sesión (modo offline)
       }
     }
   }
@@ -249,8 +228,6 @@ class AuthProvider with ChangeNotifier {
     debugPrint('✅ Logout completado.');
     notifyListeners();
 
-    // Navegar a /login con navigatorKey para garantizar la redirección
-    // independientemente de cuántas rutas haya en el stack.
     navigatorKey?.currentState?.pushNamedAndRemoveUntil('/login', (r) => false);
   }
 

@@ -24,7 +24,6 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateMixin {
-  // Cache estático: sobrevive disposals del widget, evita recargar SharedPreferences en cada tab switch.
   static List<Map<String, dynamic>>? _messagesCache;
   static int? _cachedUserId;
 
@@ -36,13 +35,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   final FlutterTts _flutterTts = FlutterTts();
   final stt.SpeechToText _speech = stt.SpeechToText();
 
-  /// Reconocimiento listo (initialize OK).
   bool _speechReady = false;
-  /// Idioma instalado en el teléfono para dictado (es_MX, es_ES, …).
   String _speechLocaleId = 'es_ES';
-  /// Evita callbacks viejos tras detener manualmente.
   int _speechSession = 0;
-  /// Un solo envío por dictado (manual stop vs finalResult).
   
   bool _isTyping = false;
   bool _isListening = false;
@@ -53,11 +48,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   String? _latestFuzzyHint;
   bool _showHelpBanner = true;
 
-  /// Si el usuario ya envió mensajes en esta sesión, no reemplazar la lista al terminar
-  /// la carga asíncrona del historial (evita "borrar" el chat por condición de carrera).
-
-
-  // 🔄 ONE-STREAM: Una sola lista de mensajes (ahora persistente)
   List<Map<String, dynamic>> _messages = [
     {
       'role': 'assistant',
@@ -81,9 +71,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _focusNode.addListener(_onFocusChange);
     _loadClientProfile();
 
-    // Si hay caché válida para este usuario (cambio de tab dentro de la misma sesión), usarla.
-    // Si no hay caché (primera apertura, login nuevo o app reiniciada), recuperar el
-    // historial guardado en SharedPreferences; si no existe, arrancar con el welcome message.
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (_messagesCache != null && _cachedUserId == auth.userId) {
       _messages = _messagesCache!;
@@ -92,8 +79,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       });
     } else {
       _cachedUserId = auth.userId;
-      _messagesCache = _messages; // inicializar caché con el welcome message
-      _loadChatHistory(); // si hay historial persistido, reemplaza el welcome
+      _messagesCache = _messages;
+      _loadChatHistory();
     }
   }
 
@@ -144,8 +131,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final ok = await _speech.initialize(
       onStatus: (status) {
         debugPrint('Speech onStatus: $status');
-        // Algunos dispositivos dejan el estado "notListening/done" sin pasar por onResult.finalResult.
-        // Esto evita que el UI se quede "escuchando" y que el TTS parezca apagado.
         final s = status.toLowerCase();
         if (mounted && (s.contains('notlistening') || s.contains('done'))) {
           setState(() => _isListening = false);
@@ -203,11 +188,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Future<void> _saveChatHistory() async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      _messagesCache = _messages; // Mantener caché sincronizada con la lista actual
+      _messagesCache = _messages;
       final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
 
-      // Serializar los últimos 50 mensajes
       final toSave = _messages.length > 50
           ? _messages.sublist(_messages.length - 50)
           : _messages;
@@ -261,7 +245,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       final key = _chatHistoryStorageKey(auth);
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(key);
-      _messagesCache = null; // El próximo initState hará carga limpia (SharedPreferences vacío → welcome)
+      _messagesCache = null;
       setState(() {
         _messages = [
           {
@@ -304,11 +288,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _flutterTts.setCompletionHandler(() => setState(() => _speakingMessageId = null));
   }
 
-  // Se inicia bajo demanda para no molestar con permisos al abrir
-
   @override
   void dispose() {
-    _saveChatHistory(); // guarda estado actual antes de cerrar la pantalla
+    _saveChatHistory();
     _inputController.dispose();
     _focusNode.dispose();
     _flutterTts.stop();
@@ -324,7 +306,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       String plainText = content
           .replaceAll(RegExp(r'\*+'), '')
           .replaceAll(RegExp(r'#+'), '')
-          // Reemplazos fonéticos para TTS en español
           .replaceAll(RegExp(r'kcal', caseSensitive: false), 'kilocalorías')
           .replaceAll(RegExp(r'\bkJ\b'), 'kilojulios')
           .replaceAll(RegExp(r'\bg\b'), 'gramos')
@@ -356,7 +337,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
     if (!_isListening) {
       final session = ++_speechSession;
-      // Evitar conflicto audio focus: al escuchar, detenemos TTS (pero NO activamos mute).
       try {
         await _flutterTts.stop();
       } catch (_) {}
@@ -371,7 +351,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           if (val.finalResult) {
             _speech.stop();
             setState(() => _isListening = false);
-            // El texto queda en el campo — el usuario lo revisa y presiona enviar
           }
         },
         localeId: _speechLocaleId,
@@ -388,26 +367,20 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       await _speech.stop();
       if (!mounted) return;
       setState(() => _isListening = false);
-      // El texto queda en el campo — el usuario lo revisa y presiona enviar
     }
   }
 
-  // 🧠 SMART ROUTING SYSTEM
   Future<void> _handleUnifiedSubmit({String? quickMessage}) async {
     final text = quickMessage ?? _inputController.text.trim();
     if (text.isEmpty) return;
 
-    // Capture providers before any async gap.
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final balance = Provider.of<BalanceProvider>(context, listen: false);
 
-    // Limpiamos el panel de escritura si enviamos texto normal
-    // o si el micrófono había rellenado este mismo texto en el panel.
     if (quickMessage == null || quickMessage == _inputController.text.trim()) {
       _inputController.clear();
     }
 
-    // ═══ CALOFIT_REGISTER: Registro consistente desde card ═══
     if (text.startsWith('CALOFIT_REGISTER:')) {
       final consultaId = text.replaceFirst('CALOFIT_REGISTER:', '');
       final token = auth.token;
@@ -445,7 +418,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       return;
     }
 
-    // ═══ CALOFIT_WORKOUT: Flujo guiado (series/reps/peso) ═══
     if (text.startsWith('CALOFIT_WORKOUT:')) {
       final consultaId = text.replaceFirst('CALOFIT_WORKOUT:', '');
       final token = auth.token;
@@ -488,11 +460,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     final token = auth.token;
     if (token == null) return;
 
-    // Nueva arquitectura: todo va por /consultar (LLM clasifica la intención)
-    // Se eliminó la bifurcación isLogIntent → /log-inteligente que usaba el sistema viejo
     try {
       {
-        // Construir historial reducido para contexto conversacional
         final history = _messages.length > 2
             ? _messages
                 .sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
@@ -514,7 +483,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         final result = await _apiService.consultarAsistente(text, token, historial: history);
         final responseObj = AssistantResponse.fromJson(result);
 
-        // Actualizar balance si hubo registro o progreso
         balance.updateFromAssistant(responseObj.dataCientifica.progresoDiario);
         if (result['balance_actualizado'] != null) {
           balance.updateFromAssistant(
@@ -550,13 +518,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _scrollController.hasClients) {
-        // reverse:true → posición 0 es el fondo (mensaje más reciente)
         _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
       }
     });
   }
 
-  /// Scroll instantáneo al fondo para restaurar historial (reverse:true → posición 0).
   void _jumpToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _scrollController.hasClients) {
@@ -569,7 +535,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5), // Color de fondo más moderno (Gris azulado suave)
+      backgroundColor: const Color(0xFFF0F2F5),
       appBar: _buildUnifiedAppBar(),
       body: SafeArea(
         top: false,
@@ -580,7 +546,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             Expanded(child: _buildMessageList()),
             
             if (_isTyping) _buildTypingIndicator(),
-            // En landscape priorizamos el input y evitamos overflows por altura reducida.
             if (!_isTyping && !isLandscape) _buildQuickActions(),
             if (_isListening) _buildListeningBanner(),
             _buildInputArea(),
@@ -625,7 +590,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         ],
       ),
       actions: [
-        // Botón limpiar historial
         IconButton(
           icon: Icon(Icons.delete_outline, color: Colors.grey.shade400, size: 20),
           tooltip: 'Limpiar historial',
@@ -724,7 +688,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
-        // reverse:true → el índice 0 es el mensaje más reciente (aparece abajo)
         final msg = _messages[_messages.length - 1 - index];
         
         if (msg['type'] == 'registro_exitoso') {
@@ -738,22 +701,20 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           return _buildUserBubble(msg['content']);
         }
 
-        // Bubbles de texto simple (errores, etc)
         return _buildSimpleSystemBubble(msg['content'], isError: msg['type'] == 'error');
       },
     );
   }
 
   Widget _buildRichLogCard(Map<String, dynamic> msg) {
-    // Tarjeta visual impactante para confirmación de registro
-    final isFood = msg['badge'] == 'comida' || msg['badge'] == 'alimento'; // Ajustar según backend return
+    final isFood = msg['badge'] == 'comida' || msg['badge'] == 'alimento';
     final data = msg['data'] ?? {};
     final kcal = data['calorias'] ?? 0;
     
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 280), // v69.1: Más ancho permitido para pantallas densas
+        constraints: const BoxConstraints(maxWidth: 280),
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -816,7 +777,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         _buildMiniStat(Icons.flash_on_rounded, "$kcal kcal", Colors.orange, isMain: true),
                         const SizedBox(height: 12),
                         
-                        // 🔥 MACROS PRINCIPALES
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -832,7 +792,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         
                         const SizedBox(height: 8),
                         
-                        // 🍭 MICROS (Azúcar, Fibra, Sodio) - Diseño más sutil
                         if (isFood) 
                           Wrap(
                             spacing: 8,
@@ -882,7 +841,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         margin: const EdgeInsets.only(bottom: 12, left: 50),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF2563EB), // Azul brillante moderno
+          color: const Color(0xFF2563EB),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             bottomLeft: Radius.circular(20),
@@ -1106,7 +1065,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12), // Reducido el padding inferior para conectar con el status bar
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
@@ -1114,7 +1073,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       child: Row(
         children: [
           GestureDetector(
-            onLongPress: _listen, // Mantener presionado para hablar? No, tap to toggle better UX
+            onLongPress: _listen,
             onTap: _listen,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),

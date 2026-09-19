@@ -3,16 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
 
-/// Handler de mensajes recibidos cuando la app está en segundo plano o cerrada.
-/// Debe ser una función de nivel superior (top-level) para que Firebase pueda
-/// invocarla desde un proceso aislado.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('🔔 [Background] Notificación recibida: ${message.messageId}');
 }
 
-/// Centraliza la configuración de notificaciones push (RF12):
-/// permisos, obtención/registro del token FCM y visualización en foreground.
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -30,8 +25,6 @@ class NotificationService {
     importance: Importance.high,
   );
 
-  /// Solicita permisos, configura el canal local y conecta los listeners
-  /// de mensajes en foreground. Debe llamarse una sola vez (ej. en main()).
   Future<void> initialize() async {
     if (kIsWeb) return;
     if (_initialized) return;
@@ -48,7 +41,6 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(_channel);
 
-    // Mostrar la notificación cuando llega con la app abierta (foreground).
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
       if (notification == null) return;
@@ -71,9 +63,6 @@ class NotificationService {
     });
   }
 
-  /// Obtiene el token FCM del dispositivo y lo registra en el backend
-  /// asociado al usuario autenticado. Debe llamarse tras un login exitoso
-  /// y al cargar una sesión persistida.
   Future<void> registrarToken(String authToken) async {
     try {
       final fcmToken = await _messaging.getToken();
@@ -82,7 +71,6 @@ class NotificationService {
       await ApiService().registrarFcmToken(fcmToken, authToken);
       debugPrint('✅ Token FCM registrado: $fcmToken');
 
-      // Si el token se renueva (reinstalación, etc.), reenviarlo al backend.
       _messaging.onTokenRefresh.listen((newToken) {
         ApiService().registrarFcmToken(newToken, authToken);
         debugPrint('🔄 Token FCM renovado y reenviado: $newToken');

@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/assistant_response.dart';
 
-/// Nueva arquitectura de burbujas — 3 tipos únicos:
-///   1. _ConversationalBubble  → chat, consejos, preguntas (INFO/OTRO)
-///   2. _RegistrationPill      → confirmación de registro (LOG/SUCCESS)
-///   3. _RecommendationBubble  → sugerencias de comida/ejercicio (RECIPE/POWER)
-
 class AssistantMessageBubble extends StatelessWidget {
   final AssistantResponse response;
   final Function(String)? onAction;
@@ -35,7 +30,6 @@ class AssistantMessageBubble extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Avatar ──────────────────────────────────────────────
           Container(
             width: 30,
             height: 30,
@@ -52,7 +46,6 @@ class AssistantMessageBubble extends StatelessWidget {
           ),
           const SizedBox(width: 10),
 
-          // ── Contenido ───────────────────────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,17 +96,12 @@ class AssistantMessageBubble extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 1. BURBUJA CONVERSACIONAL — chat, consejos, dudas
-// ════════════════════════════════════════════════════════════════════════════
-
 enum _BubbleType { chat, receta, tecnica }
 
 class _ConversationalBubble extends StatelessWidget {
   final String texto;
   const _ConversationalBubble({required this.texto});
 
-  /// Detecta automáticamente si es receta o técnica de ejercicio
   _BubbleType _detectarTipo() {
     final t = texto.toLowerCase();
     if (t.contains('ingredientes:') || t.contains('preparación:') || t.contains('preparacion:')) {
@@ -168,7 +156,6 @@ class _ConversationalBubble extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Badge automático para receta o técnica
           if (badgeLabel != null) ...[
             Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -202,10 +189,6 @@ class _ConversationalBubble extends StatelessWidget {
     );
   }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// 2. PILL DE REGISTRO — confirmación de comida o ejercicio
-// ════════════════════════════════════════════════════════════════════════════
 
 class _RegistrationPill extends StatelessWidget {
   final String texto;
@@ -296,12 +279,10 @@ class _RegistrationPill extends StatelessWidget {
       );
     }
 
-    // ── Registro de COMIDA ──────────────────────────────────────
     final kcal = _toDouble(datos['calorias']);
     final prot = _toDouble(datos['proteinas_g']);
     final carb = _toDouble(datos['carbohidratos_g']);
     final grasa = _toDouble(datos['grasas_g']);
-    // Lista completa de alimentos (backend envía todos los ítems)
     final alimentosLista = (datos['alimentos_lista'] as List?)
             ?.map((e) => e.toString())
             .toList() ??
@@ -316,7 +297,6 @@ class _RegistrationPill extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Lista de alimentos — muestra TODOS (no "y X más")
           if (alimentosLista.length <= 3)
             Text(
               alimentosLista.join(' + '),
@@ -352,7 +332,6 @@ class _RegistrationPill extends StatelessWidget {
             ),
           const SizedBox(height: 8),
 
-          // kcal principal (se muestra siempre, incluso 0 kcal — ej. café negro, agua)
           if (kcal >= 0)
             Row(
               children: [
@@ -370,7 +349,6 @@ class _RegistrationPill extends StatelessWidget {
               ],
             ),
 
-          // Macros en fila
           if (prot > 0 || carb > 0 || grasa > 0) ...[
             const SizedBox(height: 6),
             Row(
@@ -384,7 +362,6 @@ class _RegistrationPill extends StatelessWidget {
             ),
           ],
 
-          // Alerta dietética (vegano/vegetariano comió algo no permitido)
           if (_alertaDieta() != null) ...[
             const SizedBox(height: 8),
             Container(
@@ -405,7 +382,6 @@ class _RegistrationPill extends StatelessWidget {
             ),
           ],
 
-          // Advertencia de cantidad/porción excesiva
           if (_advertenciaCantidad() != null) ...[
             const SizedBox(height: 8),
             Container(
@@ -426,7 +402,6 @@ class _RegistrationPill extends StatelessWidget {
             ),
           ],
 
-          // Progreso del día
           if (consumido > 0 && meta > 0) ...[
             const SizedBox(height: 10),
             const Divider(height: 1, color: Color(0xFFD1FAE5)),
@@ -474,10 +449,6 @@ class _RegistrationPill extends StatelessWidget {
     );
   }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// 3. BURBUJA DE RECOMENDACIÓN — comida o ejercicio sugerido
-// ════════════════════════════════════════════════════════════════════════════
 
 class _RecommendationBubble extends StatelessWidget {
   final String texto;
@@ -536,10 +507,6 @@ class _RecommendationBubble extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// HELPERS — componentes compartidos
-// ════════════════════════════════════════════════════════════════════════════
-
 class _PillCard extends StatelessWidget {
   final Color color;
   final Color lightColor;
@@ -576,7 +543,6 @@ class _PillCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header chip
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [

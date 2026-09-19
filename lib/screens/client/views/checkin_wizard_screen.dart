@@ -53,7 +53,7 @@ class _CheckInWizardScreenState extends State<CheckInWizardScreen> {
         auth.token!,
         {
           "weight": _weight,
-          "height": _height, // Se envía la misma que ya tiene
+          "height": _height,
           "activity_level": "Moderado", 
         }
       );

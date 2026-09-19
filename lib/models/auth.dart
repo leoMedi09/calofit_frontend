@@ -3,7 +3,7 @@ class LoginRequest {
   final String password;
   final bool rememberMe;
   final String firebaseUid;
-  final String userType; // 'client' o 'staff'
+  final String userType;
 
   LoginRequest({
     required this.email,
@@ -32,8 +32,8 @@ class LoginResponse {
   final String? userEmail;
   final int? userId;
   final String? firebaseUid;
-  final String? profilePictureUrl; // ✅ Añadido
-  final bool isProfileComplete; // 🌟 Nuevo: Control de Onboarding
+  final String? profilePictureUrl;
+  final bool isProfileComplete;
 
   LoginResponse({
     this.token,
@@ -72,14 +72,14 @@ class ClientRegisterRequest {
   final String password;
   final double weight;
   final double height;
-  final String medicalConditionsText; // Para el TextField
+  final String medicalConditionsText;
   final int assignedCoachId;
   final int assignedNutriId;
   final String activityLevel;
   final String goal;
-  final String birthDate; // Formato YYYY-MM-DD
-  final String flutterUid; // UID de Firebase
-  final String gender;    // Masculino/Femenino
+  final String birthDate;
+  final String flutterUid;
+  final String gender;
 
   ClientRegisterRequest({
     required this.firstName,
@@ -100,7 +100,6 @@ class ClientRegisterRequest {
   });
 
   Map<String, dynamic> toJson() {
-    // Convertir string a lista (dividir por comas)
     List<String> medicalConditionsList = medicalConditionsText.isEmpty
         ? []
         : medicalConditionsText.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
@@ -113,7 +112,7 @@ class ClientRegisterRequest {
       'password': password,
       'weight': weight,
       'height': height,
-      'medical_conditions': medicalConditionsList, // ✅ Ahora es lista
+      'medical_conditions': medicalConditionsList,
       'assigned_coach_id': assignedCoachId,
       'assigned_nutri_id': assignedNutriId,
       'activity_level': activityLevel,

@@ -163,8 +163,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     );
   }
 
-  // ─── HEADER ───────────────────────────────────────────────────────────────
-
   Widget _buildHeader() {
     final resumen = _semanaData?['resumen'];
     final adherencia = (resumen?['adherencia_promedio_pct'] ?? 0.0) as num;
@@ -246,9 +244,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     final racha = _rachaData!['racha_actual'] as int? ?? 0;
     final mejor = _rachaData!['mejor_racha'] as int? ?? 0;
     final hoy   = _rachaData!['registrado_hoy'] as bool? ?? false;
-    // Siempre los últimos 7 días reales (independiente de la semana que se
-    // esté navegando en la otra tarjeta) — la racha en sí no tiene tope de
-    // 7 días, esto es solo un vistazo rápido tipo Duolingo.
     final dias7 = List<Map<String, dynamic>>.from(_rachaData!['ultimos_7_dias'] ?? []);
     String letraDia(String fechaIso) {
       const l = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -370,8 +365,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
 
   Widget _buildVDivider() =>
       Container(width: 1, height: 40, color: Colors.white24);
-
-  // ─── TAB SEMANA ───────────────────────────────────────────────────────────
 
   Widget _buildSemanaTab() {
     if (_loadingSemana) {
@@ -564,13 +557,9 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     );
   }
 
-  // ─── GRÁFICO DE BARRAS SEMANAL ─────────────────────────────────────────────
-
   Widget _buildWeeklyChart(List<Map<String, dynamic>> dias) {
     if (dias.isEmpty) return const SizedBox.shrink();
 
-    // maxY = max(objetivo) × 1.5, pero también incluye consumidas reales
-    // con un techo de 2× el objetivo para que outliers no distorsionen la escala.
     final maxObjetivo = dias
         .map((d) => (d['kcal_objetivo'] as num).toDouble())
         .fold(0.0, (a, b) => a > b ? a : b);
@@ -578,7 +567,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
         .where((d) => d['hay_registro'] as bool)
         .map((d) => (d['kcal_consumidas'] as num).toDouble())
         .fold(0.0, (a, b) => a > b ? a : b);
-    // Techo: evitar que un día con dato extremo comprima toda la escala
     final maxConsumidasCap = maxConsumidas.clamp(0.0, maxObjetivo * 2.0);
     final maxY = (maxConsumidasCap > maxObjetivo ? maxConsumidasCap : maxObjetivo) * 1.25;
 
@@ -588,7 +576,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       final objetivo = (d['kcal_objetivo'] as num).toDouble();
       final consumidas = (d['kcal_consumidas'] as num).toDouble();
       final hayRegistro = d['hay_registro'] as bool;
-      // Capear al 75% del maxY: garantiza 25% de espacio libre para el tooltip
       final consumidasDisplay = consumidas.clamp(0.0, maxY * 0.75);
       final esOutlier = hayRegistro && consumidas > maxY * 0.75;
 
@@ -720,7 +707,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                             const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
                           );
                         }
-                        // Consumidas: mostrar valor real aunque la barra esté capeada
                         final real = (d['kcal_consumidas'] as num).toStringAsFixed(0);
                         final esOutlierTip = (d['kcal_consumidas'] as num) > maxY * 0.98;
                         return BarTooltipItem(
@@ -750,8 +736,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       ],
     );
   }
-
-  // ─── CARDS DE 7 DÍAS ──────────────────────────────────────────────────────
 
   Widget _buildDayCardsRow(List<Map<String, dynamic>> dias) {
     return Column(
@@ -846,7 +830,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       ),
       child: Row(
         children: [
-          // Día + indicador hoy
           SizedBox(
             width: 48,
             child: Column(
@@ -874,7 +857,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
             ),
           ),
           const SizedBox(width: 10),
-          // Barra de progreso + kcal
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -922,7 +904,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
             ),
           ),
           const SizedBox(width: 10),
-          // Icono ejercicio
           Container(
             width: 32,
             height: 32,
@@ -940,8 +921,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       ),
     );
   }
-
-  // ─── TAB PROGRESO HISTÓRICO ───────────────────────────────────────────────
 
   Widget _buildProgresoTab() {
     return ListView(
@@ -1006,7 +985,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
 
     final metaKcal = (_historicoData!['meta_kcal'] as num).toDouble();
 
-    // Para más de 30 días, muestrear cada N días para no saturar el eje X
     final step = _diasSeleccionados > 30 ? 3 : 1;
     final spots = <FlSpot>[];
     for (int i = 0; i < calorias.length; i += step) {
@@ -1022,7 +1000,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
 
     final maxY = ([metaKcal, ...spots.map((s) => s.y)].reduce((a, b) => a > b ? a : b)) * 1.2;
 
-    // Etiquetas del eje X: cada 7 días o en puntos clave
     final xLabels = <int, String>{};
     for (int i = 0; i < calorias.length; i += (_diasSeleccionados > 30 ? 14 : 7)) {
       final fecha = calorias[i]['fecha'] as String;
@@ -1062,7 +1039,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                 minY: 0,
                 maxY: maxY,
                 lineBarsData: [
-                  // Línea de meta (horizontal dashed)
                   LineChartBarData(
                     spots: [
                       FlSpot(0, metaKcal),
@@ -1075,7 +1051,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
                     dashArray: [6, 4],
                     belowBarData: BarAreaData(show: false),
                   ),
-                  // Línea de consumidas
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
@@ -1366,8 +1341,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
     );
   }
 
-  // ─── HELPERS ──────────────────────────────────────────────────────────────
-
   Widget _buildEmptyChart(String msg) {
     return Container(
       height: 100,
@@ -1405,8 +1378,6 @@ class _SeguimientoScreenState extends State<SeguimientoScreen>
       ),
     );
   }
-
-  // ─── BOTTOM NAV ───────────────────────────────────────────────────────────
 
   Widget _buildBottomNav() {
     return NavigationBar(

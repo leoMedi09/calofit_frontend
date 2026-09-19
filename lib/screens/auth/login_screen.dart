@@ -7,8 +7,6 @@ import '../../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
 import 'terms_privacy_screen.dart';
 
-/// Un solo punto de entrada: email + contraseña.
-/// El backend resuelve si el usuario es cliente o personal del gimnasio (`user_type: auto`).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -32,7 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _warmUpBackend() async {
-    // Espera 2 segundos antes de mostrar el aviso (evita parpadeo en respuestas rápidas)
     final timer = Timer(const Duration(seconds: 2), () {
       if (mounted) setState(() => _backendWaking = true);
     });
@@ -42,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
         headers: const {'Connection': 'close'},
       ).timeout(const Duration(seconds: 45));
     } catch (_) {
-      // Silencioso — si falla el health check, el login mostrará el error normal
     } finally {
       timer.cancel();
       if (mounted) setState(() => _backendWaking = false);

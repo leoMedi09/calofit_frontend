@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class CheckInCard extends StatelessWidget {
-  final int precisionScore; // 0 a 100
+  final int precisionScore;
   final bool isNeeded;
-  final int daysUntilCheckin; // 0 = no programado
+  final int daysUntilCheckin;
   final VoidCallback onTap;
 
   const CheckInCard({

@@ -48,7 +48,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
     super.initState();
     _isPreFilled = widget.initialIngredients != null && widget.initialIngredients!.isNotEmpty;
     if (_isPreFilled) {
-      // Pre-fill desde recetario: reemplaza la lista estática con los ingredientes sugeridos
       _ingredients
         ..clear()
         ..addAll(widget.initialIngredients!);
@@ -122,7 +121,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.token == null) return;
 
-      // Preparar lista con macros exactos del preview
       final alimentos = _ingredients.map((i) => {
         'nombre':          i['name'] as String,
         'gramos':          (i['gramos'] as num).toDouble(),
@@ -134,7 +132,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
       final partes = _ingredients.map((i) => '${i['gramos']}g de ${i['name']}').join(', ');
 
-      // Registro directo — usa macros del preview (sin re-estimación)
       await ApiService().registrarDirecto(
         alimentos: alimentos,
         token: auth.token!,
@@ -149,7 +146,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       _ingredients.clear();
 
       if (mounted) {
-        // Mostrar confirmación antes de cerrar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -173,7 +169,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
 
         Navigator.pop(context);
 
-        // Refrescar balance en segundo plano
         final balance = Provider.of<BalanceProvider>(context, listen: false);
         balance.fetchFullBalance(auth.token!).catchError((_) {});
       }
@@ -293,7 +288,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // ── Campo gramos ─────────────────────────────────────
                 SizedBox(
                   width: 90,
                   child: TextField(
@@ -328,7 +322,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // ── Campo nombre ─────────────────────────────────────
                 Expanded(
                   child: TextField(
                     controller: _nameController,
@@ -359,7 +352,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // ── Botón + ──────────────────────────────────────────
                 SizedBox(
                   height: 52,
                   width: 52,
@@ -383,7 +375,6 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
                 ),
               ],
             ),
-            // ── Error ─────────────────────────────────────────────────
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),

@@ -19,7 +19,7 @@ class _PatientListViewState extends State<PatientListView> {
   List<Map<String, dynamic>> _filteredPatients = [];
   bool _isLoading = true;
   String _searchQuery = "";
-  bool _showPending = false; // 🆕 Filtro para ocultar nuevos registros hasta que se completen
+  bool _showPending = false;
 
   @override
   void initState() {
@@ -37,7 +37,7 @@ class _PatientListViewState extends State<PatientListView> {
         setState(() {
           _patients = patients;
           _isLoading = false;
-          _filterPatients(_searchQuery); // Aplicar filtros actuales
+          _filterPatients(_searchQuery);
         });
       }
     } catch (e) {
@@ -58,7 +58,6 @@ class _PatientListViewState extends State<PatientListView> {
         final email = p['email']?.toString().toLowerCase() ?? '';
         final matchesQuery = fullName.contains(query.toLowerCase()) || email.contains(query.toLowerCase());
         
-        // El backend ahora envía is_profile_complete
         final bool isComplete = p['is_profile_complete'] == true;
         
         if (_showPending) {
@@ -105,7 +104,7 @@ class _PatientListViewState extends State<PatientListView> {
       floatingActionButton: canCreateClient
           ? FloatingActionButton.extended(
               onPressed: () => _showExpressCreationModal(context),
-              backgroundColor: const Color(0xFF1E88E5), // Azul premium
+              backgroundColor: const Color(0xFF1E88E5),
               foregroundColor: Colors.white,
               elevation: 4,
               icon: const Icon(Icons.person_add_alt_1_rounded),
@@ -162,7 +161,6 @@ class _PatientListViewState extends State<PatientListView> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  // Handle
                   Center(
                     child: Container(
                         width: 45,
@@ -173,7 +171,6 @@ class _PatientListViewState extends State<PatientListView> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Encabezado
                   Row(
                     children: [
                       Container(
@@ -206,7 +203,6 @@ class _PatientListViewState extends State<PatientListView> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Campo Email
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -234,7 +230,6 @@ class _PatientListViewState extends State<PatientListView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo DNI
                   TextField(
                     controller: dniController,
                     keyboardType: TextInputType.number,
@@ -265,7 +260,6 @@ class _PatientListViewState extends State<PatientListView> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ── Asignar Nutricionista (solo Admin) ──────────────────
                   if (isAdmin) ...[
                     _buildDropdownSelector(
                       context: sheetContext,
@@ -280,7 +274,6 @@ class _PatientListViewState extends State<PatientListView> {
                     const SizedBox(height: 16),
                   ],
 
-                  // ── Asignar Entrenador ───────────────────────────────────
                   _buildDropdownSelector(
                     context: sheetContext,
                     label: 'Entrenador',
@@ -293,7 +286,6 @@ class _PatientListViewState extends State<PatientListView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Error inline
                   if (errorMsg != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -315,7 +307,6 @@ class _PatientListViewState extends State<PatientListView> {
                       ),
                     ),
 
-                  // Botón crear
                   SizedBox(
                     width: double.infinity,
                     height: 56,
@@ -552,7 +543,6 @@ class _PatientListViewState extends State<PatientListView> {
               ],
             ),
             const SizedBox(height: 16),
-            // Opción "Sin asignar"
             GestureDetector(
               onTap: () { onChanged(null); Navigator.pop(ctx); },
               child: Container(
@@ -769,26 +759,25 @@ class _PatientListViewState extends State<PatientListView> {
         final String status = patient['semana_status'] ?? 'falta_checkin';
         final bool isProfileComplete = patient['is_profile_complete'] ?? true;
         
-        // Formatear objetivo (quitar guiones y capitalizar)
         String rawGoal = patient['goal']?.toString().replaceAll('_', ' ') ?? 'Mantener peso';
         String formattedGoal = rawGoal.isNotEmpty 
             ? rawGoal[0].toUpperCase() + rawGoal.substring(1) 
             : rawGoal;
         
-        Color statusColor = const Color(0xFFD32F2F); // Rojo suave profesional
+        Color statusColor = const Color(0xFFD32F2F);
         IconData statusIcon = Icons.error_outline_rounded;
         String statusLabel = "FALTA CHECK-IN";
         
         if (!isProfileComplete) {
-          statusColor = const Color(0xFF9C27B0); // Púrpura para Onboarding
+          statusColor = const Color(0xFF9C27B0);
           statusIcon = Icons.app_registration_rounded;
           statusLabel = "PERFIL INCOMPLETO";
         } else if (status == "validado") {
-          statusColor = const Color(0xFF388E3C); // Verde Nutri
+          statusColor = const Color(0xFF388E3C);
           statusIcon = Icons.task_alt_rounded;
           statusLabel = "PLAN VALIDADO";
         } else if (status == "pendiente") {
-          statusColor = const Color(0xFFF57C00); // Ámbar/Naranja
+          statusColor = const Color(0xFFF57C00);
           statusIcon = Icons.history_rounded;
           statusLabel = "PENDIENTE";
         }
@@ -815,11 +804,9 @@ class _PatientListViewState extends State<PatientListView> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // Fila Superior: Badge en la esquina sin tapar nada
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        // Badge secundario: sin peso mensual
                         if (status == "validado" &&
                             patient['hizo_checkin_peso'] == false) ...[
                           Container(
@@ -852,7 +839,6 @@ class _PatientListViewState extends State<PatientListView> {
                           ),
                           const SizedBox(width: 6),
                         ],
-                        // Badge principal de estado
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 5),
@@ -882,11 +868,9 @@ class _PatientListViewState extends State<PatientListView> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Contenido Principal
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Avatar
                         CircleAvatar(
                           radius: 24,
                           backgroundColor: (isMale
@@ -924,7 +908,6 @@ class _PatientListViewState extends State<PatientListView> {
                         ),
                         const SizedBox(width: 14),
 
-                        // Información
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -955,7 +938,6 @@ class _PatientListViewState extends State<PatientListView> {
                               ),
                               const SizedBox(height: 12),
 
-                              // Métricas solo si el perfil está completo
                               if (isProfileComplete) ...[
                                 const SizedBox(height: 12),
                                 Row(
@@ -1050,8 +1032,6 @@ class _PatientListViewState extends State<PatientListView> {
       ),
     );
   }
-
-  // _buildWeeklyStatusChip removido (integrado en el diseño premium)
 
   Widget _buildEmptyState() {
     return Center(
@@ -1214,8 +1194,8 @@ class _PatientListViewState extends State<PatientListView> {
                                             !isNutri ? member['id'] : null,
                                         token: authProvider.token!);
                                     if (context.mounted) {
-                                      Navigator.pop(context); // Cerrar lista
-                                      Navigator.pop(context); // Cerrar preview
+                                      Navigator.pop(context);
+                                      Navigator.pop(context);
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(

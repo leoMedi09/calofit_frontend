@@ -8,7 +8,7 @@ import 'views/staff_profile_view.dart';
 import 'views/patient_list_view.dart';
 import 'views/staff_menu_view.dart';
 import 'views/team_list_view.dart';
-import 'views/trainer_clients_view.dart'; // ✅ Restaurado
+import 'views/trainer_clients_view.dart';
 
 class StaffMainScreen extends StatefulWidget {
   const StaffMainScreen({super.key});
@@ -30,7 +30,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.showWelcomeMessage) {
         _showToast(context, "¡Bienvenido Staff, ${authProvider.userName}! 🛠️",
-            const Color(0xFF2E7D32) // Verde Premium
+            const Color(0xFF2E7D32)
             );
         authProvider.consumeWelcomeMessage();
       }
@@ -44,7 +44,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
         alignment: Alignment.bottomCenter,
         child: Padding(
           padding: const EdgeInsets.only(
-              bottom: 100), // Flotando sobre el contenido inferior
+              bottom: 100),
           child: Material(
             color: Colors.transparent,
             child: Container(
@@ -52,7 +52,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(30), // Forma de píldora
+                borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
                     color: color.withOpacity(0.3),
@@ -62,7 +62,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
                 ],
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min, // Ajuste al contenido
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.stars_rounded,
                       color: Colors.white, size: 22),
@@ -98,7 +98,6 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
     final String userRole = (authProvider.userRole ?? 'STAFF').toUpperCase();
     final Color primaryBlue = const Color(0xFF1E88E5);
 
-    // Definición de todas las posibles vistas
     final Map<String, Map<String, dynamic>> allSections = {
       'dashboard': {
         'view': DashboardView(
@@ -153,14 +152,13 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       },
     };
 
-    // Filtrar secciones por rol
     List<String> activeSectionKeys;
     if (userRole.contains('ADMIN')) {
       activeSectionKeys = ['dashboard', 'team', 'patients', 'profile'];
     } else if (userRole.contains('NUTRI')) {
-      activeSectionKeys = ['dashboard', 'patients', 'profile']; // ✅ Quitamos 'team' para evitar 403
+      activeSectionKeys = ['dashboard', 'patients', 'profile'];
     } else if (_isEntrenador(userRole)) {
-      activeSectionKeys = ['dashboard', 'patients', 'profile']; // ✅ Acceso para el Entrenador
+      activeSectionKeys = ['dashboard', 'patients', 'profile'];
     } else {
       activeSectionKeys = ['dashboard', 'profile'];
     }
@@ -172,7 +170,6 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
         .map((k) => allSections[k]!['item'] as BottomNavigationBarItem)
         .toList();
 
-    // Asegurar que el índice no se desborde si el rol cambia
     if (_selectedIndex >= filteredViews.length) {
       _selectedIndex = 0;
     }

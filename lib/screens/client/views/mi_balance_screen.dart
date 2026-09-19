@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import 'chat_screen.dart';
-import 'seguimiento_screen.dart'; // usado en bottom nav
+import 'seguimiento_screen.dart';
 import '../../../providers/balance_provider.dart';
 import 'edit_profile_screen.dart';
 import '../../../widgets/app_components.dart';
@@ -47,7 +47,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         dateParam = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
       }
       balance.fetchFullBalance(auth.token!, fecha: dateParam).then((_) {
-        // Asegúrate que el controller no haga forward si el widget muere
         if (mounted) _animController.forward(from: 0);
       });
       balance.fetchFavoritos(auth.token!);
@@ -94,7 +93,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
 
-    // Si hay más de 1 registro del mismo alimento, preguntar cuántos borrar
     int nEliminar = 1;
     if (cantidad > 1 && tipo == 'alimento') {
       final resultado = await showDialog<int>(
@@ -160,7 +158,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       if (resultado == null || resultado == 0) return;
       nEliminar = resultado;
     } else {
-      // 1 solo registro: confirmar simple
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -213,7 +210,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
           ));
       }
     } catch (e) {
-      // Si el registro ya no existe (404) refrescamos silenciosamente sin mostrar error
       final is404 = e.toString().contains('404');
       try {
         await balanceProvider.fetchFullBalance(token!, fecha: dateParam);
@@ -306,7 +302,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     final consumidas = (resumen['calorias_consumidas'] ?? 0).toDouble();
     final quemadas = (resumen['calorias_quemadas'] ?? 0).toDouble();
     final objetivo = (resumen['objetivo_diario'] ?? 2000).toDouble();
-    // Restan = Meta − Consumido + Quemadas
     final restantes = (resumen['calorias_restantes'] ?? (objetivo - consumidas + quemadas)).toDouble();
     final proteinas = (resumen['proteinas_g'] ?? 0.0).toDouble();
     final carbohidratos = (resumen['carbohidratos_g'] ?? 0.0).toDouble();
@@ -321,11 +316,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       color: AppColors.primary,
       child: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // ── PREMIUM HEADER ──
           SliverToBoxAdapter(
             child: _buildHeroHeader(consumidas, quemadas, objetivo, restantes),
           ),
-          // ── MACRO PILLS ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -335,7 +328,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         ],
         body: Column(
           children: [
-            // ── TABS (sticky) ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Container(
@@ -359,7 +351,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                 ),
               ),
             ),
-            // ── CONTENT ──
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -402,7 +393,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         bottom: false,
         child: Column(
           children: [
-            // ── Top bar
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -456,9 +446,9 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                             return Theme(
                               data: Theme.of(context).copyWith(
                                 colorScheme: const ColorScheme.light(
-                                  primary: AppColors.primaryDark, // header background color
-                                  onPrimary: Colors.white, // header text color
-                                  onSurface: Colors.black, // body text color
+                                  primary: AppColors.primaryDark,
+                                  onPrimary: Colors.white,
+                                  onSurface: Colors.black,
                                 ),
                               ),
                               child: child!,
@@ -489,7 +479,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
             const SizedBox(height: 20),
 
-            // ── Linear Progress (Compact)
             AnimatedBuilder(
               animation: _animController,
               builder: (context, child) {
@@ -561,7 +550,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
 
             const SizedBox(height: 14),
 
-            // ── Stats row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -599,10 +587,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     return Container(width: 1, height: 36, color: Colors.white.withOpacity(0.15));
   }
 
-  // ═══════════════════════════════════════════
-  // ██  MACRO PILLS (PREMIUM 2.0)
-  // ═══════════════════════════════════════════
-  
   Widget _buildMacroPills(double proteinas, double carbohidratos, double grasas, double metaP, double metaC, double metaG) {
     return Column(
       children: [
@@ -697,10 +681,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     );
   }
 
-  // ═══════════════════════════════════════════
-  // ██  FOOD / EXERCISE LISTS
-  // ═══════════════════════════════════════════
-
   Widget _buildAlimentosList(List alimentos) {
     if (alimentos.isEmpty) {
       return EmptyStateView(
@@ -730,8 +710,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       itemBuilder: (context, index) => _buildEjercicioCard(ejercicios[index], index),
     );
   }
-
-  // ============ FAVORITOS UI ============
 
   Widget _buildAlimentoCard(Map<String, dynamic> alimento, int index) {
     final nombre = alimento['nombre'] ?? '';
@@ -942,10 +920,6 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
       ),
     );
   }
-
-  // ═══════════════════════════════════════════
-  // ██  BOTTOM NAV
-  // ═══════════════════════════════════════════
 
   Widget _buildBottomNavigation() {
     return NavigationBar(

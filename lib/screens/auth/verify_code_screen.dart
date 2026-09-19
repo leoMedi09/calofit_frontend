@@ -181,7 +181,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
             children: [
               const SizedBox(height: 16),
 
-              // Ícono con estado visual
               Center(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
@@ -202,7 +201,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
               ),
               const SizedBox(height: 28),
 
-              // Título con estado visual
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: Text(
@@ -241,7 +239,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
               ),
               const SizedBox(height: 32),
 
-              // ── Campo de código ──────────────────────────────────────────
               TextField(
                 controller: _codeController,
                 keyboardType: TextInputType.number,
@@ -287,7 +284,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
 
               const SizedBox(height: 24),
 
-              // ── Botón verificar código (solo antes de verificar) ─────────
               if (!_codeVerified)
                 SizedBox(
                   height: 52,
@@ -309,7 +305,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                         ),
                 ),
 
-              // ── Campos de contraseña (aparecen animados tras verificar) ──
               if (_codeVerified)
                 FadeTransition(
                   opacity: _fadeAnim,
@@ -318,7 +313,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Separador
                         Padding(
                           padding:
                               const EdgeInsets.symmetric(vertical: 8),
@@ -342,7 +336,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                         ),
                         const SizedBox(height: 8),
 
-                        // Contraseña
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscureText,
@@ -365,7 +358,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                         ),
                         const SizedBox(height: 16),
 
-                        // Confirmar contraseña
                         TextField(
                           controller: _confirmPasswordController,
                           obscureText: _obscureText,
@@ -381,7 +373,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen>
                         ),
                         const SizedBox(height: 28),
 
-                        // Botón actualizar
                         SizedBox(
                           height: 52,
                           child: _isUpdatingPassword

@@ -30,7 +30,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   final ApiService _apiService = ApiService();
   AnimationController? _progressController;
   
-  // ✅ Estado de Check-in
   bool _checkInNeeded = false;
   int _precisionScore = 100;
   int _daysUntilCheckin = 0;
@@ -38,10 +37,10 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   String? _lastUpdateDate;
   double _baselineWeight = 70.0;
   double _baselineHeight = 170.0;
-  bool _dialogShown = false; // ✅ Para mostrar el popup solo una vez al entrar
-  int? _assignedNutriId; // ✅ Verifica si tiene Nutri asignado
-  bool _showAllRecommended = false; // Expande la lista "Prioriza esta semana"
-  bool _showAllForbidden = false; // Expande la lista "Evita esta semana"
+  bool _dialogShown = false;
+  int? _assignedNutriId;
+  bool _showAllRecommended = false;
+  bool _showAllForbidden = false;
   int _rachaActual = 0;
 
   @override
@@ -51,14 +50,10 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    // No hay polling periódico: se recarga al volver de cualquier sub-pantalla
-    // (ver .then en cada Navigator.push) y al volver al primer plano (WidgetsBindingObserver)
     
-    // Carga inicial de datos a través del Provider
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // 🆕 Verificar si el cliente tiene el perfil completo
       if (authProvider.userId != null && authProvider.token != null) {
         try {
           final client = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
@@ -70,11 +65,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
             return;
           }
         } catch (_) {
-          // Si falla la verificación, continuar con el dashboard normal
         }
       }
       
-      // ✅ Mostrar Toast de bienvenida si acaba de iniciar sesión
       if (authProvider.showWelcomeMessage) {
         final String name = authProvider.userName ?? 'Usuario';
         _showToast(context, '¡Bienvenido(a), $name!', const Color(0xFF1E88E5));
@@ -91,7 +84,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       builder: (context) => Align(
         alignment: Alignment.bottomCenter,
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 100), // Flotando sobre el contenido inferior
+          padding: const EdgeInsets.only(bottom: 100),
           child: Material(
             color: Colors.transparent,
             child: Container(
@@ -99,7 +92,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(30), // Forma de píldora
+                borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
                     color: color.withOpacity(0.3),
@@ -109,7 +102,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                 ],
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min, // Ajuste al contenido
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.stars_rounded, color: Colors.white, size: 22),
                   const SizedBox(width: 12),
@@ -164,13 +157,11 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       
       if (!mounted) return;
       
-      // Animar el progreso si se cargaron datos
       if (balanceProvider.dailySummary != null) {
         _progressController?.reset();
         _progressController?.forward();
       }
       
-      // ✅ Cargar Estado de Check-in
       try {
         final checkInStatus = await _apiService.getCheckInStatus(authProvider.token!);
         setState(() {
@@ -184,11 +175,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
         debugPrint('Error cargando status de check-in: $checkInErr');
       }
 
-      // Buscar el perfil completo si es necesario o para sincronizar datos
       try {
         final profile = await _apiService.getClientProfile(authProvider.userId!, authProvider.token!);
         
-        // ✅ Sincronizar foto de perfil si es diferente
         if (profile.profilePictureUrl != null && profile.profilePictureUrl != authProvider.profilePictureUrl) {
           authProvider.updateProfilePictureUrl(profile.profilePictureUrl!);
         }
@@ -207,13 +196,11 @@ class _ClientMainScreenState extends State<ClientMainScreen>
         debugPrint('Error sincronizando perfil en dashboard: $profileErr');
       }
 
-      // Racha de registro
       try {
         final racha = await _apiService.getMiRacha(authProvider.token!);
         if (mounted) setState(() => _rachaActual = racha['racha_actual'] as int? ?? 0);
       } catch (_) {}
 
-      // ✅ Mostrar Diálogo de Emergencia si hoy es necesario y no se ha mostrado
       if (_checkInNeeded && !_dialogShown && mounted) {
         _dialogShown = true;
         _showEmergencyCheckInDialog();
@@ -227,7 +214,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   Future<void> _handleSessionExpired(AuthProvider authProvider) async {
     if (!mounted) return;
     
-    // Mostrar diálogo informativo
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -258,7 +244,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ),
     );
     
-    // Ejecutar logout y redirigir al login
     await authProvider.logout();
     
     if (mounted) {
@@ -282,10 +267,8 @@ class _ClientMainScreenState extends State<ClientMainScreen>
           onRefresh: _loadDashboardData,
           child: CustomScrollView(
             slivers: [
-              // Header personalizado
               _buildCustomHeader(authProvider, dailySummary),
               
-              // Contenido principal
               SliverPadding(
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
@@ -327,9 +310,8 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           ),
                         ),
                       )
-                    else if (dailySummary != null) ...[ // Hero Section: Progreso del día
+                    else if (dailySummary != null) ...[
                       
-                      // ✅ NUEVO: Bloqueo de Nutricionista
                       if (_assignedNutriId == null)
                         Container(
                           margin: const EdgeInsets.only(bottom: 20),
@@ -367,7 +349,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           ),
                         ),
 
-                      // Card de Check-in: solo aparece cuando el check-in ya es HOY
                       if (_checkInNeeded)
                         CheckInCard(
                           precisionScore: _precisionScore,
@@ -384,17 +365,15 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                               ),
                             );
                             if (result == true) {
-                              _loadDashboardData(); // Recargar datos tras completar
+                              _loadDashboardData();
                             }
                           },
                         ),
                       
-                      // ✨ NUEVO: Alertas rápidas horizontales
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            // Badge de cuenta regresiva: siempre que queden días y no sea urgente
                             if (_daysUntilCheckin > 0 && !_checkInNeeded)
                               Container(
                                 margin: const EdgeInsets.only(right: 12, bottom: 16, top: 4),
@@ -446,7 +425,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                       _buildProgressHero(dailySummary),
                       const SizedBox(height: 20),
 
-                      // Macronutrientes en cards horizontales (siempre visibles sin scroll)
                       _buildMacroCards(dailySummary),
                       if ((dailySummary.aiStrategicFocus != null && dailySummary.aiStrategicFocus!.isNotEmpty) ||
                           (dailySummary.nutriWeeklyNote != null && dailySummary.nutriWeeklyNote!.isNotEmpty) ||
@@ -463,7 +441,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                       ],
                       const SizedBox(height: 20),
 
-                      // ✨ NUEVO: Panel de Micros & Salud (Si hay datos de micros)
                       if ((dailySummary.azucares ?? 0) > 0 || 
                           (dailySummary.fibra ?? 0) > 0 || 
                           (dailySummary.sodio ?? 0) > 0 ||
@@ -472,9 +449,7 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                         const SizedBox(height: 20),
                       ],
                       
-                      // Plan nutricional (si existe)
                       if (dailySummary.planObjetivo != null) ...[
-                        // ✨ Card de alerta de estado del plan
                         PlanAlertCard(
                           estadoPlan: dailySummary.planObjetivo!.estadoPlan,
                           esCondicionCritica: dailySummary.planObjetivo!.esCondicionCritica,
@@ -485,13 +460,11 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                         const SizedBox(height: 20),
                       ],
                       
-                      // Insight de IA
                       if (dailySummary.aiInsight.isNotEmpty) ...[
                         _buildAIInsightModern(dailySummary),
                         const SizedBox(height: 16),
                       ],
 
-                      // Stats rápidas
                       _buildQuickStats(dailySummary),
                     ] else
                       Center(
@@ -526,7 +499,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== CUSTOM HEADER ====================
   Widget _buildCustomHeader(AuthProvider authProvider, DailySummary? dailySummary) {
     return SliverAppBar(
       expandedHeight: 140,
@@ -696,14 +668,12 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== PROGRESS HERO ====================
   Widget _buildProgressHero(DailySummary dailySummary) {
     final plan = dailySummary.planObjetivo;
     final meta = plan?.caloriasObjetivo ?? 2000.0;
     final consumido = dailySummary.calorias;
     final quemadas = dailySummary.caloriasQuemadas;
     
-    // Restan = Meta − Consumido + Quemadas
     final restante = (meta - consumido + quemadas).clamp(0.0, 5000.0);
     final progreso = meta > 0 ? (consumido / meta).clamp(0.0, 1.0) : 0.0;
 
@@ -755,7 +725,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Track de fondo
                       SizedBox(
                         width: 180,
                         height: 180,
@@ -765,7 +734,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                           color: Colors.white.withOpacity(0.12),
                         ),
                       ),
-                      // Indicador real
                       SizedBox(
                         width: 180,
                         height: 180,
@@ -808,7 +776,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
                 ),
               ),
               const SizedBox(height: 40),
-              // Stats
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -1157,16 +1124,13 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== MACRO CARDS ====================
   Widget _buildMacroCards(DailySummary dailySummary) {
     final plan = dailySummary.planObjetivo;
     
-    // Obtener valores de macros del plan (si existe)
     final proteinasMeta = plan?.proteinasObjetivoG.toInt() ?? 0;
     final carbohidratosMeta = plan?.carbohidratosObjetivoG.toInt() ?? 0;
     final grasasMeta = plan?.grasasObjetivoG.toInt() ?? 0;
     
-    // Valores consumidos — round() para consistencia con Mi Balance
     final proteinasConsumido = dailySummary.proteinas.round();
     final carbosConsumido = dailySummary.carbohidratos.round();
     final grasasConsumido = dailySummary.grasas.round();
@@ -1269,11 +1233,9 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ),
     );
   }
-  // ==================== MICROS PANEL ====================
   Widget _buildMicrosPanel(DailySummary summary) {
     final items = <Widget>[];
 
-    // 1. Azúcares
     if ((summary.azucares ?? 0) > 0) {
       final val = summary.azucares!;
       items.add(_buildMicroGridItem(
@@ -1283,7 +1245,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ));
     }
 
-    // 2. Fibra
     if ((summary.fibra ?? 0) > 0) {
       final val = summary.fibra!;
       items.add(_buildMicroGridItem(
@@ -1293,7 +1254,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ));
     }
 
-    // 3. Sodio
     if ((summary.sodio ?? 0) > 0) {
       final val = summary.sodio!;
       items.add(_buildMicroGridItem(
@@ -1303,7 +1263,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ));
     }
 
-    // 4. Grasas Saturadas
     if ((summary.grasasSaturadas ?? 0) > 0) {
       final val = summary.grasasSaturadas!;
       items.add(_buildMicroGridItem(
@@ -1313,7 +1272,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       ));
     }
 
-    // 5. Calcio / Hierro si existen (solo si detectamos valor significativo)
     if ((summary.calcio ?? 0) > 100) {
       items.add(_buildMicroGridItem('Calcio', '${summary.calcio!.toStringAsFixed(0)}mg', Icons.bolt_rounded, Colors.blue, 'Info', Colors.blue));
     }
@@ -1390,7 +1348,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // Usamos el mismo estilo de tarjeta que en Staff para unificar
   Widget _buildRoleCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
@@ -1430,7 +1387,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== PLAN NUTRICIONAL COMPACTO ====================
   Widget _buildPlanNutricionalCompact(DailySummary dailySummary) {
     final plan = dailySummary.planObjetivo!;
     
@@ -1450,7 +1406,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Título completo + badge debajo → nunca se trunca sin importar el texto del badge
           const Text(
             '🎯 Tu Plan Nutricional',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -1484,7 +1439,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
             ],
           ),
           
-          // 🆕 Mensaje informativo si es fallback
           if (plan.esFallback) ...[
             const SizedBox(height: 16),
             Container(
@@ -1509,7 +1463,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
             ),
           ],
           
-          // 📋 Mostrar alerta de seguridad si existe
           if (plan.alertaSeguridad.isNotEmpty) ...[ 
             const SizedBox(height: 16),
             Container(
@@ -1540,7 +1493,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   }
   
   
-  // ==================== AI INSIGHT MODERNO ====================
   Widget _buildAIInsightModern(DailySummary dailySummary) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1604,7 +1556,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== QUICK STATS ====================
   Widget _buildQuickStats(DailySummary dailySummary) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1678,7 +1629,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== LOGOUT DIALOG ====================
   void _showLogoutDialog(AuthProvider authProvider) {
     showDialog(
       context: context,
@@ -1709,7 +1659,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
     );
   }
 
-  // ==================== BOTTOM NAVIGATION ====================
   Widget _buildBottomNavigation() {
     return NavigationBar(
       selectedIndex: 0,
@@ -1909,7 +1858,6 @@ class _ClientMainScreenState extends State<ClientMainScreen>
   }
 }
 
-// ==================== CIRCULAR PROGRESS PAINTER ====================
 class CircularProgressPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -1926,7 +1874,6 @@ class CircularProgressPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
 
-    // Background circle
     final bgPaint = Paint()
       ..color = color.withOpacity(0.2)
       ..strokeWidth = strokeWidth
@@ -1934,7 +1881,6 @@ class CircularProgressPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Progress arc
     final sweepAngle = 2 * math.pi * progress;
     final progressPaint = Paint()
       ..color = color

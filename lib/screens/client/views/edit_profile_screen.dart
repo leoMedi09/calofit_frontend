@@ -43,21 +43,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   double? _sessionDuration;
   String? _gender;
   DateTime? _birthDate;
-  // ponytail: el backend no expone el valor actual en ClientResponse, así
-  // que arrancamos en true (default real en BD); si el usuario ya lo había
-  // apagado antes (imposible hasta ahora, no existía este switch) se vería
-  // desincronizado hasta que lo toque una vez.
+  // ponytail: ClientResponse no expone el valor actual; arranca en true (default de BD)
   bool _notificacionesActivas = true;
   bool _guardandoNotificaciones = false;
 
-  // Grupos separados para mejor UX
   final List<String> _medicalOptions = [
     'Diabetes', 'Hipertensión', 'Asma', 'Enfermedad Cardiovascular', 'Intolerancia a la Lactosa', 'Celíaco',
   ];
   final List<String> _dietaryOptions = [
     'Vegano', 'Vegetariano', 'Ninguna',
   ];
-  // Lista combinada para compatibilidad con el backend
   List<String> get _medicalConditionsOptions => [..._medicalOptions, ..._dietaryOptions];
 
   @override
@@ -116,7 +111,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  /// Diálogo de confirmación: avisa que guardar cambios quita la aprobación del plan.
   Future<bool> _confirmarCambiosPerfil() async {
     return await showDialog<bool>(
           context: context,
@@ -197,11 +191,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Capturar providers ANTES de cualquier await para evitar async-gap BuildContext
     final authProvider    = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
 
-    // Mostrar confirmación antes de proceder
     final confirmed = await _confirmarCambiosPerfil();
     if (!confirmed) return;
 
@@ -236,7 +228,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         authProvider.token!,
       );
 
-      // Refresh the daily plan so BalanceCard shows recalculated macros
       if (mounted) {
         await balanceProvider.fetchFullBalance(authProvider.token!);
       }
@@ -277,7 +268,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
     } catch (e) {
       if (mounted) {
-        setState(() => _notificacionesActivas = !value); // revertir en error
+        setState(() => _notificacionesActivas = !value);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No se pudo actualizar la preferencia. Intenta de nuevo.'),
@@ -400,7 +391,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 60),
             
-            // Cápsula de Nombre
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Container(
@@ -878,8 +868,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildMLBadge() {
-    // Calculamos dinámicamente el perfil base a la actividad para que sea visual.
-    // (En un escenario real ideal, este valor vendría de widget.client.mlProfile)
     String perfilML;
     if (_activityLevel == 'Activo' || _activityLevel == 'Muy activo') {
       perfilML = 'PERFIL_A';
@@ -910,7 +898,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         label = 'En Desarrollo';
         icon = Icons.trending_up_rounded;
         break;
-      default: // PERFIL_C
+      default:
         bgColor = Colors.green.shade50;
         textColor = Colors.green.shade900;
         borderColor = Colors.green.shade200;

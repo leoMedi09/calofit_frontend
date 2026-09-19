@@ -11,10 +11,8 @@ import '../config/api_config.dart';
 class ApiService {
   static bool _needsLogout = false;
 
-  // Estado global de sesion expirada.
   static bool get needsLogout => _needsLogout;
 
-  // Limpia el flag despues de procesar logout en UI.
   static void resetLogoutFlag() {
     _needsLogout = false;
   }
@@ -27,10 +25,8 @@ class ApiService {
   ))
     ..interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        // Evita cache de baseUrl durante hot reload.
         options.baseUrl = ApiConfig.baseUrl;
 
-        // Logging de peticiones.
         ApiConfig.printCurrentConfig();
         print('📤 ${options.method} ${options.baseUrl}${options.path}');
         return handler.next(options);
@@ -41,7 +37,6 @@ class ApiService {
         print(
             '❌ Error en petición [${statusCode ?? 'SIN CÓDIGO'}]: ${e.message}');
 
-        // Token invalido/expirado: solo para requests autenticadas.
         if (statusCode == 401 || statusCode == 403) {
           final hasAuthHeader =
               e.requestOptions.headers.containsKey('Authorization');
@@ -50,7 +45,6 @@ class ApiService {
               path.contains('/clientes/registrar') ||
               path.contains('/forgot-password');
 
-          // No cerrar sesion por errores de endpoints publicos.
           if (hasAuthHeader && !isAuthEndpoint) {
             print(
                 '🔐 Token inválido o expirado en petición autenticada. Cerrando sesión...');
@@ -65,7 +59,6 @@ class ApiService {
       },
     ));
 
-  // Autenticacion
   Future<LoginResponse> login(LoginRequest request) async {
     try {
       print('📤 Enviando datos de login: ${request.toJson()}');
@@ -78,7 +71,6 @@ class ApiService {
     }
   }
 
-  // Registro de Cliente
   Future<void> registerClient(ClientRegisterRequest request) async {
     try {
       final response =
@@ -92,7 +84,6 @@ class ApiService {
     }
   }
 
-  // Registro de Staff (Admin/Nutri/Coach)
   Future<void> registerStaff(
       Map<String, dynamic> staffData, String token) async {
     try {
@@ -112,7 +103,6 @@ class ApiService {
     }
   }
 
-  // ✅ Subir Foto de Perfil (Modular)
   Future<String> uploadProfilePicture(
       String token, String filePath, bool isStaff) async {
     try {
@@ -146,7 +136,6 @@ class ApiService {
     }
   }
 
-  // ✅ CAMBIO DE CONTRASEÑA
   Future<void> changePassword(
       String token, String newPassword, String confirmPassword) async {
     try {
@@ -169,7 +158,6 @@ class ApiService {
     }
   }
 
-  // Usuarios
   Future<List<User>> getUsers(String token) async {
     try {
       final response = await _dio.get('/admin/staff',
@@ -186,7 +174,6 @@ class ApiService {
     }
   }
 
-  // ✅ Obtener perfil del personal (Nutri/Coach/Admin)
   Future<Map<String, dynamic>> getStaffProfile(String token) async {
     try {
       print('🔍 Obteniendo perfil de staff...');
@@ -201,7 +188,6 @@ class ApiService {
     }
   }
 
-  // ✅ Actualizar mi propio perfil (Nutri/Coach/Admin)
   Future<Map<String, dynamic>> updateMyStaffProfile(
       Map<String, dynamic> data, String token) async {
     try {
@@ -216,9 +202,6 @@ class ApiService {
     }
   }
 
-  // Clientes
-
-  // ✅ Crear Cliente Express (Nutricionista)
   Future<Map<String, dynamic>> createExpressClient(
     String email,
     String dni,
@@ -248,7 +231,6 @@ class ApiService {
     }
   }
 
-  // ✅ Lista de entrenadores activos (para asignar al crear paciente)
   Future<List<Map<String, dynamic>>> getCoachesList(String token) async {
     try {
       final response = await _dio.get(
@@ -261,7 +243,6 @@ class ApiService {
     }
   }
 
-  // ✅ Registrar/actualizar el token FCM del dispositivo para notificaciones push
   Future<void> registrarFcmToken(String fcmToken, String token) async {
     try {
       await _dio.post(
@@ -274,7 +255,6 @@ class ApiService {
     }
   }
 
-  // ✅ Activar/desactivar recordatorios diarios push
   Future<void> actualizarPreferenciaNotificaciones(
       bool activas, String token) async {
     await _dio.put(
@@ -284,7 +264,6 @@ class ApiService {
     );
   }
 
-  // ✅ Guardar nota del entrenador en el expediente del cliente
   Future<void> saveCoachNote(int clientId, String note, String token) async {
     await _dio.put(
       '/nutricionista/cliente/$clientId/nota-entrenador',
@@ -305,7 +284,6 @@ class ApiService {
     }
   }
 
-  // ✅ Obtener perfil del cliente (token JWT)
   Future<Client> getClientProfile(int clientId, String token) async {
     try {
       print('🔍 Obteniendo perfil del cliente...');
@@ -320,7 +298,6 @@ class ApiService {
     }
   }
 
-  // ✅ Check-in Semanal
   Future<Map<String, dynamic>> getCheckInStatus(String token) async {
     try {
       final response = await _dio.get('/clientes/checkin-status',
@@ -344,7 +321,6 @@ class ApiService {
     }
   }
 
-  // ✅ Actualizar contraseña de un miembro del staff (Admin only)
   Future<void> updateStaffPassword(
       int userId, String newPassword, String token) async {
     try {
@@ -363,7 +339,6 @@ class ApiService {
     }
   }
 
-  // ✅ Actualizar datos de un miembro del staff (Admin only)
   Future<void> updateStaff(
       int userId, Map<String, dynamic> staffData, String token) async {
     try {
@@ -385,7 +360,6 @@ class ApiService {
     }
   }
 
-  // ✅ Obtener logs de auditoría (Admin only)
   Future<List<Map<String, dynamic>>> getAdminLogs(String token) async {
     try {
       final response = await _dio.get('/admin/logs',
@@ -398,10 +372,8 @@ class ApiService {
     }
   }
 
-  // ✅ Actualizar perfil del cliente
   Future<void> updateClient(int clientId, Client client, String token) async {
     try {
-      // Usamos el método toJson del modelo que ya incluye birth_date correctamente
       final Map<String, dynamic> updateData = client.toJson();
 
       print('📤 Actualizando perfil del cliente...');
@@ -422,7 +394,6 @@ class ApiService {
     }
   }
 
-  // Ejercicios
   Future<List<Exercise>> getExercises(String token) async {
     try {
       final response = await _dio.get('/ejercicios/',
@@ -435,7 +406,6 @@ class ApiService {
     }
   }
 
-  // Nutrición
   Future<List<NutritionPlan>> getNutritionPlans(String token) async {
     try {
       final response = await _dio.get('/nutricion/',
@@ -448,7 +418,6 @@ class ApiService {
     }
   }
 
-  // Asistente IA
   Future<String> askAssistant(String question, String token) async {
     try {
       final response = await _dio.post('/asistente/consultar',
@@ -473,8 +442,6 @@ class ApiService {
       throw Exception('Error al obtener sugerencia de la IA: $e');
     }
   }
-
-  // ============ ENDPOINTS DASHBOARD ============
 
   Future<Map<String, dynamic>> getDailySummary(
       int clientId, String token) async {
@@ -532,11 +499,9 @@ class ApiService {
       return response.data;
     } catch (e) {
       print('⚠️ Error en análisis IA: $e');
-      return {}; // Retornar mapa vacío evita que la App explote
+      return {};
     }
   }
-
-  // app/lib/services/api_service.dart
 
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     try {
@@ -561,7 +526,7 @@ class ApiService {
         data: {
           'email': email,
           'reset_code': code,
-          'new_password': '', // No se usa en este paso
+          'new_password': '',
         },
       );
       return {'success': true, 'message': response.data['message']};
@@ -594,7 +559,6 @@ class ApiService {
     }
   }
 
-  /// 🍽️ Obtiene el plan nutricional/dieta de un cliente por su Firebase UID
   Future<Map<String, dynamic>> getDietaPorUid(
       String firebaseUid, String token) async {
     try {
@@ -608,11 +572,6 @@ class ApiService {
     }
   }
 
-  // ============ SISTEMA DE RECOMENDACIONES PERSONALIZADAS ============
-
-  /// 🧠 Obtiene recomendaciones personalizadas según preferencias del usuario
-  /// - Usuario nuevo: Top alimentos populares según objetivo
-  /// - Usuario con historial: Sus favoritos aprendidos
   Future<Map<String, dynamic>> getRecomendacionesPersonalizadas(
       String token) async {
     try {
@@ -627,10 +586,6 @@ class ApiService {
     }
   }
 
-  // ============ MI BALANCE DIARIO ============
-
-  /// 📊 Obtiene el balance calórico de un día específico (por defecto, hoy)
-  /// Incluye: resumen, alimentos registrados, ejercicios registrados
   Future<Map<String, dynamic>> getMiBalance(String token,
       {String? fecha}) async {
     try {
@@ -647,9 +602,6 @@ class ApiService {
     }
   }
 
-  /// 🗑️ Elimina un registro de alimento o ejercicio
-  /// tipo: "alimento" o "ejercicio"
-  /// Recalcula automáticamente el balance después de eliminar
   Future<Map<String, dynamic>> eliminarRegistro(
       int registroId, String tipo, String token,
       {int n = 0}) async {
@@ -663,8 +615,6 @@ class ApiService {
       throw Exception('Error eliminando registro: $e');
     }
   }
-
-  // ============ FAVORITOS ============
 
   Future<bool> toggleFavorito(int registroId, String token) async {
     final response = await _dio.post(
@@ -681,8 +631,6 @@ class ApiService {
     );
     return response.data as List<dynamic>;
   }
-
-  // ============ RESUMEN SEMANAL IA + HISTORIAL CHAT BD ============
 
   Future<Map<String, dynamic>> getResumenSemanal(String token) async {
     try {
@@ -709,11 +657,9 @@ class ApiService {
       );
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
-      return []; // Falla silenciosa — cae al historial local
+      return [];
     }
   }
-
-  // ============ SEGUIMIENTO SEMANAL E HISTÓRICO ============
 
   Future<Map<String, dynamic>> getSeguimientoSemanal(String token,
       {int semanaOffset = 0}) async {
@@ -743,10 +689,6 @@ class ApiService {
     }
   }
 
-  // ============ DETALLE DE ALIMENTOS CON IA ============
-
-  /// 🍎 Obtiene información nutricional completa de un alimento usando Groq IA
-  /// Genera: datos nutricionales, recomendaciones, porciones comunes, alternativas saludables
   Future<Map<String, dynamic>> getDetalleAlimento(
       String alimento, int porcionGramos, String token) async {
     try {
@@ -762,9 +704,6 @@ class ApiService {
     }
   }
 
-  // ============ SMART MEAL REGISTRY (CARRITO) ============
-
-  /// 🛒 Parsea una cadena de ingredientes usando IA y devuelve los macros calculados
   Future<Map<String, dynamic>> parseIngredients(
       String texto, String token) async {
     try {
@@ -784,8 +723,6 @@ class ApiService {
     }
   }
 
-  /// Registra ingredientes con macros ya calculados (Registro Inteligente).
-  /// Usa los valores exactos del preview — sin re-estimación LLM.
   Future<Map<String, dynamic>> registrarDirecto({
     required List<Map<String, dynamic>> alimentos,
     required String token,
@@ -807,8 +744,6 @@ class ApiService {
       throw Exception('Error: $msg');
     }
   }
-
-  // ============ ROUTINE BUILDER ============
 
   Future<Map<String, dynamic>> calcularEjercicioManual({
     required String nombre,
@@ -848,10 +783,6 @@ class ApiService {
     }
   }
 
-  // registrarPorVoz() (/asistente/log-inteligente, arquitectura vieja) se
-  // eliminó: sin callers en toda la app, todo el registro va por /consultar.
-
-  // ============ REGISTRO MANUAL (ETIQUETA / MULTIMODAL) ============
   Future<Map<String, dynamic>> registrarManualAlimento({
     required String nombre,
     required double calorias,
@@ -886,7 +817,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Confirma registro usando consulta_id (valores exactos de la card)
   Future<Map<String, dynamic>> confirmarRegistroConId(
       String consultaId, String token) async {
     try {
@@ -901,7 +831,6 @@ class ApiService {
     }
   }
 
-  /// 🏋️ Inicia flujo guiado de fuerza (series/reps/peso) desde una card de ejercicio
   Future<Map<String, dynamic>> iniciarWorkoutConId(
       String consultaId, String token) async {
     try {
@@ -918,7 +847,6 @@ class ApiService {
     }
   }
 
-  /// 🔖 Guarda una sugerencia (receta/rutina) de la IA para después
   Future<Map<String, dynamic>> guardarSugerencia({
     required String tipo,
     required String nombre,
@@ -945,7 +873,6 @@ class ApiService {
     }
   }
 
-  /// 📋 Lista las sugerencias guardadas del usuario
   Future<List<dynamic>> listarSugerencias(String token) async {
     try {
       final response = await _dio.get('/asistente/mis-sugerencias',
@@ -956,15 +883,11 @@ class ApiService {
     }
   }
 
-  /// 🗑️ Elimina una sugerencia guardada
   Future<void> eliminarSugerencia(int id, String token) async {
     await _dio.delete('/asistente/sugerencia/$id',
         options: Options(headers: {'Authorization': 'Bearer $token'}));
   }
 
-  /// 💬 Consulta al asistente IA con control adaptativo (fuzzy logic)
-  /// El tono del asistente se adapta según adherencia y progreso.
-  /// Se envía el historial para mantener el contexto de la conversación.
   Future<Map<String, dynamic>> consultarAsistente(String mensaje, String token,
       {List<Map<String, dynamic>>? historial,
       Map<String, dynamic>? datosReales}) async {
@@ -975,12 +898,10 @@ class ApiService {
         if (datosReales != null) 'datos_reales': datosReales,
       };
 
-      // 🔍 LOG DE PREGUNTA (v1.1)
       debugPrint('--- 🤖 IA REQUEST START ---');
       debugPrint('Payload: ${jsonEncode(payload)}');
       debugPrint('--- 🤖 IA REQUEST END ---');
 
-      // El backend puede tardar (prompt + Groq hasta ~GROQ_TIMEOUT_SEC); evitar corte prematuro del cliente.
       final response = await _dio.post('/asistente/consultar',
           data: payload,
           options: Options(
@@ -988,7 +909,6 @@ class ApiService {
             receiveTimeout: const Duration(seconds: 210),
           ));
 
-      // 🔍 LOG DE RESPUESTA (v1.1)
       debugPrint('--- 📬 IA RESPONSE START ---');
       debugPrint(jsonEncode(response.data));
       debugPrint('--- 📬 IA RESPONSE END ---');
@@ -1003,8 +923,6 @@ class ApiService {
     }
   }
 
-  /// 🩺 Consulta al Copiloto Clínico (Staff)
-  /// Nueva ruta aislada para nutricionistas y admins.
   Future<Map<String, dynamic>> consultarCopiloto(String mensaje, String token,
       {List<Map<String, dynamic>>? historial}) async {
     try {
@@ -1026,9 +944,6 @@ class ApiService {
     }
   }
 
-  // ============ ALERTAS DE SALUD (STAFF) ============
-
-  /// 🚨 Obtiene alertas de salud de los clientes asignados (solo staff)
   Future<List<Map<String, dynamic>>> getMisAlertasClientes(String token) async {
     try {
       print('🔍 Obteniendo alertas de clientes...');
@@ -1042,7 +957,6 @@ class ApiService {
     }
   }
 
-  /// 📋 Obtiene detalle de una alerta específica
   Future<Map<String, dynamic>> getDetalleAlerta(
       int alertaId, String token) async {
     try {
@@ -1054,7 +968,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Marca una alerta como atendida y agrega notas
   Future<void> atenderAlerta(int alertaId, String notas, String token) async {
     try {
       print('✅ Atendiendo alerta ID: $alertaId');
@@ -1068,7 +981,6 @@ class ApiService {
     }
   }
 
-  /// 📝 Actualiza una alerta existente
   Future<void> actualizarAlerta(
       int alertaId, Map<String, dynamic> data, String token) async {
     try {
@@ -1080,7 +992,6 @@ class ApiService {
     }
   }
 
-  /// 🔍 Obtiene alertas de un cliente específico (staff)
   Future<List<Map<String, dynamic>>> getAlertasCliente(
       int clienteId, String token) async {
     try {
@@ -1092,7 +1003,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Suspender o reactivar miembro del staff (Admin only)
   Future<void> updateStaffStatus(int userId, String token) async {
     try {
       final response = await _dio.put(
@@ -1109,7 +1019,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Eliminar permanentemente miembro del staff (Admin only)
   Future<void> deleteStaff(int userId, String token) async {
     try {
       final response = await _dio.delete(
@@ -1126,9 +1035,6 @@ class ApiService {
     }
   }
 
-  // ============ PANEL NUTRICIONISTA (Phase 2) ============
-
-  /// 🏥 Obtiene la lista de clientes asignados al nutricionista/admin
   Future<List<Map<String, dynamic>>> getNutricionistaClientes(
       String token) async {
     try {
@@ -1147,7 +1053,6 @@ class ApiService {
     }
   }
 
-  /// 🎯 Actualiza la guía estratégica (foco, recomendados, prohibidos) del cliente (staff)
   Future<void> actualizarGuiaEstrategica(
       int clienteId, Map<String, dynamic> data, String token) async {
     try {
@@ -1163,7 +1068,6 @@ class ApiService {
     }
   }
 
-  /// 📊 Obtiene estadísticas clave para el dashboard del nutricionista
   Future<Map<String, dynamic>> getNutriStats(String token) async {
     try {
       print('🔍 Obteniendo estadísticas de nutricionista...');
@@ -1176,7 +1080,6 @@ class ApiService {
     }
   }
 
-  /// 📈 Obtiene el progreso histórico (peso/imc) de un paciente específico
   Future<Map<String, dynamic>> getNutricionistaClienteProgreso(
       int clienteId, String token) async {
     try {
@@ -1195,7 +1098,6 @@ class ApiService {
     }
   }
 
-  /// 📋 Obtiene el registro detallado (comidas + ejercicios) de un paciente en una fecha dada
   Future<Map<String, dynamic>> getNutricionistaClienteRegistroDiario(
       int clienteId, String token,
       {String? fecha}) async {
@@ -1216,7 +1118,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Valida el plan nutricional de un paciente
   Future<void> validarPlanPaciente(int clienteId, String token) async {
     try {
       await _dio.post('/nutricionista/validar-plan/$clienteId',
@@ -1232,7 +1133,6 @@ class ApiService {
     }
   }
 
-  /// 🔗 Asigna especialistas (nutri/coach) a un cliente (Admin only)
   Future<void> assignEspecialista(int clienteId,
       {int? nutriId, int? trainerId, required String token}) async {
     try {
@@ -1250,7 +1150,6 @@ class ApiService {
     }
   }
 
-  /// 👥 Obtiene la lista de todo el staff (Admin only)
   Future<List<Map<String, dynamic>>> getStaffList(String token) async {
     try {
       final response = await _dio.get('/admin/staff',
@@ -1262,7 +1161,6 @@ class ApiService {
     }
   }
 
-  /// 🍱 Obtiene el plan nutricional detallado de un paciente
   Future<Map<String, dynamic>> getPatientPlan(
       int clienteId, String token) async {
     try {
@@ -1275,7 +1173,6 @@ class ApiService {
     }
   }
 
-  /// 📝 Actualiza el plan nutricional de un paciente
   Future<void> updatePatientPlan(
       int clienteId, Map<String, dynamic> planData, String token) async {
     try {
@@ -1288,8 +1185,6 @@ class ApiService {
     }
   }
 
-  /// Crea un cliente mínimo desde el panel Admin.
-  /// Solo email + contraseña + firebase_uid. El resto lo completa el cliente en el Onboarding.
   Future<void> adminCreateClient({
     required String email,
     required String password,
@@ -1316,7 +1211,6 @@ class ApiService {
     }
   }
 
-  /// Elimina permanentemente un cliente (BD + Firebase Auth)
   Future<void> deleteClient(int clientId, String token) async {
     try {
       await _dio.delete(
@@ -1377,7 +1271,6 @@ class ApiService {
   }
 }
 
-// Exception simple para manejo de errores
 class HTTPException implements Exception {
   final int code;
   final String message;

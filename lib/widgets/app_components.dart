@@ -1,30 +1,17 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ExpandableCard
-// Base para RecipeCard y WorkoutCard. Maneja expand/collapse, animación y
-// scroll automático al contenido cuando se abre.
-//
-// Uso:
-//   ExpandableCard(accent: Colors.orange, headerIcon: Icons.restaurant_menu, ...)
-//   ExpandableCard(accent: Colors.blue,   headerIcon: Icons.fitness_center,  ...)
-// ─────────────────────────────────────────────────────────────────────────────
 class ExpandableCard extends StatefulWidget {
   final MaterialColor accent;
   final IconData headerIcon;
   final String title;
 
-  /// Subtítulo bajo el título (ej. MacroChipsRow o texto de calorías quemadas).
   final Widget? subtitle;
 
-  /// Acción alineada a la derecha del subtítulo (ej. CardSaveButton).
   final Widget? action;
 
-  /// Motivo de recomendación (1 frase). Se muestra debajo del subtítulo en cursiva.
   final String? justificacion;
 
-  /// Contenido visible al expandir. Se renderiza después del Divider interno.
   final List<Widget> expandedContent;
 
   const ExpandableCard({
@@ -172,9 +159,6 @@ class _ExpandableCardState extends State<ExpandableCard> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CircleIconBadge — ícono dentro de un círculo de color suave
-// ─────────────────────────────────────────────────────────────────────────────
 class CircleIconBadge extends StatelessWidget {
   final IconData icon;
   final MaterialColor color;
@@ -197,10 +181,6 @@ class CircleIconBadge extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CardSectionHeader — título de sección dentro de una card expandida
-// Ej: "INGREDIENTES", "TÉCNICA Y PASOS", "MÚSCULO, EQUIPO Y VOLUMEN"
-// ─────────────────────────────────────────────────────────────────────────────
 class CardSectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -231,9 +211,6 @@ class CardSectionHeader extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CardStepRow — fila numerada para pasos de preparación o instrucciones
-// ─────────────────────────────────────────────────────────────────────────────
 class CardStepRow extends StatelessWidget {
   final int index;
   final String text;
@@ -269,9 +246,6 @@ class CardStepRow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CardNoteBox — caja con bombilla al pie de una card expandida
-// ─────────────────────────────────────────────────────────────────────────────
 class CardNoteBox extends StatelessWidget {
   final String nota;
   final MaterialColor accent;
@@ -310,9 +284,6 @@ class CardNoteBox extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CardSaveButton — botón "Guardar" estándar para cards del asistente
-// ─────────────────────────────────────────────────────────────────────────────
 class CardSaveButton extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -337,10 +308,6 @@ class CardSaveButton extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MiniChip — etiqueta pequeña de color con ícono opcional
-// Usada en listas de alimentos, ejercicios y favoritos (macros, kcal, intensidad)
-// ─────────────────────────────────────────────────────────────────────────────
 class MiniChip extends StatelessWidget {
   final IconData? icon;
   final String label;
@@ -380,10 +347,6 @@ class MiniChip extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EmptyStateView — estado vacío centrado con ícono, mensaje y acción opcional
-// Usada en tabs sin datos dentro de MiBalanceScreen
-// ─────────────────────────────────────────────────────────────────────────────
 class EmptyStateView extends StatelessWidget {
   final IconData icon;
   final String message;
@@ -446,11 +409,6 @@ class EmptyStateView extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AnimatedListEntry — wrapper de slide+fade escalonado para items de lista
-// Pasar el AnimationController de la pantalla padre e index del item.
-// Delay máximo: 0.5s (a partir del item 5 todos entran al mismo tiempo)
-// ─────────────────────────────────────────────────────────────────────────────
 class AnimatedListEntry extends StatelessWidget {
   final AnimationController controller;
   final int index;

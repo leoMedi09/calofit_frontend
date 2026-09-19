@@ -30,8 +30,6 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.token != null) {
-        // Usamos el mismo endpoint que el nutri por ahora, ya que el backend
-        // filtra por asignación automáticamente si el usuario es staff/coach
         final clients =
             await _apiService.getNutricionistaClientes(authProvider.token!);
         setState(() {
@@ -72,10 +70,9 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _loadClients,
-        color: const Color(0xFF1E88E5), // ✅ Azul Corporativo
+        color: const Color(0xFF1E88E5),
         child: Column(
           children: [
-            // El buscador sube al tope para ganar espacio tal como solicitaste
             _buildSearchBox(),
             Expanded(
               child: _isLoading
@@ -93,7 +90,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
   Widget _buildSearchBox() {
     return Container(
       padding: const EdgeInsets.fromLTRB(
-          20, 20, 20, 10), // Un poco más de padding superior
+          20, 20, 20, 10),
       decoration: const BoxDecoration(
         color: Colors.white,
       ),
@@ -311,7 +308,6 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
                     color: Color(0xFF1E88E5))),
             const SizedBox(height: 12),
 
-            // 🤖 AI ADHERENCE CARD (Estilo de la imagen)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               decoration: BoxDecoration(
@@ -341,7 +337,6 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
 
             const SizedBox(height: 40),
 
-            //  BASTÓN DE ACCIÓN: VER EXPEDIENTE COMPLETO
             SizedBox(
               width: double.infinity,
               height: 62,

@@ -2,7 +2,7 @@ import 'dart:convert';
 
 class Suggestion {
   final int id;
-  final String tipo; // 'comida' or 'ejercicio'
+  final String tipo;
   final String nombre;
   final List<String> ingredientes;
   final List<String> preparacion;

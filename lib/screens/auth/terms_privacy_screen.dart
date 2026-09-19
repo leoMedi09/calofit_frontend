@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Pantalla estática con Términos y Condiciones + Política de Privacidad.
-/// Accesible sin sesión iniciada desde LoginScreen (requisito de las tiendas
-/// de apps: la política debe poder verse antes de loguearse).
 class TermsPrivacyScreen extends StatelessWidget {
   const TermsPrivacyScreen({super.key});
 

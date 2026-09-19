@@ -52,9 +52,7 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
     final token = auth.token!;
     
     try {
-      // Usamos el endpoint de consulta general con contexto de staff si fuera necesario en el futuro
       
-      // El asistente copilot usa una respuesta más simple o estructurada similar al cliente
       final history = _messages.length > 2 
         ? _messages.sublist(_messages.length > 6 ? _messages.length - 6 : 0, _messages.length - 1)
           .map((m) => {'role': m['role'] == 'user' ? 'user' : 'assistant', 'content': m['content']})
@@ -86,7 +84,7 @@ class _AssistantCopilotViewState extends State<AssistantCopilotView> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5), // Mismo fondo que el cliente
+      backgroundColor: const Color(0xFFF0F2F5),
       body: SafeArea(
         child: Column(
           children: [
@@ -315,11 +313,10 @@ class _ExpandableMessage extends StatefulWidget {
 }
 
 class _ExpandableMessageState extends State<_ExpandableMessage> {
-  bool _isExpanded = true; // Por defecto expandido para ver el inicio
+  bool _isExpanded = true;
 
   @override
   Widget build(BuildContext context) {
-    // Intentar extraer el primer título para el Header
     String title = "Reporte de Análisis";
     String content = widget.text;
 
@@ -365,7 +362,6 @@ class _ExpandableMessageState extends State<_ExpandableMessage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header del Card
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             borderRadius: BorderRadius.vertical(top: const Radius.circular(20), bottom: Radius.circular(_isExpanded ? 0 : 20)),

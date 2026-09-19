@@ -5,16 +5,16 @@ class Client {
   final String lastNameMaternal;
   final String email;
 
-  final String flutterUid; // 🔥 Firebase UID
+  final String flutterUid;
   final DateTime? birthDate;
   final double weight;
-  final double height; // en cm
-  final String gender; // 'M' | 'F'
+  final double height;
+  final String gender;
   final List<String> medicalConditions;
   final String activityLevel;
   final String goal;
-  final String workoutType;     // 🆕 Para ML Random Forest
-  final double sessionDuration;  // 🆕 Para ML Random Forest (en horas)
+  final String workoutType;
+  final double sessionDuration;
   final String? profilePictureUrl;
   final int? assignedNutriId;
   final bool isProfileComplete;
@@ -56,7 +56,6 @@ class Client {
   }
 
   factory Client.fromJson(Map<String, dynamic> json) {
-    // ✅ Buscamos en ambas posibles llaves por si acaso
     var conditionsData = json['medical_conditions'] ?? json['medicalConditions'];
 
     return Client(
@@ -72,7 +71,6 @@ class Client {
       weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
       height: (json['height'] as num?)?.toDouble() ?? 0.0,
       gender: json['gender'] ?? 'M',
-      // ✅ Mejoramos el mapeo para que sea más robusto
       medicalConditions: conditionsData != null
           ? List<String>.from(conditionsData)
           : [],
@@ -109,8 +107,6 @@ class Client {
       'assigned_nutri_id': assignedNutriId,
       'is_profile_complete': isProfileComplete,
     };
-    // Solo se envía si hay un valor real: evita que ediciones de perfil
-    // posteriores (que no conocen este campo) borren la aceptación ya guardada.
     if (termsAcceptedAt != null) {
       map['terms_accepted_at'] = termsAcceptedAt!.toIso8601String();
     }

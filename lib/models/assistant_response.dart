@@ -8,8 +8,6 @@ class AssistantResponse {
   final String? tipoPregunta;
   final bool? alertaSalud;
   final String? advertencia;
-  /// Datos de registro: {nombre, calorias, proteinas_g, carbohidratos_g, grasas_g}
-  /// para comida, o {nombre, kcal_quemadas, duracion_min, series, reps, peso_kg} para ejercicio.
   final Map<String, dynamic>? datos;
 
   AssistantResponse({
@@ -62,11 +60,9 @@ class ScientificData {
   ScientificData({required this.progresoDiario});
 
   factory ScientificData.fromJson(Map<String, dynamic> json) {
-    // Si el backend envía el progreso directamente en 'data_cientifica'
     if (json.containsKey('consumido') || json.containsKey('meta')) {
       return ScientificData(progresoDiario: json);
     }
-    // Fallback por si viniera anidado
     return ScientificData(progresoDiario: json['progreso_diario'] ?? {});
   }
 }
@@ -74,7 +70,6 @@ class ScientificData {
 class StructuredResponse {
   final String textoConversacional;
   final List<Section> secciones;
-  /// Versión del contrato backend (p. ej. 2 = incluye macros_normalizados por sección).
   final int? schemaVersion;
 
   StructuredResponse({
@@ -95,7 +90,6 @@ class StructuredResponse {
   }
 }
 
-/// Valores numéricos de macros (backend `schema_version` ≥ 2, campo `macros_normalizados`).
 class MacrosNormalizados {
   final double kcal;
   final double proteinasG;
@@ -109,10 +103,8 @@ class MacrosNormalizados {
     required this.grasasG,
   });
 
-  /// Preferir chips/UI desde este bloque cuando hay kcal confiable.
   bool get hasUsableKcal => kcal > 0;
 
-  /// Al menos un macronutriente o kcal distinto de cero (evita depender solo de parsear el string con emojis del LLM).
   bool get hasUsableMacros =>
       kcal > 0 || proteinasG > 0 || carbohidratosG > 0 || grasasG > 0;
 
@@ -140,17 +132,15 @@ class MacrosNormalizados {
 }
 
 class Section {
-  final String tipo; // "comida" o "ejercicio"
+  final String tipo;
   final String nombre;
   final String justificacion;
   final String macros;
   final List<String> ingredientes;
   final List<String> preparacion;
   final String nota;
-  final String? consultaId; // ID del cache backend para consistencia
-  /// URL https de imagen de referencia (p. ej. Wikimedia); opcional.
+  final String? consultaId;
   final String? imagenReferencia;
-  /// Parseo estable del string `macros` (solo comidas; opcional según backend).
   final MacrosNormalizados? macrosNormalizados;
 
   Section({
@@ -167,12 +157,9 @@ class Section {
   });
 
   factory Section.fromJson(Map<String, dynamic> json) {
-    // Para ejercicios, mapear ejercicios→ingredientes e instrucciones/tecnica→preparacion
-    // Esto asegura que los widgets puedan leer los datos correctamente
     List<String> items = [];
     List<String> pasos = [];
     
-    // Determinar si es ejercicio o comida
     String tipo = json['tipo'] ?? 'general';
     
     if (tipo == 'ejercicio') {
@@ -194,7 +181,6 @@ class Section {
         }
       }
     } else {
-      // Para COMIDA: ingredientes e ingredientes, preparacion → preparacion
       items = expandBulletSeparatedLines(
           List<String>.from(json['ingredientes'] ?? []));
       pasos = expandBulletSeparatedLines(
@@ -241,7 +227,6 @@ class Section {
       if (macrosNormalizados != null)
         'macros_normalizados': macrosNormalizados!.toMap(),
     };
-    // Guardar con las claves que fromJson() espera según el tipo
     if (tipo == 'ejercicio') {
       base['ejercicios'] = ingredientes;
       base['tecnica'] = preparacion;

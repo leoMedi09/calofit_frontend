@@ -17,7 +17,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
 
-  // Mapa estático para persistencia entre sesiones del modal
   static final Map<String, String> _persistedData = {};
   static String _persistedRole = 'NUTRI';
   static int _persistedRoleId = 3;
@@ -83,7 +82,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Barra indicadora superior (estética)
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 12, bottom: 8),
@@ -98,7 +96,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
           Flexible(
             child: SingleChildScrollView(
               physics:
-                  const ClampingScrollPhysics(), // Más eficiente para formularios
+                  const ClampingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Form(
                 key: _formKey,
@@ -206,7 +204,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
                                     fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
-                    // Espacio final para asegurar que el contenido no quede pegado abajo
                     const SizedBox(height: 32),
                   ],
                 ),

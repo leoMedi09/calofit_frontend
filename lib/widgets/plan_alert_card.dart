@@ -16,7 +16,6 @@ class PlanAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Plan validado sin condición crítica → banner verde de confianza
     if ((estadoPlan == 'validado' || estadoPlan == 'modificado') && !esCondicionCritica) {
       return Card(
         color: Colors.green.shade50,
@@ -40,7 +39,6 @@ class PlanAlertCard extends StatelessWidget {
       );
     }
 
-    // Plan validado CON condición crítica → aprobado + seguimiento especial (todo verde)
     if ((estadoPlan == 'validado' || estadoPlan == 'modificado') && esCondicionCritica) {
       return Card(
         color: Colors.green.shade50,
@@ -64,7 +62,6 @@ class PlanAlertCard extends StatelessWidget {
       );
     }
 
-    // Determinar tipo de alerta y sus colores
     MaterialColor alertColor;
     IconData alertIcon;
     String alertTitle;

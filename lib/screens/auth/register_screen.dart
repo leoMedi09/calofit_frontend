@@ -15,7 +15,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _apiService = ApiService();
   final _auth = FirebaseAuth.instance;
 
-  // Controladores
   final _firstNameController = TextEditingController();
   final _lastNamePaternalController = TextEditingController();
   final _lastNameMaternalController = TextEditingController();
@@ -27,7 +26,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _heightController = TextEditingController();
   final _medicalConditionsController = TextEditingController();
 
-  // Estados
   String _selectedActivityLevel = 'Sedentario (Sin entrenar)';
   String _selectedGoal = 'Mantener peso';
   String _selectedGender = 'Masculino';
@@ -96,7 +94,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     User? firebaseUser;
 
     try {
-      // 🚀 1️⃣ Crear usuario en Firebase
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -105,14 +102,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       firebaseUser = userCredential.user;
       final String firebaseUid = firebaseUser!.uid;
 
-      // 🛠️ 2️⃣ Registrar en tu backend
       final request = ClientRegisterRequest(
         firstName: _firstNameController.text.trim(),
         lastNamePaternal: _lastNamePaternalController.text.trim(),
         lastNameMaternal: _lastNameMaternalController.text.trim(),
         email: _emailController.text.trim(),
 
-        // 🔐 Backend manda
         password: _passwordController.text.trim(),
 
         weight: double.parse(_weightController.text),
@@ -149,7 +144,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (e.code == 'weak-password') errorMsg = 'La contraseña es muy débil.';
       _showSnackBar(errorMsg, isError: true);
     } catch (e) {
-      // 🔥 ROLLBACK: borrar usuario de Firebase si backend falla
       if (firebaseUser != null) {
         await firebaseUser.delete();
       }
@@ -188,7 +182,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 key: _formKey,
                 child: ListView(
                   children: [
-                    // MENSAJE ACLARATORIO PARA STAFF
                     Container(
                       padding: const EdgeInsets.all(16),
                       margin: const EdgeInsets.only(bottom: 24),
@@ -307,7 +300,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 15),
 
-                    // Selector de Fecha de Nacimiento
                     TextFormField(
                       controller: _birthDateController,
                       readOnly: true,
@@ -321,7 +313,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 15),
 
-                    // Selector de Género
                     DropdownButtonFormField<String>(
                       value: _selectedGender,
                       decoration: const InputDecoration(

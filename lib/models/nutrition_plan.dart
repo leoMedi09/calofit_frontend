@@ -2,7 +2,6 @@ class NutritionPlan {
   final int id;
   final int clientId;
   final String details;
-  // Campos adicionales: calorías diarias, macronutrientes, etc.
 
   NutritionPlan({required this.id, required this.clientId, required this.details});
 

@@ -38,7 +38,6 @@ class _TeamListViewState extends State<TeamListView> {
     try {
       final List<User> team = await _apiService.getUsers(authProvider.token ?? '');
 
-      // Asegurar que el Admin actual aparezca en la lista
       final bool selfFound = team.any((m) => m.id == authProvider.userId);
       if (!selfFound && authProvider.userId != null) {
         team.add(User(
@@ -581,7 +580,6 @@ class _TeamListViewState extends State<TeamListView> {
     final TextEditingController lastMaternalController = TextEditingController(text: member.lastNameMaternal);
     final TextEditingController emailController = TextEditingController(text: member.email);
     
-    // Pre-populate usando los getters normalizados del modelo
     String currentRole = 'Nutricionista';
     if (member.isAdmin) {
       currentRole = 'Administrador';
@@ -592,7 +590,6 @@ class _TeamListViewState extends State<TeamListView> {
     String selectedRole = currentRole;
     bool isLoading = false;
 
-    // Decoración base para inputs premium
     InputDecoration buildInputDecoration(String label, IconData icon) {
       return InputDecoration(
         labelText: label,

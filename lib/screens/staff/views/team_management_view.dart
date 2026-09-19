@@ -27,7 +27,6 @@ class _TeamManagementViewState extends State<TeamManagementView> {
   void initState() {
     super.initState();
     _loadStats();
-    // ⏱️ Sincronización automática de equipo cada 60 segundos
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _loadStats(isAutoRefresh: true));
   }
 
@@ -43,7 +42,6 @@ class _TeamManagementViewState extends State<TeamManagementView> {
     try {
       final List<User> team = await _apiService.getUsers(authProvider.token ?? '');
       
-      // Asegurar que el Admin actual sea considerado en las estadísticas
       final bool selfFound = team.any((m) => m.id == authProvider.userId);
       if (!selfFound && authProvider.userId != null) {
         team.add(User(

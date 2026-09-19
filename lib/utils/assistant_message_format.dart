@@ -1,5 +1,3 @@
-// Formato de texto del asistente (sin dependencias de UI).
-// Convierte viñetas • en una sola línea a listas Markdown legibles.
 
 final _reBulletSplit = RegExp(r'\s*[•·]\s+');
 
@@ -13,7 +11,6 @@ bool _lineLooksLikeFoodOrRecipeList(String line) {
   return false;
 }
 
-/// Parte párrafos con varias `•` en líneas tipo `- ítem` para que flutter_markdown renderice lista.
 String expandInlineBulletsForMarkdown(String text) {
   if (text.isEmpty) return text;
   final out = <String>[];
@@ -60,7 +57,6 @@ String expandInlineBulletsForMarkdown(String text) {
   return out.join('\n');
 }
 
-/// Si el backend manda cadenas con varias `•`, las parte en entradas separadas (ingredientes o pasos).
 List<String> expandBulletSeparatedLines(List<String> items) {
   final out = <String>[];
   for (final raw in items) {

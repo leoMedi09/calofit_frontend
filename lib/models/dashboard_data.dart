@@ -1,4 +1,3 @@
-// lib/models/dashboard_data.dart
 
 class DailySummary {
   final double calorias;
@@ -6,7 +5,6 @@ class DailySummary {
   final double carbohidratos;
   final double grasas;
   
-  // ✨ NUEVOS MICROS (Pueden ser null si no hay info)
   final double? azucares;
   final double? fibra;
   final double? sodio;
@@ -53,7 +51,6 @@ class DailySummary {
     final plan = json['plan_nutricional'];
     final micros = json['micros_dia'] ?? {};
 
-    // Helper para parseo seguro
     double toDouble(dynamic val) {
       if (val == null) return 0.0;
       if (val is num) return val.toDouble();
@@ -67,7 +64,6 @@ class DailySummary {
       carbohidratos: toDouble(dieta['carbohidratos_g'] ?? dieta['carbohidratos']),
       grasas: toDouble(dieta['grasas_g'] ?? dieta['grasas']),
       
-      // Micros (pueden ser nulos)
       azucares: (dieta['azucares'] ?? micros['azucares']) != null 
           ? toDouble(dieta['azucares'] ?? micros['azucares']) 
           : null,
@@ -117,8 +113,7 @@ class PlanNutricional {
   final int? planId;
   final bool esFallback;
   
-  // ✨ NUEVOS CAMPOS DEL BACKEND
-  final String estadoPlan;           // "provisional_ia", "validado", "en_revision", "modificado"
+  final String estadoPlan;
   final bool requiereValidacion;
   final bool esCondicionCritica;
   final String alertaSeguridad;
@@ -137,7 +132,6 @@ class PlanNutricional {
     required this.validado,
     this.planId,
     this.esFallback = false,
-    // ✨ Valores por defecto para nuevos campos
     this.estadoPlan = 'provisional_ia',
     this.requiereValidacion = false,
     this.esCondicionCritica = false,
@@ -171,7 +165,6 @@ class PlanNutricional {
       planId: json['plan_id'] as int?,
       esFallback: json['es_fallback'] as bool? ?? false,
       
-      // ✨ PARSEAR NUEVOS CAMPOS
       estadoPlan: json['estado_plan'] as String? ?? 'provisional_ia',
       requiereValidacion: json['requiere_validacion'] as bool? ?? false,
       esCondicionCritica: json['es_condicion_critica'] as bool? ?? false,

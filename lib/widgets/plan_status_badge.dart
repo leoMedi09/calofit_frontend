@@ -12,7 +12,6 @@ class PlanStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determinar color e ícono según el estado
     Color backgroundColor;
     Color textColor;
     IconData icon;
@@ -37,15 +36,13 @@ class PlanStatusBadge extends StatelessWidget {
         icon = Icons.warning;
         label = 'Revisión Urgente';
         break;
-      default: // provisional_ia
+      default:
         backgroundColor = Colors.orange.shade100;
         textColor = Colors.orange.shade800;
         icon = Icons.schedule;
         label = 'Provisional';
     }
 
-    // Si es condición crítica Y el plan NO está validado → pedir validación urgente
-    // Si ya está validado, mantener el badge verde aunque haya condición crítica
     if (esCondicionCritica &&
         estadoPlan != 'validado' &&
         estadoPlan != 'modificado') {

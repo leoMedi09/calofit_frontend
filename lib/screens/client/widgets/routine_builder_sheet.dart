@@ -28,13 +28,11 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
   final TextEditingController _minutosController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isCardio  = false; // false = Fuerza (series/reps/kg), true = Cardio (minutos)
+  bool _isCardio  = false;
   String? _errorMessage;
 
-  // Lista estática para persistir ejercicios entre rebuilds del sheet
   static final List<Map<String, dynamic>> _exercises = [];
 
-  // ── Agregar ejercicio ────────────────────────────────────────────────────
   Future<void> _addExercise() async {
     final name    = _nameController.text.trim();
     final series  = _isCardio ? 0 : (int.tryParse(_seriesController.text.trim()) ?? 0);
@@ -101,7 +99,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     }
   }
 
-  // ── Registrar rutina completa ────────────────────────────────────────────
   Future<void> _saveRoutine() async {
     setState(() => _isLoading = true);
     try {
@@ -156,7 +153,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
   double get totalMinutes => _exercises.fold(
       0.0, (sum, e) => sum + (e['duracion_min'] as num).toDouble());
 
-  // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -226,7 +222,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Campo de nombre ───────────────────────────────────────
             TextField(
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
@@ -260,7 +255,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             ),
             const SizedBox(height: 12),
 
-            // ── Toggle Fuerza / Cardio ────────────────────────────────
             Row(
               children: [
                 Expanded(child: _modeChip('Fuerza', Icons.fitness_center_rounded, !_isCardio, () => setState(() => _isCardio = false))),
@@ -270,7 +264,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             ),
             const SizedBox(height: 12),
 
-            // ── Campos según modo | Botón + ───────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -310,7 +303,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
               ],
             ),
 
-            // ── Mensaje de error ──────────────────────────────────────
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
@@ -474,7 +466,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
                     ),
                     const SizedBox(height: 4),
-                    // Series × Reps @Peso
                     Row(
                       children: [
                         if (!isCardio)

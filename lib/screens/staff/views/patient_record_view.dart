@@ -20,15 +20,12 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   Map<String, dynamic>? _fullData;
   Map<String, dynamic>? _currentPlan;
   
-  // Controladores para edición
   late TextEditingController _caloriesController;
   late TextEditingController _proteinController;
   late TextEditingController _carbsController;
   late TextEditingController _fatsController;
   late TextEditingController _obsController;
   
-  // v80.0: Controladores Estratégicos
-  // v80.0: Controladores Estratégicos
   late TextEditingController _strategicFocusController;
   late TextEditingController _recInputController;
   late TextEditingController _forInputController;
@@ -45,7 +42,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   bool _shouldRefreshList = false;
   bool _isDirty = false;
 
-  // 📋 Registro detallado del día (comidas + ejercicios)
   Map<String, dynamic>? _dailyLog;
   bool _isDailyLogLoading = true;
   DateTime _selectedLogDate = DateTime.now();
@@ -107,7 +103,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       final token = authProvider.token!;
       final clientId = widget.patientData['id'];
 
-      // Cargar progreso (historial), plan actual y guía estratégica
       final progressData = await _apiService.getNutricionistaClienteProgreso(clientId, token);
       
       setState(() {
@@ -135,7 +130,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
             _carbsController.text = (firstDay['carbohidratos_g'] ?? 200).toString();
             _fatsController.text = (firstDay['grasas_g'] ?? 60).toString();
           } else if (progressData['metabolismo_estimado'] != null) {
-            // 🆕 FALLBACK IA: Sincronización con lo que ve el cliente (v80.0)
             final est = progressData['metabolismo_estimado'];
             _caloriesController.text = (est['calorias_objetivo'] ?? '').toString();
             _proteinController.text = (est['proteinas_g'] ?? '').toString();
@@ -249,7 +243,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       final token = authProvider.token!;
       final clientId = widget.patientData['id'];
       
-      // 1. Guardar Plan Nutricional
       final List<Map<String, dynamic>> dailyUpdates = List.generate(7, (index) => {
         "calorias_dia": double.tryParse(_caloriesController.text) ?? 2000,
         "proteinas_g": double.tryParse(_proteinController.text) ?? 150,
@@ -268,7 +261,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
         token
       );
 
-      // 2. Guardar Guía Estratégica IA (v80.0)
       await _apiService.actualizarGuiaEstrategica(
         clientId,
         {
@@ -278,7 +270,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           "medical_conditions": _medicalConditionsList,
           "nutri_weekly_note": _weeklyNoteController.text.trim().isEmpty
               ? null
-              : _weeklyNoteController.text.trim(),  // 🆕 Enviar nota semanal
+              : _weeklyNoteController.text.trim(),
         },
         token
       );
@@ -446,18 +438,15 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               _buildHeaderCard(),
               const SizedBox(height: 24),
               
-              // 🍎 SECCIÓN NUEVA: CONSUMO DE HOY (Macro Tracking Diario)
               _buildTodayConsumption(),
               const SizedBox(height: 24),
 
-              // 📋 SECCIÓN NUEVA: REGISTRO DETALLADO DEL DÍA (comidas + ejercicios)
               _buildDailyLogSection(),
               const SizedBox(height: 24),
 
               _buildMetricsGrid(),
               const SizedBox(height: 24),
 
-              // 🛡️ Guía Estratégica (Solo para Nutris/Admins)
               if (!_esEntrenador()) ...[
                 _buildValidationCard(),
                 const SizedBox(height: 24),
@@ -470,7 +459,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
               _buildNutritionalPlanSection(),
               const SizedBox(height: 24),
               
-              // 📝 SECCIÓN NUEVA: NOTAS DEL ENTRENADOR
               _buildCoachNotesSection(),
 
               const SizedBox(height: 80),
@@ -578,7 +566,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
     final weight = weightRaw is num ? weightRaw.toStringAsFixed(1) : '--';
     final height = _fullData?['current_height']?.toString() ?? '--';
     
-    // 🆕 Sincronización Metabólica (v80.0)
     final gastoEstimadoRaw = _fullData?['metabolismo_estimado']?['calorias_objetivo'];
     final gastoEstimado = gastoEstimadoRaw != null ? '$gastoEstimadoRaw kcal' : '--';
 
@@ -723,7 +710,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                           if (index >= 0 && index < historialPeso.length) {
                              String fecha = historialPeso[index]['fecha']?.toString() ?? '';
                              if (fecha.isNotEmpty) {
-                               // Extract day/month from YYYY-MM-DD
                                try {
                                  DateTime dt = DateTime.parse(fecha);
                                  return Padding(
@@ -840,7 +826,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
   }
 
   Widget _buildTodayConsumption() {
-    // 🔋 Datos REALES del día (vienen en _fullData desde el backend)
     final ingesta = _fullData?['today_summary'] ?? {
       'calorias_consumidas': _fullData?['current_day_calories'] ?? 0,
       'proteinas': _fullData?['current_day_protein'] ?? 0,
@@ -881,7 +866,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
           const SizedBox(height: 20),
           
-          // Fila de Balance: Consumido vs Quemado vs Neto
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1191,7 +1175,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Título e instrucción
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1219,7 +1202,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Botón a la derecha
               _isAILoading
                   ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3))
                   : GestureDetector(
@@ -1534,7 +1516,6 @@ class _PatientRecordViewState extends State<PatientRecordView> {
 
   static const int _itemsPreview = 4;
 
-  /// Muestra los primeros [_itemsPreview] ítems y un botón "Ver todos" para desplegar el resto.
   Widget _buildExpandableItems({
     required List items,
     required bool expanded,

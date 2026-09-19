@@ -22,8 +22,6 @@ import 'services/api_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-// ... (main remains same)
-
 class OnboardingProfileLoader extends StatelessWidget {
   const OnboardingProfileLoader({super.key});
 

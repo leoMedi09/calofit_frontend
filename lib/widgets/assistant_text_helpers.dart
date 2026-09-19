@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Helpers para mostrar respuestas del asistente sin "fugas" de Markdown
-// y distinguir subtítulos de ítems de lista.
-
-/// Parte cadenas multilínea del backend en renglones individuales.
 Iterable<String> expandItemLines(Iterable<String> items) sync* {
   for (final item in items) {
     for (final line in item.split(RegExp(r'\r?\n'))) {
@@ -13,7 +9,6 @@ Iterable<String> expandItemLines(Iterable<String> items) sync* {
   }
 }
 
-/// Quita marcadores Markdown típicos para mostrarlos en Text plano (tarjetas).
 String stripMarkdownLight(String s) {
   var t = s.trim();
   t = t.replaceFirst(RegExp(r'^#{1,6}\s*'), '');
@@ -23,7 +18,6 @@ String stripMarkdownLight(String s) {
   return t.trim();
 }
 
-/// Líneas que deben verse como subtítulo, no como viñeta con ícono.
 bool isAssistantSubheader(String raw) {
   final t = raw.trim();
   if (t.isEmpty) return false;
@@ -47,7 +41,6 @@ bool isAssistantSubheader(String raw) {
   return false;
 }
 
-/// Subtítulo dentro de listas (sin viñeta).
 Widget assistantSubheaderLine(String text, Color accent, {required bool isFirst}) {
   return Padding(
     padding: EdgeInsets.only(top: isFirst ? 0 : 14, bottom: 6),
@@ -63,7 +56,6 @@ Widget assistantSubheaderLine(String text, Color accent, {required bool isFirst}
   );
 }
 
-/// Viñeta simple tipo texto (mejor que un ícono de check en cada línea).
 Widget assistantBulletLine(String text, Color accent) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),

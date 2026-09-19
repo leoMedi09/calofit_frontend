@@ -28,7 +28,6 @@ class BalanceProvider with ChangeNotifier {
   bool _isFavoritosLoading = false;
   bool get isFavoritosLoading => _isFavoritosLoading;
 
-  // Helper interno de casteo seguro
   double _toDouble(dynamic val) {
     if (val == null) return 0.0;
     if (val is num) return val.toDouble();
@@ -39,7 +38,6 @@ class BalanceProvider with ChangeNotifier {
   void updateFromAssistant(Map<String, dynamic> dataCientifica) {
     if (dataCientifica.isEmpty) return;
 
-    // Actualizar DailySummary (Preservar macros si no vienen en la actualización parcial)
     _dailySummary = DailySummary(
       calorias: _toDouble(dataCientifica['consumido'] ?? dataCientifica['calorias'] ?? _dailySummary?.calorias),
       proteinas: _toDouble(dataCientifica['proteinas'] ?? _dailySummary?.proteinas),
@@ -52,7 +50,6 @@ class BalanceProvider with ChangeNotifier {
       planObjetivo: _dailySummary?.planObjetivo,
     );
     
-    // Si tenemos fullData, intentamos actualizar también el resumen dentro de él para consistencia inmediata
     if (_fullBalanceData != null && _fullBalanceData!.containsKey('resumen')) {
        var resumen = _fullBalanceData!['resumen'];
        resumen['calorias_consumidas'] = _dailySummary!.calorias;
@@ -68,10 +65,8 @@ class BalanceProvider with ChangeNotifier {
       final data = await _apiService.getMiBalance(token, fecha: fecha);
       _fullBalanceData = data;
       
-      // ✅ FIX: Solo actualilzamos el resumen de HOY (Dashboard) si NO estamos viajando en el tiempo
       if (data['resumen'] != null && fecha == null) {
         final res = data['resumen'];
-        // ✅ FIX (v60): Mapear macros reales desde el servidor, NO resetear a 0.0
         _dailySummary = DailySummary(
           calorias: _toDouble(res['calorias_consumidas']),
           proteinas: _toDouble(res['proteinas_g']), 
@@ -118,8 +113,6 @@ class BalanceProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ============ RECETARIO (SUGERENCIAS) ============
-
   Future<void> fetchSuggestions(String token) async {
     _isSuggestionsLoading = true;
     notifyListeners();
@@ -144,8 +137,6 @@ class BalanceProvider with ChangeNotifier {
       rethrow;
     }
   }
-
-  // ============ FAVORITOS ============
 
   Future<void> fetchFavoritos(String token) async {
     _isFavoritosLoading = true;

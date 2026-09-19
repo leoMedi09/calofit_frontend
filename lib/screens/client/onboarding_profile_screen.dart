@@ -25,22 +25,19 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   int _currentPage = 0;
   bool _isLoading = false;
 
-  // Step 1 - Identidad
   final _firstNameCtrl = TextEditingController();
   final _lastNamePatCtrl = TextEditingController();
   final _lastNameMatCtrl = TextEditingController();
   String _selectedGender = 'M';
   DateTime? _birthDate;
 
-  // Step 2 - Físico
   final _weightCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
   String _activityLevel = 'Sedentario';
   String _goal = 'Mantener peso';
-  String _workoutType = 'Cardio';        // 🆕 Para ML Random Forest
-  double _sessionDuration = 1.0;         // 🆕 Para ML Random Forest
+  String _workoutType = 'Cardio';
+  double _sessionDuration = 1.0;
 
-  // Step 3 - Salud
   final List<String> _selectedConditions = [];
   final List<String> _conditionOptions = [
     'Diabetes',
@@ -54,7 +51,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     'Ninguna',
   ];
 
-  // Step 4 - Seguridad
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
   bool _acceptedTerms = false;
@@ -69,7 +65,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeInOut);
     _animController.forward();
 
-    // Pre-fill if data already exists (partial profile)
     _firstNameCtrl.text = widget.client.firstName;
     _lastNamePatCtrl.text = widget.client.lastNamePaternal;
     _lastNameMatCtrl.text = widget.client.lastNameMaternal;
@@ -115,7 +110,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   Future<void> _finishOnboarding() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    // Validar contraseñas
     if (_passwordCtrl.text.isEmpty || _passwordCtrl.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres'), backgroundColor: Colors.orange),
@@ -140,10 +134,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
     setState(() => _isLoading = true);
 
     try {
-      // 1. Cambiar contraseña primero
       await _apiService.changePassword(authProvider.token!, _passwordCtrl.text, _confirmPasswordCtrl.text);
 
-      // 2. Actualizar perfil
       final updated = Client(
         id: widget.client.id,
         email: widget.client.email,
@@ -425,7 +417,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   }
 
   Widget _buildStep2() {
-    // Mapa: Valor Backend -> Texto UI
     final activityLevels = {
       'Sedentario': 'Sedentario (0-1 días)',
       'Ligero': 'Ligero (2-3 días)',
@@ -434,7 +425,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
       'Muy activo': 'Muy activo (Atleta/Intenso)'
     };
     
-    // Mapa: Valor Backend -> Texto UI
     final goals = {
       'perder peso': 'Perder peso (Agresivo)',
       'perder_leve': 'Perder peso (Definición)',
@@ -760,7 +750,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen>
   }
 
   Widget _dropdownMap(String label, IconData icon, String currentVal, Map<String, String> itemsMap, ValueChanged<String?> onChanged) {
-    // Si currentVal no es llave conocida, forzamos la primera de fallback
     final safeValue = itemsMap.containsKey(currentVal) ? currentVal : itemsMap.keys.first;
 
     return DropdownButtonFormField<String>(

@@ -502,6 +502,16 @@ class _PatientListViewState extends State<PatientListView> {
     int? currentUserId,
     bool permitirVacio = true,
   }) {
+    if (currentUserId != null) {
+      items = [...items]..sort((x, y) {
+          if (x['id'] == currentUserId) return -1;
+          if (y['id'] == currentUserId) return 1;
+          return (x['full_name'] ?? '')
+              .toString()
+              .toLowerCase()
+              .compareTo((y['full_name'] ?? '').toString().toLowerCase());
+        });
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

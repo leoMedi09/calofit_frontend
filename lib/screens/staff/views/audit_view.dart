@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
+import '../../../services/staff_cache.dart';
 import '../../../widgets/app_loading.dart';
 
 class AuditView extends StatefulWidget {
@@ -35,11 +36,14 @@ class _AuditViewState extends State<AuditView> {
 
   void _refreshAudit() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.userType?.toUpperCase() == 'ADMIN') {
-      _auditFuture = _apiService.getAdminLogs(authProvider.token ?? '');
-    } else {
-      _auditFuture = _apiService.getMisAlertasClientes(authProvider.token ?? '');
-    }
+    final uid = authProvider.userId;
+    final Future<List<Map<String, dynamic>>> f = authProvider.userType?.toUpperCase() == 'ADMIN'
+        ? _apiService.getAdminLogs(authProvider.token ?? '')
+        : _apiService.getMisAlertasClientes(authProvider.token ?? '');
+    _auditFuture = f.then((datos) {
+      StaffCache.guardar('auditoria', uid, datos);
+      return datos;
+    });
   }
 
   @override
@@ -82,9 +86,11 @@ class _AuditViewState extends State<AuditView> {
           ),
           FutureBuilder<List<Map<String, dynamic>>>(
             future: _auditFuture,
+            initialData: StaffCache.leer<List<Map<String, dynamic>>>(
+                'auditoria', Provider.of<AuthProvider>(context, listen: false).userId),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverFillRemaining(child: AppLoading());
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return SliverFillRemaining(child: SkeletonBlocks.auditList());
               }
               if (snapshot.hasError) {
                 return SliverFillRemaining(child: Center(child: _buildErrorState(snapshot.error.toString())));

@@ -436,7 +436,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ],
         ),
         body: _isLoading
-            ? const AppLoading()
+            ? SkeletonBlocks.expediente()
             : ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
@@ -1703,7 +1703,7 @@ class _PatientRecordViewState extends State<PatientRecordView> {
           ),
           const SizedBox(height: 16),
           if (_isDailyLogLoading)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: AppLoading(size: 28))
+            SkeletonBlocks.registroDia()
           else ...[
             _buildGroupLabel('Comidas registradas', Icons.restaurant_outlined),
             const SizedBox(height: 10),

@@ -7,6 +7,7 @@ import '../../../services/url_service.dart';
 import 'patient_record_view.dart';
 
 import '../../../widgets/app_loading.dart';
+import '../../../services/staff_cache.dart';
 
 class PatientListView extends StatefulWidget {
   const PatientListView({super.key});
@@ -26,15 +27,24 @@ class _PatientListViewState extends State<PatientListView> {
   @override
   void initState() {
     super.initState();
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    final guardados = StaffCache.leer<List<Map<String, dynamic>>>('clientes', uid);
+    if (guardados != null) {
+      _patients = guardados;
+      _isLoading = false;
+      _filteredPatients = _patients.where((p) => p['is_profile_complete'] == true).toList();
+    }
     _loadPatients();
   }
 
   Future<void> _loadPatients() async {
-    setState(() => _isLoading = true);
+    if (_patients.isEmpty) setState(() => _isLoading = true);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.token != null) {
         final patients = await _apiService.getNutricionistaClientes(authProvider.token!);
+        StaffCache.guardar('clientes', authProvider.userId, patients);
+        if (!mounted) return;
         setState(() {
           _patients = patients;
           _isLoading = false;
@@ -93,7 +103,7 @@ class _PatientListViewState extends State<PatientListView> {
               _buildSearchHeader(),
               Expanded(
                 child: _isLoading
-                    ? const AppLoading()
+                    ? SkeletonBlocks.patientList()
                     : _filteredPatients.isEmpty
                         ? _buildEmptyState()
                         : _buildPatientList(),

@@ -10,6 +10,7 @@ class ClientCache {
   static Map<String, dynamic>? racha;
   static Map<String, dynamic>? checkIn;
   static Client? perfil;
+  static bool perfilVisto = false;
 
   static void alCambiarUsuario(void Function() accion) => _alCambiarUsuario.add(accion);
 
@@ -20,6 +21,7 @@ class ClientCache {
     racha = null;
     checkIn = null;
     perfil = null;
+    perfilVisto = false;
     for (final accion in List.of(_alCambiarUsuario)) {
       accion();
     }

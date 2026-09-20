@@ -22,6 +22,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
   late AnimationController _animController;
 
   bool isLocalLoading = true;
+  bool _cambiandoFecha = false;
   String? errorMessage;
   DateTime? _selectedDate;
 
@@ -104,6 +105,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
         });
       }
     }
+    if (mounted && _cambiandoFecha) setState(() => _cambiandoFecha = false);
   }
 
   Future<void> _eliminarRegistro(int id, String tipo, {int cantidad = 1}) async {
@@ -265,7 +267,7 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
     return Consumer<BalanceProvider>(
       builder: (context, provider, child) {
         final balanceData = provider.fullBalanceData;
-        final isLoading = isLocalLoading && balanceData == null;
+        final isLoading = (isLocalLoading && balanceData == null) || _cambiandoFecha;
 
         return Scaffold(
           backgroundColor: AppColors.surface,
@@ -491,7 +493,10 @@ class _MiBalanceScreenState extends State<MiBalanceScreen> with TickerProviderSt
                           },
                         );
                         if (picked != null) {
-                          setState(() => _selectedDate = picked);
+                          setState(() {
+                            _selectedDate = picked;
+                            _cambiandoFecha = true;
+                          });
                           _loadBalance();
                         }
                       },

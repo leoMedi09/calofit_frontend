@@ -5,6 +5,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 
+import '../../../services/staff_cache.dart';
 import '../../../widgets/app_loading.dart';
 
 class CoachDashboardView extends StatefulWidget {
@@ -23,16 +24,26 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
   @override
   void initState() {
     super.initState();
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    final guardado = StaffCache.leer<Map<String, dynamic>>('coach', uid);
+    if (guardado != null) {
+      _stats = guardado['stats'] as Map<String, dynamic>;
+      _alerts = guardado['alerts'] as List<Map<String, dynamic>>;
+      _isLoading = false;
+    }
     _loadDashboardData();
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
+    if (_stats.isEmpty && _alerts.isEmpty) setState(() => _isLoading = true);
     try {
-      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
       if (token != null) {
         final stats = await _apiService.getNutriStats(token);
         final alerts = await _apiService.getMisAlertasClientes(token);
+        StaffCache.guardar('coach', auth.userId, {'stats': stats, 'alerts': alerts});
+        if (!mounted) return;
         setState(() {
           _stats = stats;
           _alerts = alerts;
@@ -40,7 +51,7 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
         });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -60,7 +71,7 @@ class _CoachDashboardViewState extends State<CoachDashboardView> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (_isLoading)
-                    const Padding(padding: EdgeInsets.all(50), child: AppLoading())
+                    SkeletonBlocks.coachDashboard()
                   else ...[
                     _buildStatsRow(),
                     const SizedBox(height: 24),

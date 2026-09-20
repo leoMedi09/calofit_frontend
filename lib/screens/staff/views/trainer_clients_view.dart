@@ -6,6 +6,7 @@ import '../../../services/url_service.dart';
 import 'patient_record_view.dart';
 
 import '../../../widgets/app_loading.dart';
+import '../../../services/staff_cache.dart';
 
 class TrainerClientsView extends StatefulWidget {
   const TrainerClientsView({super.key});
@@ -24,15 +25,24 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
   @override
   void initState() {
     super.initState();
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    final guardados = StaffCache.leer<List<Map<String, dynamic>>>('clientes', uid);
+    if (guardados != null) {
+      _clients = guardados;
+      _filteredClients = guardados;
+      _isLoading = false;
+    }
     _loadClients();
   }
 
   Future<void> _loadClients() async {
-    setState(() => _isLoading = true);
+    if (_clients.isEmpty) setState(() => _isLoading = true);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.token != null) {
         final clients = await _apiService.getNutricionistaClientes(authProvider.token!);
+        StaffCache.guardar('clientes', authProvider.userId, clients);
+        if (!mounted) return;
         setState(() {
           _clients = clients;
           _filteredClients = clients;
@@ -77,7 +87,7 @@ class _TrainerClientsViewState extends State<TrainerClientsView> {
             _buildSearchBox(),
             Expanded(
               child: _isLoading
-                  ? const AppLoading()
+                  ? SkeletonBlocks.clientList()
                   : _filteredClients.isEmpty
                       ? _buildEmptyState()
                       : _buildClientList(),

@@ -12,6 +12,7 @@ import '../../widgets/plan_alert_card.dart';
 
 import '../../providers/balance_provider.dart';
 import '../../widgets/checkin_card.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../../widgets/app_loading.dart';
 import 'views/checkin_wizard_screen.dart';
 import 'onboarding_profile_screen.dart';
@@ -45,6 +46,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   bool _showAllRecommended = false;
   bool _showAllForbidden = false;
   int _rachaActual = 0;
+  bool _rachaCargada = false;
   bool _cargandoInicial = true;
   bool _perfilCargado = false;
 
@@ -68,6 +70,7 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
     final checkInGuardado = ClientCache.checkIn;
     if (checkInGuardado != null) _aplicarCheckIn(checkInGuardado);
     _rachaActual = (ClientCache.racha?['racha_actual'] as int?) ?? 0;
+    _rachaCargada = ClientCache.racha != null;
     _progressController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -242,8 +245,15 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
       try {
         final racha = await rachaFut;
         ClientCache.racha = racha;
-        if (mounted) setState(() => _rachaActual = racha['racha_actual'] as int? ?? 0);
-      } catch (_) {}
+        if (mounted) {
+          setState(() {
+            _rachaActual = racha['racha_actual'] as int? ?? 0;
+            _rachaCargada = true;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _rachaCargada = true);
+      }
 
       if (_checkInNeeded && !_dialogShown && mounted) {
         _dialogShown = true;
@@ -536,18 +546,24 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
   }
 
   Widget _buildCustomHeader(AuthProvider authProvider, DailySummary? dailySummary) {
+    final balance = Provider.of<BalanceProvider>(context, listen: false);
+    final cargando = dailySummary == null && (balance.isLoading || (_cargandoInicial && !balance.hasError));
     return SliverAppBar(
       expandedHeight: 140,
       floating: false,
       pinned: true,
       elevation: 0,
       backgroundColor: const Color(0xFF1565C0),
-      title: Text(
-        'Hola, ${authProvider.userName ?? "Usuario"}',
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
+      title: AppSkeleton(
+        loading: cargando,
+        onDark: true,
+        child: Text(
+          'Hola, ${authProvider.userName ?? "Usuario"}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
       ),
       centerTitle: false,
@@ -592,25 +608,37 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                           ),
                         ],
                       ),
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.white,
-                        backgroundImage:
-                            authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty
-                                ? NetworkImage(UrlService.formatImageUrl(authProvider.profilePictureUrl))
-                                : null,
-                        child: (authProvider.profilePictureUrl == null || authProvider.profilePictureUrl!.isEmpty)
-                            ? Text(
-                                (authProvider.userName != null && authProvider.userName!.trim().isNotEmpty)
-                                    ? authProvider.userName!.trim().substring(0, 1).toUpperCase()
-                                    : 'U',
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1E88E5),
+                      child: AppSkeleton(
+                        loading: cargando,
+                        onDark: true,
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.white,
+                          child: (authProvider.profilePictureUrl != null && authProvider.profilePictureUrl!.isNotEmpty)
+                              ? ClipOval(
+                                  child: Image.network(
+                                    UrlService.formatImageUrl(authProvider.profilePictureUrl),
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, progress) => progress == null
+                                        ? child
+                                        : AppSkeleton(loading: true, child: const Bone.circle(size: 60)),
+                                    errorBuilder: (context, error, stack) =>
+                                        const Icon(Icons.person, color: Color(0xFF1E88E5)),
+                                  ),
+                                )
+                              : Text(
+                                  (authProvider.userName != null && authProvider.userName!.trim().isNotEmpty)
+                                      ? authProvider.userName!.trim().substring(0, 1).toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E88E5),
+                                  ),
                                 ),
-                              )
-                            : null,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -619,34 +647,42 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            '¡BIENVENIDO!',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.5,
+                          AppSkeleton(
+                            loading: cargando,
+                            onDark: true,
+                            child: Text(
+                              '¡BIENVENIDO!',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
                               Flexible(
-                                child: Text(
-                                  authProvider.userName ?? 'Usuario',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
+                                child: AppSkeleton(
+                                  loading: cargando,
+                                  onDark: true,
+                                  child: Text(
+                                    authProvider.userName ?? 'Usuario',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (_planValidado(dailySummary)) ...[
@@ -696,6 +732,17 @@ class _ClientMainScreenState extends State<ClientMainScreen> with SingleTickerPr
                     ),
                   ),
                 ],
+              ),
+            ),
+          )
+        else if (!_rachaCargada)
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Center(
+              child: AppSkeleton(
+                loading: true,
+                onDark: true,
+                child: Bone(width: 88, height: 34, borderRadius: BorderRadius.circular(24)),
               ),
             ),
           )

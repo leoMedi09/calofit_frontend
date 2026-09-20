@@ -117,6 +117,8 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: obscure,
       keyboardType: keyboardType,
       autocorrect: false,
+      scrollPadding: const EdgeInsets.only(bottom: 160),
+      textInputAction: isPassword ? TextInputAction.done : TextInputAction.next,
       onSubmitted: onSubmitted,
       decoration: InputDecoration(
         labelText: label,
@@ -138,6 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tecladoAbierto = MediaQuery.of(context).viewInsets.bottom > 0;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -157,15 +160,25 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
-              Center(
-                child: Image.asset(
-                  'assets/icon/calofit_logo.png',
-                  width: 120,
-                  height: 120,
-                ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: tecladoAbierto
+                    ? const SizedBox(width: double.infinity)
+                    : Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Image.asset(
+                              'assets/icon/calofit_logo.png',
+                              width: 120,
+                              height: 120,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                        ],
+                      ),
               ),
-              const SizedBox(height: 28),
               Text(
                 'Iniciar sesión',
                 textAlign: TextAlign.center,
@@ -176,13 +189,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Ingresa con las credenciales asignadas por tu Nutricionista o Administrador.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: tecladoAbierto
+                    ? const SizedBox(width: double.infinity, height: 16)
+                    : Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          Text(
+                            'Ingresa con las credenciales asignadas por tu Nutricionista o Administrador.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
               ),
-              const SizedBox(height: 32),
               if (_backendWaking)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),

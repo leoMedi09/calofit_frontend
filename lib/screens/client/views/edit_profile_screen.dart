@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../app_theme.dart';
 import '../../../models/client.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/balance_provider.dart';
@@ -10,6 +11,47 @@ import '../../../widgets/app_loading.dart';
 import '../../../widgets/client_bottom_nav.dart';
 
 import '../../../services/client_cache.dart';
+
+class ClientProfileGuard {
+  const ClientProfileGuard._();
+
+  static bool sucio = false;
+
+  static Future<bool> confirmarSalida(BuildContext context) async {
+    final descartar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text('¿Salir sin guardar?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Modificaste tu perfil y los cambios aún no se guardaron. Si sales, se perderán.'),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Seguir editando', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('Descartar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    return descartar ?? false;
+  }
+}
 
 class EditProfileScreen extends StatefulWidget {
   final Client client;
@@ -30,6 +72,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   bool _isInitialized = false;
+  String _firmaInicial = '';
+  Map<String, String> _planBase = {};
+  bool _ultimoSucio = false;
 
   late TextEditingController _weightController;
   late TextEditingController _heightController;
@@ -68,6 +113,62 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     _initControllers();
+    for (final c in [
+      _weightController,
+      _heightController,
+      _firstNameController,
+      _lastNamePaternalController,
+      _lastNameMaternalController,
+      _emailController,
+    ]) {
+      c.addListener(_actualizarSucio);
+    }
+  }
+
+  String _firma() => [
+        _firstNameController.text.trim(),
+        _lastNamePaternalController.text.trim(),
+        _lastNameMaternalController.text.trim(),
+        _emailController.text.trim(),
+        _gender,
+        _birthDate?.toIso8601String(),
+        _goal,
+        _activityLevel,
+        _workoutType,
+        _sessionDuration,
+        _weightController.text.trim(),
+        _heightController.text.trim(),
+        (_selectedConditions.toList()..sort()).join(','),
+      ].join('|');
+
+  bool get _sucio => _firma() != _firmaInicial;
+
+  Map<String, String> _planActual() => {
+        'peso': (double.tryParse(_weightController.text) ?? 0).toStringAsFixed(1),
+        'talla': (double.tryParse(_heightController.text) ?? 0).toStringAsFixed(0),
+        'nivel de actividad': _activityLevel ?? '',
+        'objetivo': _goal ?? '',
+        'condiciones médicas': (_selectedConditions.toList()..sort()).join(','),
+      };
+
+  List<String> _camposPlanCambiados() {
+    final actual = _planActual();
+    return [
+      for (final e in actual.entries)
+        if (e.value != _planBase[e.key]) e.key
+    ];
+  }
+
+  bool get _planValidado =>
+      Provider.of<BalanceProvider>(context, listen: false).dailySummary?.planObjetivo?.estadoPlan == 'validado';
+
+  void _actualizarSucio() {
+    final s = _sucio;
+    ClientProfileGuard.sucio = s;
+    if (s != _ultimoSucio) {
+      _ultimoSucio = s;
+      if (mounted) setState(() {});
+    }
   }
 
   void _initControllers() {
@@ -93,10 +194,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _gender = widget.client.gender;
     _birthDate = widget.client.birthDate;
     _isInitialized = true;
+    _firmaInicial = _firma();
+    _planBase = _planActual();
   }
 
   @override
   void dispose() {
+    ClientProfileGuard.sucio = false;
     _weightController.dispose();
     _heightController.dispose();
     _firstNameController.dispose();
@@ -120,7 +224,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<bool> _confirmarCambiosPerfil() async {
+  Future<bool> _confirmarCambiosPerfil(List<String> campos) async {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -150,9 +254,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     border: Border.all(color: Colors.orange.shade200),
                   ),
                   child: Text(
-                    '⚠️ Si tu plan nutricional fue aprobado por tu nutricionista, '
-                    'modificar tus datos (peso, talla, actividad, objetivo o condiciones médicas) '
-                    'requiere una nueva aprobación.',
+                    'Modificaste: ${campos.join(', ')}.\n\n'
+                    'Tu plan ya fue aprobado por tu nutricionista, así que volverá a revisión '
+                    'y necesitará una nueva aprobación.',
                     style: TextStyle(
                       color: Colors.orange.shade900,
                       height: 1.5,
@@ -162,7 +266,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '¿Deseas guardar los cambios y solicitar nueva aprobación?',
+                  '¿Deseas guardar los cambios?',
                   style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                 ),
               ],
@@ -183,7 +287,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 icon: const Icon(Icons.save_outlined, size: 18),
                 label: const Text('Guardar cambios'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A237E),
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -203,8 +307,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final balanceProvider = Provider.of<BalanceProvider>(context, listen: false);
 
-    final confirmed = await _confirmarCambiosPerfil();
-    if (!confirmed) return;
+    final camposPlan = _camposPlanCambiados();
+    if (camposPlan.isNotEmpty && _planValidado) {
+      final confirmed = await _confirmarCambiosPerfil(camposPlan);
+      if (!confirmed) return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -250,6 +357,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         );
         widget.onProfileUpdated?.call();
+        setState(() {
+          _firmaInicial = _firma();
+          _planBase = _planActual();
+        });
+        _actualizarSucio();
       }
     } catch (e) {
       if (mounted) {
@@ -328,388 +440,399 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _initControllers();
     }
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      bottomNavigationBar: _buildBottomNavigation(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Spacer(),
-                        ],
+    final sucio = _sucio;
+    ClientProfileGuard.sucio = sucio;
+
+    return PopScope(
+      canPop: !sucio,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final salir = await ClientProfileGuard.confirmarSalida(context);
+        if (salir && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        bottomNavigationBar: _buildBottomNavigation(),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    height: 180,
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
                       ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -50,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          widget.client.firstName.isNotEmpty
-                              ? widget.client.firstName.substring(0, 1).toUpperCase()
-                              : 'U',
-                          style: const TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E88E5),
-                          ),
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Spacer(),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 60),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                  border: Border.all(color: Colors.blue.shade50),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '${widget.client.firstName} ${widget.client.lastNamePaternal}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF1565C0),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.client.email,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMLBadge(),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionTitle('Información Personal'),
-                    _buildTextField(_firstNameController, 'Nombre', Icons.person_outline),
-                    _buildTextField(_lastNamePaternalController, 'Apellido Paterno', Icons.person_outline),
-                    _buildTextField(_lastNameMaternalController, 'Apellido Materno', Icons.person_outline),
-                    _buildTextField(
-                      _emailController,
-                      'Correo electrónico',
-                      Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Requerido';
-                        final regex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[\w\.\-]+$');
-                        if (!regex.hasMatch(value.trim())) return 'Correo inválido';
-                        return null;
-                      },
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: DropdownButtonFormField<String>(
-                              value: _gender,
-                              decoration: InputDecoration(
-                                labelText: 'Género',
-                                prefixIcon: Icon(Icons.people_alt_outlined, color: Colors.blue.shade300),
-                                filled: true,
-                                fillColor: Colors.grey.shade50,
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide(color: Colors.grey.shade200)),
-                                focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'M', child: Text('Masculino')),
-                                DropdownMenuItem(value: 'F', child: Text('Femenino')),
-                              ],
-                              onChanged: (v) => setState(() => _gender = v),
-                              validator: (v) => v == null ? 'Requerido' : null,
+                  Positioned(
+                    bottom: -50,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: FormField<DateTime>(
-                              validator: (_) => _birthDate == null ? 'Requerido' : null,
-                              builder: (state) => InkWell(
-                                onTap: () async {
-                                  await _seleccionarFechaNacimiento();
-                                  state.didChange(_birthDate);
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: InputDecorator(
-                                  decoration: InputDecoration(
-                                    labelText: 'Fecha de Nacimiento',
-                                    prefixIcon: Icon(Icons.cake_outlined, color: Colors.blue.shade300),
-                                    filled: true,
-                                    fillColor: Colors.grey.shade50,
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                    enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: BorderSide(color: Colors.grey.shade200)),
-                                    focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
-                                    errorText: state.errorText,
-                                  ),
-                                  child: Text(
-                                    _birthDate != null
-                                        ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
-                                        : 'Seleccionar',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSectionTitle('Objetivo y Estilo de Vida'),
-                    _buildDropdownField(
-                        'Objetivo Principal',
-                        Icons.flag_rounded,
-                        _goal,
-                        {
-                          'perder peso': 'Perder peso (Agresivo)',
-                          'perder_leve': 'Perder peso (Definición)',
-                          'mantener peso': 'Mantener peso',
-                          'ganar_leve': 'Ganar masa (Limpio)',
-                          'ganar masa': 'Ganar masa (Volumen)'
-                        },
-                        (val) => setState(() => _goal = val)),
-                    _buildDropdownField(
-                        'Nivel de Actividad',
-                        Icons.directions_run_rounded,
-                        _activityLevel,
-                        {
-                          'Sedentario': 'Sedentario (0-1 días)',
-                          'Ligero': 'Ligero (2-3 días)',
-                          'Moderado': 'Moderado (3-5 días)',
-                          'Activo': 'Activo (5-6 días)',
-                          'Muy activo': 'Muy activo (Atleta/Intenso)'
-                        },
-                        (val) => setState(() => _activityLevel = val)),
-                    _buildDropdownField(
-                        'Tipo de Entrenamiento',
-                        Icons.fitness_center_rounded,
-                        _workoutType,
-                        {
-                          'Cardio': '🏃 Cardio (Correr, Bicicleta, Natación)',
-                          'Strength': '💪 Fuerza (Pesas, Gym)',
-                          'HIIT': '⚡ HIIT (Alta Intensidad)',
-                          'Yoga': '🧘 Yoga / Flexibilidad',
-                        },
-                        (val) => setState(() => _workoutType = val)),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: DropdownButtonFormField<double>(
-                        value: _sessionDuration,
-                        decoration: InputDecoration(
-                          labelText: 'Duración de Sesión',
-                          prefixIcon: Icon(Icons.timer_rounded, color: Colors.blue.shade300),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border:
-                              OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: Colors.grey.shade200)),
-                          focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: const Color(0xFF1E88E5), width: 2)),
-                        ),
-                        items: {
-                          0.5: '30 minutos',
-                          1.0: '1 hora',
-                          1.5: '1 hora 30 minutos',
-                          2.0: '2 horas o más',
-                        }.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                        onChanged: (v) => setState(() => _sessionDuration = v),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSectionTitle('Medidas Físicas'),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildTextField(_weightController, 'Peso (kg)', Icons.monitor_weight_outlined,
-                                isNumber: true)),
-                        const SizedBox(width: 16),
-                        Expanded(
-                            child: _buildTextField(
-                          _heightController,
-                          'Altura (cm)',
-                          Icons.height_outlined,
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            final h = double.tryParse(value ?? '');
-                            if (h == null || h < 100 || h > 230) {
-                              return 'Altura en cm, sin decimales (ej: 170)';
-                            }
-                            return null;
-                          },
-                        )),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Condiciones y Restricciones'),
-                    const SizedBox(height: 12),
-                    _buildGroupLabel('Condiciones Médicas', Icons.local_hospital_outlined),
-                    const SizedBox(height: 10),
-                    _buildChipGroup(_medicalOptions),
-                    const SizedBox(height: 24),
-                    _buildGroupLabel('Preferencias Alimenticias', Icons.restaurant_outlined),
-                    const SizedBox(height: 10),
-                    _buildChipGroup(_dietaryOptions),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Notificaciones'),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: SwitchListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        title: const Text(
-                          'Recordatorios y motivación diaria',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                        ),
-                        subtitle: const Text(
-                          'Recibe un mensaje motivacional y un recordatorio si no registraste tus comidas',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        value: _notificacionesActivas,
-                        onChanged: _guardandoNotificaciones ? null : _toggleNotificaciones,
-                        activeColor: const Color(0xFF1E88E5),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _updateProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A237E),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 8,
-                          shadowColor: const Color(0xFF1A237E).withOpacity(0.5),
-                        ),
-                        child: _isLoading
-                            ? const AppButtonLoader()
-                            : const Text(
-                                'GUARDAR CAMBIOS',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 60,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showLogoutDialog(context),
-                        icon: const Icon(Icons.logout_rounded, size: 20),
-                        label: const Text(
-                          'CERRAR SESIÓN',
-                          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2),
-                        ),
-                        style: ElevatedButton.styleFrom(
+                        child: CircleAvatar(
+                          radius: 50,
                           backgroundColor: Colors.white,
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Color(0xFFFFEBEE), width: 1.5),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          child: Text(
+                            widget.client.firstName.isNotEmpty
+                                ? widget.client.firstName.substring(0, 1).toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E88E5),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 60),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.blue.shade50),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '${widget.client.firstName} ${widget.client.lastNamePaternal}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1565C0),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.client.email,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildMLBadge(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 30),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle('Información Personal'),
+                      _buildTextField(_firstNameController, 'Nombre', Icons.person_outline),
+                      _buildTextField(_lastNamePaternalController, 'Apellido Paterno', Icons.person_outline),
+                      _buildTextField(_lastNameMaternalController, 'Apellido Materno', Icons.person_outline),
+                      _buildTextField(
+                        _emailController,
+                        'Correo electrónico',
+                        Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Requerido';
+                          final regex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[\w\.\-]+$');
+                          if (!regex.hasMatch(value.trim())) return 'Correo inválido';
+                          return null;
+                        },
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: DropdownButtonFormField<String>(
+                                value: _gender,
+                                decoration: InputDecoration(
+                                  labelText: 'Género',
+                                  prefixIcon: Icon(Icons.people_alt_outlined, color: Colors.blue.shade300),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade50,
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.grey.shade200)),
+                                  focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'M', child: Text('Masculino')),
+                                  DropdownMenuItem(value: 'F', child: Text('Femenino')),
+                                ],
+                                onChanged: (v) => setState(() => _gender = v),
+                                validator: (v) => v == null ? 'Requerido' : null,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: FormField<DateTime>(
+                                validator: (_) => _birthDate == null ? 'Requerido' : null,
+                                builder: (state) => InkWell(
+                                  onTap: () async {
+                                    await _seleccionarFechaNacimiento();
+                                    state.didChange(_birthDate);
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Fecha de Nacimiento',
+                                      prefixIcon: Icon(Icons.cake_outlined, color: Colors.blue.shade300),
+                                      filled: true,
+                                      fillColor: Colors.grey.shade50,
+                                      border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                      enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: BorderSide(color: Colors.grey.shade200)),
+                                      focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2)),
+                                      errorText: state.errorText,
+                                    ),
+                                    child: Text(
+                                      _birthDate != null
+                                          ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
+                                          : 'Seleccionar',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSectionTitle('Objetivo y Estilo de Vida'),
+                      _buildDropdownField(
+                          'Objetivo Principal',
+                          Icons.flag_rounded,
+                          _goal,
+                          {
+                            'perder peso': 'Perder peso (Agresivo)',
+                            'perder_leve': 'Perder peso (Definición)',
+                            'mantener peso': 'Mantener peso',
+                            'ganar_leve': 'Ganar masa (Limpio)',
+                            'ganar masa': 'Ganar masa (Volumen)'
+                          },
+                          (val) => setState(() => _goal = val)),
+                      _buildDropdownField(
+                          'Nivel de Actividad',
+                          Icons.directions_run_rounded,
+                          _activityLevel,
+                          {
+                            'Sedentario': 'Sedentario (0-1 días)',
+                            'Ligero': 'Ligero (2-3 días)',
+                            'Moderado': 'Moderado (3-5 días)',
+                            'Activo': 'Activo (5-6 días)',
+                            'Muy activo': 'Muy activo (Atleta/Intenso)'
+                          },
+                          (val) => setState(() => _activityLevel = val)),
+                      _buildDropdownField(
+                          'Tipo de Entrenamiento',
+                          Icons.fitness_center_rounded,
+                          _workoutType,
+                          {
+                            'Cardio': '🏃 Cardio (Correr, Bicicleta, Natación)',
+                            'Strength': '💪 Fuerza (Pesas, Gym)',
+                            'HIIT': '⚡ HIIT (Alta Intensidad)',
+                            'Yoga': '🧘 Yoga / Flexibilidad',
+                          },
+                          (val) => setState(() => _workoutType = val)),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: DropdownButtonFormField<double>(
+                          value: _sessionDuration,
+                          decoration: InputDecoration(
+                            labelText: 'Duración de Sesión',
+                            prefixIcon: Icon(Icons.timer_rounded, color: Colors.blue.shade300),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: Colors.grey.shade200)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: const Color(0xFF1E88E5), width: 2)),
+                          ),
+                          items: {
+                            0.5: '30 minutos',
+                            1.0: '1 hora',
+                            1.5: '1 hora 30 minutos',
+                            2.0: '2 horas o más',
+                          }.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                          onChanged: (v) => setState(() => _sessionDuration = v),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSectionTitle('Medidas Físicas'),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: _buildTextField(_weightController, 'Peso (kg)', Icons.monitor_weight_outlined,
+                                  isNumber: true)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                              child: _buildTextField(
+                            _heightController,
+                            'Altura (cm)',
+                            Icons.height_outlined,
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              final h = double.tryParse(value ?? '');
+                              if (h == null || h < 100 || h > 230) {
+                                return 'Altura en cm, sin decimales (ej: 170)';
+                              }
+                              return null;
+                            },
+                          )),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('Condiciones y Restricciones'),
+                      const SizedBox(height: 12),
+                      _buildGroupLabel('Condiciones Médicas', Icons.local_hospital_outlined),
+                      const SizedBox(height: 10),
+                      _buildChipGroup(_medicalOptions),
+                      const SizedBox(height: 24),
+                      _buildGroupLabel('Preferencias Alimenticias', Icons.restaurant_outlined),
+                      const SizedBox(height: 10),
+                      _buildChipGroup(_dietaryOptions),
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('Notificaciones'),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                          title: const Text(
+                            'Recordatorios y motivación diaria',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          ),
+                          subtitle: const Text(
+                            'Recibe un mensaje motivacional y un recordatorio si no registraste tus comidas',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          value: _notificacionesActivas,
+                          onChanged: _guardandoNotificaciones ? null : _toggleNotificaciones,
+                          activeColor: const Color(0xFF1E88E5),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: (_isLoading || !sucio) ? null : _updateProfile,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 8,
+                            shadowColor: AppColors.primary.withOpacity(0.5),
+                          ),
+                          child: _isLoading
+                              ? const AppButtonLoader()
+                              : const Text(
+                                  'GUARDAR CAMBIOS',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showLogoutDialog(context),
+                          icon: const Icon(Icons.logout_rounded, size: 20),
+                          label: const Text(
+                            'CERRAR SESIÓN',
+                            style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Color(0xFFFFEBEE), width: 1.5),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -938,6 +1061,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class EditProfileLoader extends StatefulWidget {
+  const EditProfileLoader({super.key});
+
+  @override
+  State<EditProfileLoader> createState() => _EditProfileLoaderState();
+}
+
+class _EditProfileLoaderState extends State<EditProfileLoader> {
+  Client? _perfil = ClientCache.perfil;
+  bool _breve = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _breve = _perfil != null && !ClientCache.perfilVisto;
+    ClientCache.perfilVisto = true;
+    if (_breve) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) setState(() => _breve = false);
+      });
+    }
+    _cargar();
+  }
+
+  Future<void> _cargar() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.userId == null || auth.token == null) {
+      _salir('No hay una sesión activa.');
+      return;
+    }
+    try {
+      final c = await ApiService().getClientProfile(auth.userId!, auth.token!);
+      ClientCache.perfil = c;
+      if (mounted && _perfil == null) setState(() => _perfil = c);
+    } catch (e) {
+      if (_perfil == null) _salir('Error al obtener perfil: $e');
+    }
+  }
+
+  void _salir(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final perfil = _perfil;
+    if (perfil != null && !_breve) return EditProfileScreen(client: perfil);
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SkeletonBlocks.perfilCliente(),
+      bottomNavigationBar: const ClientBottomNav(selectedIndex: 4, backgroundColor: Colors.white),
     );
   }
 }

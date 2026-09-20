@@ -7,6 +7,7 @@ import '../../../models/user.dart';
 import 'staff_registration_form.dart';
 
 import '../../../widgets/app_loading.dart';
+import '../../../services/staff_cache.dart';
 
 class TeamListView extends StatefulWidget {
   const TeamListView({super.key});
@@ -26,6 +27,12 @@ class _TeamListViewState extends State<TeamListView> {
   @override
   void initState() {
     super.initState();
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    final guardados = StaffCache.leer<List<User>>('equipo', uid);
+    if (guardados != null) {
+      _allMembers = guardados;
+      _applyFilters();
+    }
     _loadTeam();
   }
 
@@ -53,6 +60,8 @@ class _TeamListViewState extends State<TeamListView> {
         ));
       }
 
+      StaffCache.guardar('equipo', authProvider.userId, team);
+      if (!mounted) return;
       setState(() {
         _allMembers = team;
         _applyFilters();
@@ -111,7 +120,7 @@ class _TeamListViewState extends State<TeamListView> {
               _buildRoleFilters(),
               Expanded(
                 child: _allMembers.isEmpty
-                    ? const AppLoading()
+                    ? SkeletonBlocks.teamList()
                     : _filteredMembers.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(

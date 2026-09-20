@@ -8,6 +8,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../services/url_service.dart';
 import '../../../widgets/plan_status_badge.dart';
+import '../../../services/staff_cache.dart';
+import '../../../widgets/app_loading.dart';
 import '../../auth/login_screen.dart';
 import 'staff_registration_form.dart';
 import 'team_list_view.dart';
@@ -44,8 +46,44 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   void initState() {
     super.initState();
+    _restaurarCache();
     _refreshData();
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _refreshData(isAutoRefresh: true));
+  }
+
+  void _restaurarCache() {
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    final d = StaffCache.leer<Map<String, dynamic>>('dashboard', uid);
+    if (d == null) return;
+    _countNutri = d['nutri'] as int;
+    _countCoach = d['coach'] as int;
+    _countAdmin = d['admin'] as int;
+    _countInactive = d['inactive'] as int;
+    _countPacientes = d['pacientes'] as int;
+    _countValidaciones = d['validaciones'] as int;
+    _countAlertasCriticas = d['criticas'] as int;
+    _adherenciaMedia = d['adherencia'] as double;
+    _tendenciaAdherencia = d['tendencia'] as List<double>;
+    _recentAlerts = d['alertas'] as List<Map<String, dynamic>>;
+    _currentAIInsight = d['insight'] as String;
+    _isLoading = false;
+  }
+
+  void _guardarCache() {
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    StaffCache.guardar('dashboard', uid, {
+      'nutri': _countNutri,
+      'coach': _countCoach,
+      'admin': _countAdmin,
+      'inactive': _countInactive,
+      'pacientes': _countPacientes,
+      'validaciones': _countValidaciones,
+      'criticas': _countAlertasCriticas,
+      'adherencia': _adherenciaMedia,
+      'tendencia': _tendenciaAdherencia,
+      'alertas': _recentAlerts,
+      'insight': _currentAIInsight,
+    });
   }
 
   @override
@@ -56,10 +94,14 @@ class _DashboardViewState extends State<DashboardView> {
 
   Future<void> _refreshData({bool isAutoRefresh = false}) async {
     if (!mounted) return;
-    if (!isAutoRefresh) setState(() => _isLoading = true);
+    final uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    if (!isAutoRefresh && StaffCache.leer<Map<String, dynamic>>('dashboard', uid) == null) {
+      setState(() => _isLoading = true);
+    }
 
     if (ApiService.needsLogout) {
       ApiService.resetLogoutFlag();
+      if (_isLoading) setState(() => _isLoading = false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await _handleSessionExpired(authProvider);
       return;
@@ -125,6 +167,7 @@ class _DashboardViewState extends State<DashboardView> {
               _currentAIInsight = '✅ Equipo balanceado. Los logs muestran estabilidad.';
             }
           });
+          _guardarCache();
         }
       } else {
         final stats = await _apiService.getNutriStats(token);
@@ -152,6 +195,7 @@ class _DashboardViewState extends State<DashboardView> {
               _currentAIInsight = '🌟 ¡Excelente! Tus pacientes mantienen una adherencia del $_adherenciaMedia%.';
             }
           });
+          _guardarCache();
         }
       }
 
@@ -180,6 +224,8 @@ class _DashboardViewState extends State<DashboardView> {
     } catch (e) {
       debugPrint('Error refrescando datos: $e');
       if (mounted) setState(() => _isLoading = false);
+    } finally {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
     }
   }
 
@@ -271,12 +317,16 @@ class _DashboardViewState extends State<DashboardView> {
                 floating: false,
                 elevation: 0,
                 backgroundColor: primaryBlue,
-                title: Text(
-                  'Hola, ${authProvider.userName ?? "Staff"}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                title: AppSkeleton(
+                  loading: _isLoading,
+                  onDark: true,
+                  child: Text(
+                    'Hola, ${authProvider.userName ?? "Staff"}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
                 centerTitle: false,
@@ -293,38 +343,46 @@ class _DashboardViewState extends State<DashboardView> {
                       padding: const EdgeInsets.fromLTRB(24, 60, 24, 10),
                       child: Row(
                         children: [
-                          _buildProfileIcon(authProvider),
+                          AppSkeleton(loading: _isLoading, onDark: true, child: _buildProfileIcon(authProvider)),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  '¡BIENVENIDO!',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.5,
+                                AppSkeleton(
+                                  loading: _isLoading,
+                                  onDark: true,
+                                  child: Text(
+                                    '¡BIENVENIDO!',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.8),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.5,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  authProvider.userName ?? 'Staff',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
+                                AppSkeleton(
+                                  loading: _isLoading,
+                                  onDark: true,
+                                  child: Text(
+                                    authProvider.userName ?? 'Staff',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -342,21 +400,25 @@ class _DashboardViewState extends State<DashboardView> {
                 padding: const EdgeInsets.all(20.0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    if (!_isAdmin(context)) ...[
-                      _buildSectionTitle('Alertas de Salud (Clientes)', Icons.notification_important_rounded),
-                      const SizedBox(height: 15),
-                      _buildHealthAlertsSection(),
+                    if (_isLoading)
+                      SkeletonBlocks.staffDashboard(admin: _isAdmin(context))
+                    else ...[
+                      if (!_isAdmin(context)) ...[
+                        _buildSectionTitle('Alertas de Salud (Clientes)', Icons.notification_important_rounded),
+                        const SizedBox(height: 15),
+                        _buildHealthAlertsSection(),
+                        const SizedBox(height: 35),
+                      ],
+                      _buildSectionTitle(_isAdmin(context) ? 'Centro de Análisis Corporativo' : 'Gestión de Equipo',
+                          _isAdmin(context) ? Icons.analytics_rounded : Icons.analytics_rounded),
+                      const SizedBox(height: 20),
+                      if (_isAdmin(context)) _buildAdminModernStats() else _buildNutriKPIs(),
                       const SizedBox(height: 35),
+                      _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),
+                      const SizedBox(height: 15),
+                      _buildAIInsightCard(),
+                      const SizedBox(height: 40),
                     ],
-                    _buildSectionTitle(_isAdmin(context) ? 'Centro de Análisis Corporativo' : 'Gestión de Equipo',
-                        _isAdmin(context) ? Icons.analytics_rounded : Icons.analytics_rounded),
-                    const SizedBox(height: 20),
-                    if (_isAdmin(context)) _buildAdminModernStats() else _buildNutriKPIs(),
-                    const SizedBox(height: 35),
-                    _buildSectionTitle('Asistente IA Copilot', Icons.auto_awesome_outlined),
-                    const SizedBox(height: 15),
-                    _buildAIInsightCard(),
-                    const SizedBox(height: 40),
                   ]),
                 ),
               ),

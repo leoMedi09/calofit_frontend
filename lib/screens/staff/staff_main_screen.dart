@@ -161,10 +161,11 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
       floatingActionButton:
           (activeSectionKeys.contains('assistant') && activeSectionKeys[_selectedIndex] != 'assistant')
               ? FloatingActionButton(
-                  onPressed: () {
+                  onPressed: () async {
                     int assistantIndex = activeSectionKeys.indexOf('assistant');
                     if (assistantIndex != -1) {
-                      setState(() => _selectedIndex = assistantIndex);
+                      if (StaffProfileGuard.sucio && !await StaffProfileGuard.confirmarSalida(context)) return;
+                      if (mounted) setState(() => _selectedIndex = assistantIndex);
                     }
                   },
                   backgroundColor: primaryBlue,
@@ -174,7 +175,11 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
               : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        onDestinationSelected: (index) async {
+          if (index == _selectedIndex) return;
+          if (StaffProfileGuard.sucio && !await StaffProfileGuard.confirmarSalida(context)) return;
+          if (mounted) setState(() => _selectedIndex = index);
+        },
         backgroundColor: Colors.white,
         destinations: filteredItems.map((item) {
           return NavigationDestination(

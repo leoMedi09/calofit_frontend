@@ -186,7 +186,7 @@ class AuthProvider with ChangeNotifier {
     try {
       debugPrint('🔐 Validando sesión en segundo plano...');
       if (_userType == 'staff' || _userType == 'admin') {
-        await _apiService.getUsers(_token!);
+        await _apiService.getStaffProfile(_token!);
       } else {
         await _apiService.getClientProfile(_userId!, _token!);
       }

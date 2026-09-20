@@ -36,7 +36,7 @@ class ApiService {
         final path = e.requestOptions.path;
         print('❌ Error en petición [${statusCode ?? 'SIN CÓDIGO'}]: ${e.message}');
 
-        if (statusCode == 401 || statusCode == 403) {
+        if (statusCode == 401) {
           final hasAuthHeader = e.requestOptions.headers.containsKey('Authorization');
           final isAuthEndpoint = path.contains('/auth/login') ||
               path.contains('/auth/register') ||
@@ -47,7 +47,7 @@ class ApiService {
             print('🔐 Token inválido o expirado en petición autenticada. Cerrando sesión...');
             _needsLogout = true;
           } else {
-            print('⚠️ Error 401/403 en endpoint público (credenciales incorrectas, no token expirado)');
+            print('⚠️ Error 401 en endpoint público (credenciales incorrectas, no token expirado)');
           }
         }
 

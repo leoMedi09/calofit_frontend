@@ -1344,7 +1344,7 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ),
           Divider(height: 1, color: Colors.grey.shade100),
-          ...visible.asMap().entries.map((entry) {
+          ..._filasAlertas(visible.asMap().entries.map((entry) {
             final alert = entry.value;
             final bool isLast = entry.key == visible.length - 1 && (!_showAllAlerts || hidden <= 0);
             final Color accent = alert['urgency'] == 'Alta'
@@ -1422,7 +1422,7 @@ class _DashboardViewState extends State<DashboardView> {
                 if (!isLast) Divider(height: 1, indent: 16, endIndent: 16, color: Colors.grey.shade100),
               ],
             );
-          }),
+          }).toList()),
           if (totalAlerts > previewCount)
             InkWell(
               onTap: () => setState(() => _showAllAlerts = !_showAllAlerts),
@@ -1459,6 +1459,16 @@ class _DashboardViewState extends State<DashboardView> {
         ],
       ),
     );
+  }
+
+  List<Widget> _filasAlertas(List<Widget> filas) {
+    if (!_showAllAlerts) return filas;
+    return [
+      ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 320),
+        child: ListView(shrinkWrap: true, padding: EdgeInsets.zero, children: filas),
+      ),
+    ];
   }
 
   Widget _urgencyChip(String label, int count, Color color) {

@@ -119,7 +119,7 @@ class _PatientListViewState extends State<PatientListView> {
               foregroundColor: Colors.white,
               elevation: 4,
               icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('Inscribir Cliente', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text('Crear Cliente', style: TextStyle(fontWeight: FontWeight.bold)),
             )
           : null,
     );
@@ -133,10 +133,7 @@ class _PatientListViewState extends State<PatientListView> {
     List<Map<String, dynamic>> nutris = [];
     try {
       coaches = await _apiService.getCoachesList(authProvider.token!);
-      if (isAdmin) {
-        final allStaff = await _apiService.getStaffList(authProvider.token!);
-        nutris = allStaff.where((s) => (s['role_name'] ?? '').toString().toLowerCase().contains('nutri')).toList();
-      }
+      nutris = await _apiService.getNutricionistasList(authProvider.token!);
     } catch (_) {}
 
     if (!context.mounted) return;
@@ -146,7 +143,7 @@ class _PatientListViewState extends State<PatientListView> {
     final dniController = TextEditingController();
     bool isSubmitting = false;
     int? selectedCoachId;
-    int? selectedNutriId;
+    int? selectedNutriId = isAdmin ? null : authProvider.userId;
     String? errorMsg;
 
     showModalBottomSheet(
@@ -182,11 +179,11 @@ class _PatientListViewState extends State<PatientListView> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                               color: const Color(0xFF1E88E5).withValues(alpha: 0.1), shape: BoxShape.circle),
-                          child: const Icon(Icons.flash_on_rounded, color: Color(0xFF1E88E5)),
+                          child: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF1E88E5)),
                         ),
                         const SizedBox(width: 12),
                         const Text(
-                          'Creación Express',
+                          'Crear cliente',
                           style: TextStyle(
                               fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A237E), letterSpacing: -0.5),
                         ),
@@ -194,7 +191,7 @@ class _PatientListViewState extends State<PatientListView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Registra un cliente con su DNI y Correo. El DNI será su contraseña inicial.',
+                      'Ingresa el correo y el DNI del cliente. El DNI será su contraseña inicial y el cliente completará su perfil al entrar por primera vez.',
                       style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
                     ),
                     const SizedBox(height: 24),
@@ -243,19 +240,19 @@ class _PatientListViewState extends State<PatientListView> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    if (isAdmin) ...[
-                      _buildDropdownSelector(
-                        context: sheetContext,
-                        label: 'Nutricionista',
-                        icon: Icons.restaurant_menu_rounded,
-                        color: const Color(0xFF1565C0),
-                        items: nutris,
-                        selectedId: selectedNutriId,
-                        emptyText: 'Sin nutricionistas registrados',
-                        onChanged: (id) => setModalState(() => selectedNutriId = id),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                    _buildDropdownSelector(
+                      context: sheetContext,
+                      label: 'Nutricionista',
+                      icon: Icons.restaurant_menu_rounded,
+                      color: const Color(0xFF1565C0),
+                      items: nutris,
+                      selectedId: selectedNutriId,
+                      emptyText: 'Sin nutricionistas registrados',
+                      onChanged: (id) => setModalState(() => selectedNutriId = id),
+                      currentUserId: authProvider.userId,
+                      permitirVacio: isAdmin,
+                    ),
+                    const SizedBox(height: 16),
                     _buildDropdownSelector(
                       context: sheetContext,
                       label: 'Entrenador',
@@ -317,7 +314,7 @@ class _PatientListViewState extends State<PatientListView> {
                                     dni,
                                     authProvider.token!,
                                     assignedCoachId: selectedCoachId,
-                                    assignedNutriId: isAdmin ? selectedNutriId : null,
+                                    assignedNutriId: selectedNutriId,
                                   );
                                   if (sheetContext.mounted) {
                                     Navigator.of(sheetContext, rootNavigator: true).pop();
@@ -355,7 +352,7 @@ class _PatientListViewState extends State<PatientListView> {
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Text('Crear Cliente',
+                                  const Text('Crear cliente',
                                       style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                                   const SizedBox(width: 8),
                                   Icon(Icons.arrow_forward_rounded,
@@ -384,6 +381,8 @@ class _PatientListViewState extends State<PatientListView> {
     required int? selectedId,
     required String emptyText,
     required void Function(int?) onChanged,
+    int? currentUserId,
+    bool permitirVacio = true,
   }) {
     final selectedName = selectedId != null
         ? items.firstWhere(
@@ -404,12 +403,13 @@ class _PatientListViewState extends State<PatientListView> {
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1, color: color),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(20)),
-              child: Text('Opcional',
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-            ),
+            if (permitirVacio)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(20)),
+                child: Text('Opcional',
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+              ),
           ],
         ),
         const SizedBox(height: 10),
@@ -424,6 +424,8 @@ class _PatientListViewState extends State<PatientListView> {
                     items: items,
                     selectedId: selectedId,
                     onChanged: onChanged,
+                    currentUserId: currentUserId,
+                    permitirVacio: permitirVacio,
                   ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -452,10 +454,20 @@ class _PatientListViewState extends State<PatientListView> {
                             Text(label,
                                 style: TextStyle(
                                     fontSize: 10, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.3)),
-                            Text(selectedName,
-                                style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF263238)),
-                                overflow: TextOverflow.ellipsis),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(selectedName,
+                                      style: const TextStyle(
+                                          fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF263238)),
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                if (currentUserId != null && selectedId == currentUserId) ...[
+                                  const SizedBox(width: 8),
+                                  _buildTuChip(color),
+                                ],
+                              ],
+                            ),
                           ],
                         )
                       : Text(
@@ -473,6 +485,12 @@ class _PatientListViewState extends State<PatientListView> {
     );
   }
 
+  Widget _buildTuChip(Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+        child: Text('Tú', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: color)),
+      );
+
   void _showStaffPickerSheet(
     BuildContext context, {
     required String label,
@@ -481,6 +499,8 @@ class _PatientListViewState extends State<PatientListView> {
     required List<Map<String, dynamic>> items,
     required int? selectedId,
     required void Function(int?) onChanged,
+    int? currentUserId,
+    bool permitirVacio = true,
   }) {
     showModalBottomSheet(
       context: context,
@@ -521,34 +541,35 @@ class _PatientListViewState extends State<PatientListView> {
               ],
             ),
             const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () {
-                onChanged(null);
-                Navigator.pop(ctx);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: selectedId == null ? Colors.grey.shade100 : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: selectedId == null ? Colors.grey.shade400 : Colors.grey.shade200),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.grey.shade200,
-                        child: const Icon(Icons.person_off_outlined, size: 18, color: Colors.grey)),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                        child: Text('Sin asignar',
-                            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 14))),
-                    if (selectedId == null) const Icon(Icons.check_circle_rounded, color: Colors.grey),
-                  ],
+            if (permitirVacio)
+              GestureDetector(
+                onTap: () {
+                  onChanged(null);
+                  Navigator.pop(ctx);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: selectedId == null ? Colors.grey.shade100 : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: selectedId == null ? Colors.grey.shade400 : Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.grey.shade200,
+                          child: const Icon(Icons.person_off_outlined, size: 18, color: Colors.grey)),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                          child: Text('Sin asignar',
+                              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 14))),
+                      if (selectedId == null) const Icon(Icons.check_circle_rounded, color: Colors.grey),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
+            if (permitirVacio) const SizedBox(height: 10),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -588,9 +609,20 @@ class _PatientListViewState extends State<PatientListView> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF263238))),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF263238)),
+                                          overflow: TextOverflow.ellipsis),
+                                    ),
+                                    if (currentUserId != null && id == currentUserId) ...[
+                                      const SizedBox(width: 8),
+                                      _buildTuChip(color),
+                                    ],
+                                  ],
+                                ),
                                 Text('$count pacientes asignados',
                                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                               ],
@@ -1002,7 +1034,7 @@ class _PatientListViewState extends State<PatientListView> {
           const SizedBox(height: 16),
           Text(
             _searchQuery.isEmpty
-                ? (_showPending ? 'No hay registros express pendientes' : 'No tienes clientes asignados')
+                ? (_showPending ? 'No hay clientes con perfil pendiente' : 'No tienes clientes asignados')
                 : 'No se encontraron resultados para "$_searchQuery"',
             style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
           ),

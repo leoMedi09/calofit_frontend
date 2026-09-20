@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import '../../../app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
@@ -96,7 +97,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
                     const SizedBox(height: 12),
                     const Text(
                       'Nuevo Miembro',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -157,7 +158,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _registerStaff,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A237E),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           elevation: 0,
@@ -197,7 +198,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-        prefixIcon: Icon(icon, color: const Color(0xFF1A237E), size: 20),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
         suffixIcon: isPasswordField
             ? IconButton(
                 tooltip: 'Ver',
@@ -212,7 +213,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 1)),
+            borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1)),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) return 'Campo requerido';

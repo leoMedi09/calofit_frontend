@@ -1013,7 +1013,7 @@ class _DashboardViewState extends State<DashboardView> {
         const SizedBox(height: 12),
         _buildActionItem(
           'Gestión de Clientes',
-          'Inscribir pacientes y asignarlos al personal.',
+          'Crear clientes y asignarlos al personal.',
           Icons.person_add_alt_1_rounded,
           const Color(0xFF43A047),
           () {

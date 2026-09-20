@@ -206,6 +206,18 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getNutricionistasList(String token) async {
+    try {
+      final response = await _dio.get(
+        '/nutricionista/nutricionistas',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      return [];
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getCoachesList(String token) async {
     try {
       final response = await _dio.get(

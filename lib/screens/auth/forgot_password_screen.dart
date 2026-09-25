@@ -21,11 +21,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _showError(String message) {
+  void _showError(String message, {Color color = Colors.redAccent}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -59,7 +59,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => _isLoading = false);
       final msg = e.toString();
       if (msg.contains('personal del gimnasio') || msg.contains('contacta al administrador')) {
-        _showError('Eres personal del gimnasio. Contacta al administrador para cambiar tu contraseña.');
+        _showError(
+          'Eres personal del gimnasio. Contacta al administrador para cambiar tu contraseña.',
+          color: Colors.orange.shade700,
+        );
       } else {
         _showError('El correo electrónico no está registrado');
       }

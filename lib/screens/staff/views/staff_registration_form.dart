@@ -38,7 +38,15 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
   final Map<String, int> _roleIds = {
     'ADMIN': 1,
     'NUTRI': 3,
-    'COACH': 4,
+    'COACH': 2,
+  };
+
+  // Texto que se envía al backend como role_name — nombres canónicos en español,
+  // para no seguir sumando variantes (NUTRI/nutritionist/nutricionista...) a la BD.
+  static const Map<String, String> _roleNames = {
+    'ADMIN': 'administrador',
+    'NUTRI': 'nutricionista',
+    'COACH': 'entrenador',
   };
 
   @override
@@ -274,7 +282,7 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
         'last_name_maternal': _maternalController.text,
         'email': email,
         'password': _passwordController.text,
-        'role': _persistedRole,
+        'role': _roleNames[_persistedRole] ?? _persistedRole,
         'role_id': _persistedRoleId,
       };
 

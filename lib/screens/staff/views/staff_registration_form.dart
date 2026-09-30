@@ -41,8 +41,6 @@ class _StaffRegistrationFormState extends State<StaffRegistrationForm> {
     'COACH': 2,
   };
 
-  // Texto que se envía al backend como role_name — nombres canónicos en español,
-  // para no seguir sumando variantes (NUTRI/nutritionist/nutricionista...) a la BD.
   static const Map<String, String> _roleNames = {
     'ADMIN': 'administrador',
     'NUTRI': 'nutricionista',

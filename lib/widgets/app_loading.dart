@@ -61,11 +61,8 @@ class AppSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Skeletonizer(
       enabled: loading,
-      effect: ShimmerEffect(
-        baseColor: onDark ? const Color(0x38FFFFFF) : const Color(0xFFD8E1EC),
-        highlightColor: onDark ? const Color(0x73FFFFFF) : const Color(0xFFF1F5F9),
-        duration: const Duration(milliseconds: 1300),
-      ),
+      // Estático (sin brillo que recorra las formas): mismo color base que antes
+      effect: SolidColorEffect(color: onDark ? const Color(0x38FFFFFF) : const Color(0xFFD8E1EC)),
       enableSwitchAnimation: true,
       child: child,
     );

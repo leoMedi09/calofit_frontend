@@ -96,8 +96,11 @@ class TermsPrivacyScreen extends StatelessWidget {
               _Paragraph(
                 '4. Terceros que procesan datos\n'
                 '• Firebase (Google): autenticación de cuenta y notificaciones push.\n'
-                '• Groq: procesamiento del asistente conversacional (modelo de '
-                'lenguaje).\n'
+                '• OpenRouter y Groq: procesamiento del asistente conversacional '
+                '(modelo de lenguaje). Reciben el texto de tu consulta y, según '
+                'la consulta, tu nombre de pila, objetivo, condiciones de salud, '
+                'dieta y peso. No reciben tu correo, apellidos ni DNI. El audio '
+                'de voz se transcribe en tu teléfono y no se envía ni se guarda.\n'
                 '• USDA FoodData Central y FatSecret: consulta de valores '
                 'nutricionales de alimentos.\n'
                 'Estos terceros reciben únicamente los datos necesarios para '
@@ -115,13 +118,14 @@ class TermsPrivacyScreen extends StatelessWidget {
                 'De acuerdo con la Ley N.º 29733, Ley de Protección de Datos '
                 'Personales del Perú, puedes solicitar acceso, rectificación, '
                 'cancelación u oposición sobre tus datos personales contactando '
-                'directamente al gimnasio.',
+                'directamente al gimnasio. Puedes eliminar tu cuenta y todos tus '
+                'datos tú mismo desde Perfil > Editar perfil > Eliminar mi cuenta.',
               ),
               _Paragraph(
                 '7. Conservación de datos\n'
                 'Tus datos se conservan mientras mantengas una cuenta activa en '
-                'el gimnasio, y se eliminan o anonimizan si solicitas la baja de '
-                'tu cuenta.',
+                'el gimnasio, y se eliminan por completo cuando eliminas tu cuenta '
+                'desde la app o solicitas la baja al gimnasio.',
               ),
               _Paragraph(
                 '8. Menores de edad\n'

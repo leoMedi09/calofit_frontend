@@ -142,6 +142,19 @@ class ApiService {
     }
   }
 
+  Future<void> deleteMyAccount(String token, String password) async {
+    try {
+      await _dio.post(
+        '/clientes/perfil/eliminar',
+        data: {'password': password},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      throw Exception(data is Map && data['detail'] is String ? data['detail'] : 'No se pudo eliminar la cuenta');
+    }
+  }
+
   Future<List<User>> getUsers(String token) async {
     try {
       final response = await _dio.get('/admin/staff', options: Options(headers: {'Authorization': 'Bearer $token'}));

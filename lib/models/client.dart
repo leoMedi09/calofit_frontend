@@ -19,6 +19,8 @@ class Client {
   final int? assignedNutriId;
   final bool isProfileComplete;
   final DateTime? termsAcceptedAt;
+  // No es final: al cambiar el interruptor se actualiza en el perfil en caché para que no se "reactive" al volver.
+  bool notificacionesActivas;
 
   Client({
     required this.id,
@@ -40,6 +42,7 @@ class Client {
     this.assignedNutriId,
     this.isProfileComplete = false,
     this.termsAcceptedAt,
+    this.notificacionesActivas = true,
   });
 
   String get fullName => '$firstName $lastNamePaternal $lastNameMaternal';
@@ -77,6 +80,7 @@ class Client {
       assignedNutriId: json['assigned_nutri_id'],
       isProfileComplete: json['is_profile_complete'] ?? false,
       termsAcceptedAt: json['terms_accepted_at'] != null ? DateTime.parse(json['terms_accepted_at']) : null,
+      notificacionesActivas: json['notificaciones_activas'] ?? true,
     );
   }
 

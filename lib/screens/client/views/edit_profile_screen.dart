@@ -90,7 +90,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   double? _sessionDuration;
   String? _gender;
   DateTime? _birthDate;
-  // ponytail: ClientResponse no expone el valor actual; arranca en true (default de BD)
   bool _notificacionesActivas = true;
   bool _guardandoNotificaciones = false;
 
@@ -193,6 +192,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _sessionDuration = widget.client.sessionDuration;
     _gender = widget.client.gender;
     _birthDate = widget.client.birthDate;
+    _notificacionesActivas = widget.client.notificacionesActivas;
     _isInitialized = true;
     _firmaInicial = _firma();
     _planBase = _planActual();
@@ -388,6 +388,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         value,
         authProvider.token!,
       );
+      // guardado en el servidor: se refleja también en el perfil en caché (mismo objeto que usa esta pantalla)
+      widget.client.notificacionesActivas = value;
+      ClientCache.perfil = widget.client;
     } catch (e) {
       if (mounted) {
         setState(() => _notificacionesActivas = !value);
@@ -432,6 +435,106 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ],
       ),
     );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final passCtrl = TextEditingController();
+    String? error;
+    bool borrando = false;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setD) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: const Text('¿Eliminar tu cuenta?', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Se borrarán de forma permanente tu perfil, tus registros de comidas y ejercicio, tu progreso y tu '
+                'historial con el asistente. Esta acción no se puede deshacer.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passCtrl,
+                obscureText: true,
+                enabled: !borrando,
+                decoration: InputDecoration(labelText: 'Confirma con tu contraseña', errorText: error),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: borrando ? null : () => Navigator.pop(dialogContext),
+              child: Text('CANCELAR', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: borrando
+                  ? null
+                  : () async {
+                      if (passCtrl.text.isEmpty) {
+                        setD(() => error = 'Ingresa tu contraseña');
+                        return;
+                      }
+                      setD(() {
+                        borrando = true;
+                        error = null;
+                      });
+                      try {
+                        await _apiService.deleteMyAccount(authProvider.token!, passCtrl.text);
+                      } catch (e) {
+                        setD(() {
+                          borrando = false;
+                          error = e.toString().replaceFirst('Exception: ', '');
+                        });
+                        return;
+                      }
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      if (!context.mounted) return;
+                      await showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                          icon: const Icon(Icons.check_circle_rounded, color: Color(0xFF2E7D32), size: 56),
+                          title: const Text('Cuenta eliminada', style: TextStyle(fontWeight: FontWeight.bold)),
+                          content: const Text(
+                            'Tu cuenta y todos tus datos fueron eliminados de CaloFit. Gracias por haber sido parte.',
+                            textAlign: TextAlign.center,
+                          ),
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: const Text('ENTENDIDO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+                      await authProvider.logout();
+                      if (context.mounted) {
+                        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: borrando
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('ELIMINAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) => passCtrl.dispose());
   }
 
   @override
@@ -758,25 +861,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _buildChipGroup(_dietaryOptions),
                       const SizedBox(height: 24),
                       _buildSectionTitle('Notificaciones'),
-                      Container(
+                      // Activa: tarjeta iluminada (azul suave, borde y sombra). Desactivada: gris y opaca.
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: _notificacionesActivas ? const Color(0xFFE8F1FD) : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(
+                            color: _notificacionesActivas
+                                ? const Color(0xFF1E88E5).withValues(alpha: 0.45)
+                                : Colors.grey.shade300,
+                          ),
+                          boxShadow: _notificacionesActivas
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF1E88E5).withValues(alpha: 0.14),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : const [],
                         ),
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                          title: const Text(
-                            'Recordatorios y motivación diaria',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 250),
+                          opacity: _notificacionesActivas ? 1.0 : 0.55,
+                          child: SwitchListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                            secondary: Icon(
+                              _notificacionesActivas ? Icons.notifications_active_rounded : Icons.notifications_off_outlined,
+                              color: _notificacionesActivas ? const Color(0xFF1E88E5) : Colors.grey.shade600,
+                            ),
+                            title: const Text(
+                              'Recordatorios y motivación diaria',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                            subtitle: const Text(
+                              'Recibe un mensaje motivacional y un recordatorio si no registraste tus comidas',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            value: _notificacionesActivas,
+                            onChanged: _guardandoNotificaciones ? null : _toggleNotificaciones,
+                            activeColor: const Color(0xFF1E88E5),
                           ),
-                          subtitle: const Text(
-                            'Recibe un mensaje motivacional y un recordatorio si no registraste tus comidas',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          value: _notificacionesActivas,
-                          onChanged: _guardandoNotificaciones ? null : _toggleNotificaciones,
-                          activeColor: const Color(0xFF1E88E5),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -824,6 +950,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF5F5),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFFFCDD2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Colors.red.shade400, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Zona de peligro',
+                                  style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w800),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Eliminar tu cuenta borra de forma permanente tu perfil, registros y progreso.',
+                              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showDeleteAccountDialog(context),
+                                icon: const Icon(Icons.delete_forever_rounded, size: 20),
+                                label: const Text('ELIMINAR MI CUENTA', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red.shade700,
+                                  side: BorderSide(color: Colors.red.shade300, width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 40),

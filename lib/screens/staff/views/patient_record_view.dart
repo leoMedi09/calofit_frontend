@@ -354,10 +354,31 @@ class _PatientRecordViewState extends State<PatientRecordView> {
       final token = Provider.of<AuthProvider>(context, listen: false).token!;
       await _apiService.deleteClient(clientId, token);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$patientName fue eliminado de la plataforma.'), backgroundColor: Colors.green),
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            icon: const Icon(Icons.check_circle_rounded, color: Color(0xFF2E7D32), size: 56),
+            title: const Text('Paciente dado de baja', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: Text(
+              '$patientName y todos sus datos fueron eliminados de la plataforma.',
+              textAlign: TextAlign.center,
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('ENTENDIDO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         );
-        Navigator.pop(context, true);
+        if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {

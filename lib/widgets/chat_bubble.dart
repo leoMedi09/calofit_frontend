@@ -296,6 +296,7 @@ class _RegistrationPill extends StatelessWidget {
     final grasa = _toDouble(datos['grasas_g']);
     final alimentosLista =
         (datos['alimentos_lista'] as List?)?.map((e) => e.toString()).toList() ?? (nombre.isNotEmpty ? [nombre] : []);
+    final porciones = (datos['porciones'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
 
     return _PillCard(
       color: const Color(0xFF059669),
@@ -343,6 +344,16 @@ class _RegistrationPill extends StatelessWidget {
                       ))
                   .toList(),
             ),
+          if (porciones.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Cantidad considerada',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.green.shade800),
+            ),
+            const SizedBox(height: 2),
+            for (final p in porciones)
+              Text(p, style: TextStyle(fontSize: 12, color: Colors.green.shade900.withValues(alpha: 0.8))),
+          ],
           const SizedBox(height: 8),
           if (kcal >= 0)
             Row(

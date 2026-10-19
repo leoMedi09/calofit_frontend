@@ -73,7 +73,7 @@ class AssistantMessageBubble extends StatelessWidget {
                         Flexible(
                           child: Text(
                             intent == 'POWER'
-                                ? "Rutina personalizada según tu perfil (Random Forest)"
+                                ? "Adaptada a tu objetivo y condiciones de salud"
                                 : "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
                             style: const TextStyle(
                               fontSize: 11,
@@ -237,6 +237,7 @@ class _RegistrationPill extends StatelessWidget {
       final series = datos['series'];
       final reps = datos['reps'];
       final peso = datos['peso_kg'];
+      final calculos = (datos['calculos'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
 
       String detalle = '${dur}min';
       if (series != null && reps != null) {
@@ -277,6 +278,16 @@ class _RegistrationPill extends StatelessWidget {
                 ),
               ],
             ),
+            if (calculos.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Cálculo considerado',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.blue.shade800),
+              ),
+              const SizedBox(height: 2),
+              for (final c in calculos)
+                Text(c, style: TextStyle(fontSize: 12, color: Colors.blue.shade900.withValues(alpha: 0.8))),
+            ],
             if (quemado > 0) ...[
               const SizedBox(height: 8),
               Text(

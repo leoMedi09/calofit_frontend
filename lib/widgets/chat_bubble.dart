@@ -57,26 +57,29 @@ class AssistantMessageBubble extends StatelessWidget {
                 else if (isRecomendacion) ...[
                   _RecommendationBubble(texto: texto, intent: intent),
                   const SizedBox(height: 5),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
+                  Container(
+                    margin: const EdgeInsets.only(left: 2, top: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.psychology_outlined,
-                          size: 13,
-                          color: const Color(0xFF059669).withValues(alpha: 0.8),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          intent == 'POWER'
-                              ? "Rutina personalizada según tu perfil (Random Forest)"
-                              : "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF059669).withValues(alpha: 0.8),
-                            letterSpacing: 0.2,
+                        const Icon(Icons.psychology_outlined, size: 14, color: Color(0xFF059669)),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            intent == 'POWER'
+                                ? "Rutina personalizada según tu perfil (Random Forest)"
+                                : "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF047857),
+                            ),
                           ),
                         ),
                       ],
@@ -491,7 +494,7 @@ class _RecommendationBubble extends StatelessWidget {
         ],
       ),
       child: texto.isNotEmpty
-          ? MarkdownBody(
+          ? (_parsear(texto) != null ? _lista(_parsear(texto)!) : MarkdownBody(
               data: texto,
               styleSheet: MarkdownStyleSheet(
                 p: const TextStyle(
@@ -515,8 +518,82 @@ class _RecommendationBubble extends StatelessWidget {
                 ),
               ),
               shrinkWrap: true,
-            )
+            ))
           : const SizedBox.shrink(),
+    );
+  }
+
+  static final _rxPlato = RegExp(r'([^,()\n]+?)\s*\(\s*~?\s*(\d+)\s*kcal\s*\)');
+  static final _rxIntro = RegExp(
+    r'^(.*?\b(?:propongo|recomiendo|sugiero|sugeriría|recomendaría|ofrezco)\b:?)\s+(.+)$',
+    caseSensitive: false,
+  );
+
+  /// Si el texto es la frase simple "…te propongo A (~700 kcal), B (~600 kcal) y C (~750 kcal)." devuelve
+  /// (intro, [(plato, kcal)]) para dibujarlo como lista. Si trae viñetas, saltos de línea o menos de 2
+  /// platos devuelve null y se muestra el texto tal cual (Markdown).
+  static ({String intro, List<(String, String)> platos})? _parsear(String t) {
+    if (t.contains('\n') || t.contains('*') || t.contains('- ')) return null;
+    final ms = _rxPlato.allMatches(t).toList();
+    if (ms.length < 2) return null;
+    var intro = '';
+    final platos = <(String, String)>[];
+    for (var i = 0; i < ms.length; i++) {
+      var nombre = ms[i].group(1)!.trim().replaceFirst(RegExp(r'^(y|e)\s+', caseSensitive: false), '');
+      if (i == 0) {
+        final m = _rxIntro.firstMatch(nombre);
+        if (m != null) {
+          intro = m.group(1)!;
+          nombre = m.group(2)!;
+        }
+      }
+      if (nombre.isEmpty) return null;
+      platos.add((nombre[0].toUpperCase() + nombre.substring(1), ms[i].group(2)!));
+    }
+    return (intro: intro, platos: platos);
+  }
+
+  Widget _lista(({String intro, List<(String, String)> platos}) d) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (d.intro.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              d.intro,
+              style: const TextStyle(fontSize: 15, color: Color(0xFF1E293B), height: 1.4, fontWeight: FontWeight.w600),
+            ),
+          ),
+        for (final p in d.platos)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.restaurant_rounded, size: 18, color: Color(0xFF059669)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    p.$1,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF064E3B)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '~${p.$2} kcal',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFDC2626)),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

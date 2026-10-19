@@ -287,6 +287,12 @@ class _RegistrationPill extends StatelessWidget {
               const SizedBox(height: 2),
               for (final c in calculos)
                 Text(c, style: TextStyle(fontSize: 12, color: Colors.blue.shade900.withValues(alpha: 0.8))),
+              const SizedBox(height: 3),
+              Text(
+                'Las kcal dependen de tu peso, el tiempo y la intensidad. '
+                'MET = cuánta energía gasta el ejercicio respecto a estar en reposo.',
+                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, height: 1.3),
+              ),
             ],
             if (quemado > 0) ...[
               const SizedBox(height: 8),

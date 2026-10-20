@@ -555,7 +555,7 @@ class _RecommendationBubble extends StatelessWidget {
   static ({String intro, List<(String, String)> platos})? _parsear(String t) {
     if (t.contains('\n') || t.contains('*') || t.contains('- ')) return null;
     final ms = _rxPlato.allMatches(t).toList();
-    if (ms.length < 2) return null;
+    if (ms.length < 2 || !_huecosValidos(t, ms)) return null;
     var intro = '';
     final platos = <(String, String)>[];
     for (var i = 0; i < ms.length; i++) {
@@ -563,7 +563,7 @@ class _RecommendationBubble extends StatelessWidget {
       if (i == 0) {
         final m = _rxIntro.firstMatch(nombre);
         if (m != null) {
-          intro = '${t.substring(0, ms[0].start)}${m.group(1)!}'.trim(); // el texto previo puede tener comas
+          intro = _unir(t.substring(0, ms[0].start), m.group(1)!); // el texto previo puede tener comas
           nombre = m.group(2)!;
         }
       }
@@ -573,14 +573,25 @@ class _RecommendationBubble extends StatelessWidget {
     return (intro: intro, platos: platos);
   }
 
-  static final _rxEjercicio = RegExp(r'([^,.;:()\n]+?)\s+(\d+)\s*[x×]\s*(\d+)\b', caseSensitive: false);
+  /// Entre un elemento y el siguiente solo puede haber separadores (coma o punto y coma). Si hay texto
+  /// explicativo en medio, las tarjetas lo perderían: en ese caso se muestra el mensaje completo como texto.
+  static bool _huecosValidos(String t, List<RegExpMatch> ms) {
+    for (var i = 0; i < ms.length - 1; i++) {
+      if (!RegExp(r'^[\s,;]*$').hasMatch(t.substring(ms[i].end, ms[i + 1].start))) return false;
+    }
+    return true;
+  }
+
+  static String _unir(String previo, String verbo) => '$previo $verbo'.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  static final _rxEjercicio =RegExp(r'([^,.;:()\n]+?)\s+(\d+)\s*[x×]\s*(\d+)\b', caseSensitive: false);
 
   /// "…te sugiero Sentadilla Libre 3x10, Prensa de Piernas 3x12 y Peso Muerto 3x10. ¡Dale con todo!"
   /// → (intro, [(ejercicio, "3 × 10")], cierre). Con menos de 2 ejercicios devuelve null (se muestra el texto tal cual).
   static ({String intro, List<(String, String)> items, String cierre})? _parsearEjercicios(String t) {
     if (t.contains('\n') || t.contains('*') || t.contains('- ')) return null;
     final ms = _rxEjercicio.allMatches(t).toList();
-    if (ms.length < 2) return null;
+    if (ms.length < 2 || !_huecosValidos(t, ms)) return null;
     var intro = '';
     final items = <(String, String)>[];
     for (var i = 0; i < ms.length; i++) {
@@ -588,7 +599,7 @@ class _RecommendationBubble extends StatelessWidget {
       if (i == 0) {
         final m = _rxIntro.firstMatch(nombre);
         if (m != null) {
-          intro = '${t.substring(0, ms[0].start)}${m.group(1)!}'.trim(); // el texto previo puede tener comas
+          intro = _unir(t.substring(0, ms[0].start), m.group(1)!); // el texto previo puede tener comas
           nombre = m.group(2)!;
         }
       }

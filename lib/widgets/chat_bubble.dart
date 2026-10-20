@@ -510,7 +510,11 @@ class _RecommendationBubble extends StatelessWidget {
         ],
       ),
       child: texto.isNotEmpty
-          ? (_parsear(texto) != null ? _lista(_parsear(texto)!) : MarkdownBody(
+          ? (_parsear(texto) != null
+              ? _lista(_parsear(texto)!)
+              : (intent == 'POWER' && _parsearEjercicios(texto) != null)
+                  ? _listaEjercicios(_parsearEjercicios(texto)!)
+                  : MarkdownBody(
               data: texto,
               styleSheet: MarkdownStyleSheet(
                 p: const TextStyle(
@@ -559,7 +563,7 @@ class _RecommendationBubble extends StatelessWidget {
       if (i == 0) {
         final m = _rxIntro.firstMatch(nombre);
         if (m != null) {
-          intro = m.group(1)!;
+          intro = '${t.substring(0, ms[0].start)}${m.group(1)!}'.trim(); // el texto previo puede tener comas
           nombre = m.group(2)!;
         }
       }
@@ -567,6 +571,82 @@ class _RecommendationBubble extends StatelessWidget {
       platos.add((nombre[0].toUpperCase() + nombre.substring(1), ms[i].group(2)!));
     }
     return (intro: intro, platos: platos);
+  }
+
+  static final _rxEjercicio = RegExp(r'([^,.;:()\n]+?)\s+(\d+)\s*[x×]\s*(\d+)\b', caseSensitive: false);
+
+  /// "…te sugiero Sentadilla Libre 3x10, Prensa de Piernas 3x12 y Peso Muerto 3x10. ¡Dale con todo!"
+  /// → (intro, [(ejercicio, "3 × 10")], cierre). Con menos de 2 ejercicios devuelve null (se muestra el texto tal cual).
+  static ({String intro, List<(String, String)> items, String cierre})? _parsearEjercicios(String t) {
+    if (t.contains('\n') || t.contains('*') || t.contains('- ')) return null;
+    final ms = _rxEjercicio.allMatches(t).toList();
+    if (ms.length < 2) return null;
+    var intro = '';
+    final items = <(String, String)>[];
+    for (var i = 0; i < ms.length; i++) {
+      var nombre = ms[i].group(1)!.trim().replaceFirst(RegExp(r'^(y|e)\s+', caseSensitive: false), '');
+      if (i == 0) {
+        final m = _rxIntro.firstMatch(nombre);
+        if (m != null) {
+          intro = '${t.substring(0, ms[0].start)}${m.group(1)!}'.trim(); // el texto previo puede tener comas
+          nombre = m.group(2)!;
+        }
+      }
+      if (nombre.isEmpty) return null;
+      items.add((nombre[0].toUpperCase() + nombre.substring(1), '${ms[i].group(2)} × ${ms[i].group(3)}'));
+    }
+    var cierre = t.substring(ms.last.end).replaceFirst(RegExp(r'^[\s.,;:]+'), '').trim();
+    if (cierre.length < 3) cierre = '';
+    return (intro: intro, items: items, cierre: cierre);
+  }
+
+  Widget _listaEjercicios(({String intro, List<(String, String)> items, String cierre}) d) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (d.intro.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              d.intro,
+              style: const TextStyle(fontSize: 15, color: Color(0xFF1E293B), height: 1.4, fontWeight: FontWeight.w600),
+            ),
+          ),
+        for (final e in d.items)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.fitness_center_rounded, size: 18, color: Color(0xFF2563EB)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    e.$1,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E3A5F)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  e.$2,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
+                ),
+              ],
+            ),
+          ),
+        if (d.cierre.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(d.cierre, style: const TextStyle(fontSize: 14, color: Color(0xFF475569), height: 1.4)),
+          ),
+      ],
+    );
   }
 
   Widget _lista(({String intro, List<(String, String)> platos}) d) {

@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../models/client.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import '../../../services/tts_service.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../models/assistant_response.dart';
 import '../../../widgets/chat_bubble.dart';
@@ -33,7 +33,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   final FocusNode _focusNode = FocusNode();
 
   final ApiService _apiService = ApiService();
-  final FlutterTts _flutterTts = FlutterTts();
+  final TtsService _tts = TtsService();
   final stt.SpeechToText _speech = stt.SpeechToText();
 
   bool _speechReady = false;
@@ -276,11 +276,71 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     setState(() => _isKeyboardVisible = _focusNode.hasFocus);
   }
 
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage("es-MX");
-    await _flutterTts.setSpeechRate(0.55);
-    await _flutterTts.setPitch(1.0);
-    _flutterTts.setCompletionHandler(() => setState(() => _speakingMessageId = null));
+  Future<void> _initTts() => _tts.init();
+
+  /// Calidad de la voz tal como la declara el motor, en palabras para el usuario.
+  String _etiquetaVoz(Map<String, String> v, int i) {
+    const acentos = {'es-MX': 'México', 'es-US': 'Latinoamérica', 'es-419': 'Latinoamérica', 'es-ES': 'España'};
+    const calidad = {'very high': 'calidad muy alta', 'high': 'calidad alta', 'normal': 'calidad normal'};
+    final loc = (v['locale'] ?? '').replaceAll('_', '-');
+    final partes = [
+      'Voz ${i + 1}',
+      acentos[loc] ?? loc,
+      if (calidad[v['quality']] != null) calidad[v['quality']]!,
+    ];
+    return partes.join(' · ');
+  }
+
+  Future<void> _mostrarSelectorVoz() async {
+    final voces = await _tts.vocesEspanol();
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Voz del asistente', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(
+                  voces.isEmpty
+                      ? 'No encontré voces en español en tu teléfono. Instala "Servicios de voz de Google" desde la tienda de aplicaciones y elígelo en Ajustes → Idioma → Salida de texto a voz.'
+                      : 'Toca una voz para escucharla y elegirla. Se guarda en este teléfono.',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (var i = 0; i < voces.length && i < 10; i++)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            _tts.vozActual?['name'] == voces[i]['name'] ? Icons.check_circle : Icons.play_circle_outline,
+                            color: _tts.vozActual?['name'] == voces[i]['name'] ? Colors.green : Colors.blue,
+                          ),
+                          title: Text(_etiquetaVoz(voces[i], i)),
+                          onTap: () async {
+                            await _tts.elegirVoz(voces[i]);
+                            setS(() {});
+                            _tts.hablar('Hola, soy tu asistente CaloFit. Hoy llevas mil doscientas kilocalorías.');
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(() => _tts.detener());
   }
 
   @override
@@ -288,28 +348,19 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _saveChatHistory();
     _inputController.dispose();
     _focusNode.dispose();
-    _flutterTts.stop();
+    _tts.detener();
     super.dispose();
   }
 
   Future<void> _speak(String content, String messageId) async {
     if (_speakingMessageId == messageId) {
-      await _flutterTts.stop();
+      await _tts.detener();
       setState(() => _speakingMessageId = null);
     } else {
       setState(() => _speakingMessageId = messageId);
-      String plainText = content
-          .replaceAll(RegExp(r'\*+'), '')
-          .replaceAll(RegExp(r'#+'), '')
-          .replaceAll(RegExp(r'kcal', caseSensitive: false), 'kilocalorías')
-          .replaceAll(RegExp(r'\bkJ\b'), 'kilojulios')
-          .replaceAll(RegExp(r'\bg\b'), 'gramos')
-          .replaceAll(RegExp(r'\bmg\b'), 'miligramos')
-          .replaceAll(RegExp(r'~'), 'aproximadamente ')
-          .replaceAll(RegExp(r'×'), 'por')
-          .replaceAll(RegExp(r'[•\-–—]'), ',')
-          .trim();
-      await _flutterTts.speak(plainText);
+      await _tts.hablar(content, alTerminar: () {
+        if (mounted && _speakingMessageId == messageId) setState(() => _speakingMessageId = null);
+      });
     }
   }
 
@@ -333,7 +384,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     if (!_isListening) {
       final session = ++_speechSession;
       try {
-        await _flutterTts.stop();
+        await _tts.detener();
       } catch (_) {}
       if (mounted) setState(() => _speakingMessageId = null);
       setState(() => _isListening = true);
@@ -591,7 +642,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
             tooltip: 'Detener voz',
             onPressed: () async {
-              await _flutterTts.stop();
+              await _tts.detener();
               setState(() => _speakingMessageId = null);
             },
           )
@@ -601,6 +652,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             tooltip: _isMuted ? 'Activar voz' : 'Silenciar voz',
             onPressed: () => setState(() => _isMuted = !_isMuted),
           ),
+        IconButton(
+          icon: Icon(Icons.record_voice_over_outlined, color: Colors.grey.shade600, size: 22),
+          tooltip: 'Elegir voz',
+          onPressed: _mostrarSelectorVoz,
+        ),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),

@@ -73,6 +73,10 @@
     </application>
 
     <queries>
+        <!-- flutter_tts: ver los motores de voz instalados (Android 11+) -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

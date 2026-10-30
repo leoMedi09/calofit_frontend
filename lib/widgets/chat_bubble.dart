@@ -299,7 +299,7 @@ class _RegistrationPill extends StatelessWidget {
             if (quemado > 0) ...[
               const SizedBox(height: 8),
               Text(
-                'Total quemado hoy: ${quemado.toInt()} kcal',
+                'Total quemado hoy: ${quemado.round()} kcal',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.blue.shade700,
@@ -458,7 +458,7 @@ class _RegistrationPill extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Hoy: ${consumido.toInt()} / ${meta.toInt()} kcal',
+                  'Hoy: ${consumido.round()} / ${meta.round()} kcal',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF065F46),

@@ -321,7 +321,7 @@ class _RegistrationPill extends StatelessWidget {
     final alimentosLista =
         (datos['alimentos_lista'] as List?)?.map((e) => e.toString()).toList() ?? (nombre.isNotEmpty ? [nombre] : []);
     final porciones = (datos['porciones'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final fuenteAlimentos = datos['fuente']?.toString() ?? '';
+    const fuenteAlimentos = 'Referencia nutricional: Tabla Peruana de Composición de Alimentos (INS/CENAN)';
 
     return _PillCard(
       color: const Color(0xFF059669),
@@ -445,7 +445,7 @@ class _RegistrationPill extends StatelessWidget {
               ),
             ),
           ],
-          if (fuenteAlimentos.isNotEmpty) ...[
+          ...[
             const SizedBox(height: 6),
             Text(
               fuenteAlimentos,

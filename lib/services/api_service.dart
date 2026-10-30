@@ -656,9 +656,10 @@ class ApiService {
           data: {'texto': texto}, options: Options(headers: {'Authorization': 'Bearer $token'}));
       return response.data;
     } on DioException catch (e) {
-      final msg = e.response?.data != null ? e.response!.data.toString() : e.message;
+      final data = e.response?.data;
+      final msg = data is Map && data['detail'] is String ? data['detail'] : (data?.toString() ?? e.message);
       print('❌ Error parseando ingredientes: $msg');
-      throw Exception('Error: $msg');
+      throw Exception(msg);
     } catch (e) {
       print('❌ Error parseando ingredientes: $e');
       throw Exception('Error: $e');

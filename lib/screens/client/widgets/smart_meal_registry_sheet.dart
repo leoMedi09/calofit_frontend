@@ -89,7 +89,9 @@ class _SmartMealRegistrySheetState extends State<SmartMealRegistrySheet> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.token == null) return;
       final result = await ApiService().parseIngredients('${cleanQtyStr}g de $name', auth.token!);
-      if (result['ingredientes'] != null) {
+      if (result['ingredientes'] is List && (result['ingredientes'] as List).isEmpty) {
+        setState(() => _errorMessage = result['advertencia']?.toString() ?? 'No se encontró información.');
+      } else if (result['ingredientes'] != null) {
         setState(() {
           for (var item in result['ingredientes']) {
             _ingredients.add({

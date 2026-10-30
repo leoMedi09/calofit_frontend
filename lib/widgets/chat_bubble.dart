@@ -444,11 +444,6 @@ class _RegistrationPill extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 6),
-          Text(
-            'Valores aproximados para la cantidad considerada; pueden variar según la preparación.',
-            style: TextStyle(fontSize: 10.5, color: Colors.green.shade900.withValues(alpha: 0.6), height: 1.3),
-          ),
           if (consumido > 0 && meta > 0) ...[
             const SizedBox(height: 10),
             const Divider(height: 1, color: Color(0xFFD1FAE5)),

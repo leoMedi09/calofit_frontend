@@ -73,10 +73,8 @@ class AssistantMessageBubble extends StatelessWidget {
                         Flexible(
                           child: Text(
                             intent == 'POWER'
-                                ? (texto.contains('(MET ')
-                                    ? "Adaptada a tu objetivo y condiciones de salud · MET: Compendium of Physical Activities 2024"
-                                    : "Adaptada a tu objetivo y condiciones de salud")
-                                : "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
+                                ? "Adaptada a tu objetivo y condiciones de salud · Referencia: Compendium of Physical Activities 2024"
+                                : "Sugerencias optimizadas por KNN Coseno · Referencia nutricional: Tabla Peruana de Composición de Alimentos (INS/CENAN)",
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

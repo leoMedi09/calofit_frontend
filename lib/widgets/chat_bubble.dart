@@ -238,6 +238,7 @@ class _RegistrationPill extends StatelessWidget {
       final reps = datos['reps'];
       final peso = datos['peso_kg'];
       final calculos = (datos['calculos'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+      final fuente = datos['fuente']?.toString() ?? '';
 
       String detalle = '${dur}min';
       if (series != null && reps != null) {
@@ -292,6 +293,8 @@ class _RegistrationPill extends StatelessWidget {
                 'MET: energía que gasta el ejercicio frente a estar en reposo.',
                 style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, height: 1.3),
               ),
+              if (fuente.isNotEmpty)
+                Text('Fuente: $fuente', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, height: 1.3)),
             ],
             if (quemado > 0) ...[
               const SizedBox(height: 8),
@@ -439,6 +442,11 @@ class _RegistrationPill extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 6),
+          Text(
+            'Valores aproximados para la cantidad considerada; pueden variar según la preparación.',
+            style: TextStyle(fontSize: 10.5, color: Colors.green.shade900.withValues(alpha: 0.6), height: 1.3),
+          ),
           if (consumido > 0 && meta > 0) ...[
             const SizedBox(height: 10),
             const Divider(height: 1, color: Color(0xFFD1FAE5)),

@@ -294,7 +294,7 @@ class _RegistrationPill extends StatelessWidget {
                 style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, height: 1.3),
               ),
               if (fuente.isNotEmpty)
-                Text('Fuente: $fuente', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, height: 1.3)),
+                Text(fuente.startsWith('Referencia') ? fuente : 'Fuente: $fuente', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, height: 1.3)),
             ],
             if (quemado > 0) ...[
               const SizedBox(height: 8),

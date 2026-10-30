@@ -73,7 +73,9 @@ class AssistantMessageBubble extends StatelessWidget {
                         Flexible(
                           child: Text(
                             intent == 'POWER'
-                                ? "Adaptada a tu objetivo y condiciones de salud"
+                                ? (texto.contains('(MET ')
+                                    ? "Adaptada a tu objetivo y condiciones de salud · MET: Compendium of Physical Activities 2024"
+                                    : "Adaptada a tu objetivo y condiciones de salud")
                                 : "Sugerencias optimizadas por KNN Coseno (MINSA/INS)",
                             style: const TextStyle(
                               fontSize: 11,
@@ -592,16 +594,19 @@ class _RecommendationBubble extends StatelessWidget {
 
   static String _unir(String previo, String verbo) => '$previo $verbo'.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-  static final _rxEjercicio =RegExp(r'([^,.;:()\n]+?)\s+(\d+)\s*[x×]\s*(\d+)\b', caseSensitive: false);
+  static final _rxEjercicio = RegExp(
+    r'([^,.;:()\n]+?)\s+(\d+)\s*[x×]\s*(\d+)\b(?:\s*\(\s*MET\s*([\d.,]+)\s*\))?',
+    caseSensitive: false,
+  );
 
   /// "…te sugiero Sentadilla Libre 3x10, Prensa de Piernas 3x12 y Peso Muerto 3x10. ¡Dale con todo!"
   /// → (intro, [(ejercicio, "3 × 10")], cierre). Con menos de 2 ejercicios devuelve null (se muestra el texto tal cual).
-  static ({String intro, List<(String, String)> items, String cierre})? _parsearEjercicios(String t) {
+  static ({String intro, List<(String, String, String?)> items, String cierre})? _parsearEjercicios(String t) {
     if (t.contains('\n') || t.contains('*') || t.contains('- ')) return null;
     final ms = _rxEjercicio.allMatches(t).toList();
     if (ms.length < 2 || !_huecosValidos(t, ms)) return null;
     var intro = '';
-    final items = <(String, String)>[];
+    final items = <(String, String, String?)>[];
     for (var i = 0; i < ms.length; i++) {
       var nombre = ms[i].group(1)!.trim().replaceFirst(RegExp(r'^(y|e)\s+', caseSensitive: false), '');
       if (i == 0) {
@@ -612,14 +617,14 @@ class _RecommendationBubble extends StatelessWidget {
         }
       }
       if (nombre.isEmpty) return null;
-      items.add((nombre[0].toUpperCase() + nombre.substring(1), '${ms[i].group(2)} × ${ms[i].group(3)}'));
+      items.add((nombre[0].toUpperCase() + nombre.substring(1), '${ms[i].group(2)} × ${ms[i].group(3)}', ms[i].group(4)));
     }
     var cierre = t.substring(ms.last.end).replaceFirst(RegExp(r'^[\s.,;:]+'), '').trim();
     if (cierre.length < 3) cierre = '';
     return (intro: intro, items: items, cierre: cierre);
   }
 
-  Widget _listaEjercicios(({String intro, List<(String, String)> items, String cierre}) d) {
+  Widget _listaEjercicios(({String intro, List<(String, String, String?)> items, String cierre}) d) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -646,9 +651,16 @@ class _RecommendationBubble extends StatelessWidget {
                 const Icon(Icons.fitness_center_rounded, size: 18, color: Color(0xFF2563EB)),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    e.$1,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E3A5F)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        e.$1,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E3A5F)),
+                      ),
+                      if (e.$3 != null)
+                        Text('MET ${e.$3}', style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade500)),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
